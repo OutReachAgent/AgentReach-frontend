@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -10,10 +11,24 @@ import {
   History,
   Settings,
   Zap,
+  UserRound,
+  LogOut,
+  Moon,
+  Sun,
 } from 'lucide-react';
+import { applyTheme, getStoredUser, LocalUserProfile, saveStoredUser, signOut } from '@/lib/localAuth';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<LocalUserProfile | null>(null);
+
+  useEffect(() => {
+    const refreshUser = () => setUser(getStoredUser());
+    refreshUser();
+    window.addEventListener('reachconvert:user-updated', refreshUser);
+    return () => window.removeEventListener('reachconvert:user-updated', refreshUser);
+  }, []);
 
   const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -22,7 +37,25 @@ export default function Sidebar() {
     { name: 'AI Calling', href: '/calling-campaigns', icon: PhoneCall },
     { name: 'History', href: '/history', icon: History },
     { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Profile', href: '/profile', icon: UserRound },
   ];
+
+  const toggleTheme = () => {
+    const currentUser = getStoredUser();
+    const nextUser: LocalUserProfile = {
+      ...currentUser,
+      theme: currentUser.theme === 'dark' ? 'light' : 'dark',
+    };
+
+    saveStoredUser(nextUser);
+    applyTheme(nextUser.theme);
+    setUser(nextUser);
+  };
+
+  const handleLogout = () => {
+    signOut();
+    router.replace('/login');
+  };
 
   return (
     <aside className="w-64 border-r border-zinc-800 bg-zinc-950 flex flex-col justify-between h-screen sticky top-0">
@@ -75,13 +108,33 @@ export default function Sidebar() {
 
       {/* Footer / Info */}
       <div className="p-4 border-t border-zinc-900 bg-zinc-950/50">
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/60 border border-zinc-850/60">
-          <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-300">
-            OA
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-zinc-200">Oswin Alex</p>
-            <p className="text-[10px] text-zinc-500">Premium Plan</p>
+        <div className="rounded-xl bg-zinc-900/60 border border-zinc-850/60 p-3">
+          <Link href="/profile" className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-300">
+              {user?.initials || 'OA'}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-zinc-200">{user?.name || 'Oswin Alex'}</p>
+              <p className="truncate text-[10px] text-zinc-500">{user?.email || 'oswinalex1@gmail.com'}</p>
+            </div>
+          </Link>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-zinc-200"
+            >
+              {user?.theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              {user?.theme === 'light' ? 'Dark' : 'Light'}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-rose-300"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Logout
+            </button>
           </div>
         </div>
       </div>

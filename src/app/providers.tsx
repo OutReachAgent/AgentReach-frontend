@@ -1,8 +1,9 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { applyTheme, getStoredUser } from '@/lib/localAuth';
 
 function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -17,6 +18,10 @@ function Providers({ children }: { children: ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    applyTheme(getStoredUser().theme);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
