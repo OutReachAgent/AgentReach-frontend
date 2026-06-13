@@ -119,7 +119,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <p className="text-xs text-zinc-600">Default account: oswinalex1@gmail.com</p>
+          <p className="text-xs text-zinc-600"></p>
         </section>
 
         <section className="flex items-center px-5 py-8 sm:px-6 lg:py-10">
@@ -181,9 +181,6 @@ export default function LoginPage() {
                 >
                   Sign In <ArrowRight className="h-4 w-4" />
                 </button>
-                <div className="rounded-xl border border-zinc-850 bg-zinc-950/50 px-4 py-3 text-xs text-zinc-500">
-                  Use <span className="font-semibold text-zinc-300">oswinalex1@gmail.com</span> with your saved password.
-                </div>
               </form>
             ) : (
               <div className="space-y-5">

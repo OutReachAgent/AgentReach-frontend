@@ -25,7 +25,7 @@ export default function ProfilePage() {
     if (!profile) return;
 
     if (!profile.email.trim() || !profile.name.trim()) {
-      showAlert('Name and email are required.', 'error');
+      showAlert('Please enter your name and email before saving.', 'error');
       return;
     }
 
@@ -48,7 +48,7 @@ export default function ProfilePage() {
         showAlert('Profile updated successfully.', 'success');
       })
       .catch((error: Error) => {
-        showAlert(error.message || 'Failed to update profile.', 'error');
+        showAlert(error.message || 'We could not update your profile. Please try again.', 'error');
       });
   };
 

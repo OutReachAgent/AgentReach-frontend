@@ -62,11 +62,11 @@ export default function ContactsPage() {
     mutationFn: api.contacts.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      showAlert('Contact saved successfully!', 'success');
+      showAlert('The contact has been added to your list.', 'success', 'Contact saved');
       closeManualModal();
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Error saving contact', 'error');
+      showAlert(err.message || 'We could not save this contact. Please check the details and try again.', 'error');
     },
   });
 
@@ -74,11 +74,11 @@ export default function ContactsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) => api.contacts.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      showAlert('Contact updated successfully!', 'success');
+      showAlert('The contact details have been updated.', 'success', 'Contact updated');
       closeManualModal();
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Error updating contact', 'error');
+      showAlert(err.message || 'We could not update this contact. Please try again.', 'error');
     },
   });
 
@@ -86,10 +86,10 @@ export default function ContactsPage() {
     mutationFn: api.contacts.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
-      showAlert('Contact deleted successfully!', 'success');
+      showAlert('The contact has been deleted.', 'success', 'Contact deleted');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Error deleting contact', 'error');
+      showAlert(err.message || 'We could not delete this contact. Please try again.', 'error');
     },
   });
 
@@ -115,7 +115,7 @@ export default function ContactsPage() {
       setUploadStep(2);
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Error parsing file', 'error');
+      showAlert(err.message || 'We could not read this file. Please upload a CSV or Excel file.', 'error');
     },
   });
 
@@ -125,10 +125,10 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       setImportResult(res);
       setUploadStep(4);
-      showAlert(`Bulk import complete: ${res.importedCount} added, ${res.updatedCount} updated.`, 'success');
+      showAlert(`${res.importedCount} contacts added and ${res.updatedCount} updated.`, 'success', 'Import complete');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Bulk import failed', 'error');
+      showAlert(err.message || 'We could not import the contacts. Please check the file and try again.', 'error');
     },
   });
 
@@ -647,7 +647,7 @@ export default function ContactsPage() {
                       onClick={() => {
                         // Check validation
                         if (!mapping['firstName'] || !mapping['lastName'] || !mapping['email']) {
-                          showAlert('Please map First Name, Last Name, and Email fields to import.', 'error');
+                          showAlert('Please match the First Name, Last Name, and Email columns before importing.', 'error');
                           return;
                         }
                         setUploadStep(3);

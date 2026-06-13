@@ -62,12 +62,12 @@ export default function CallingCampaignsPage() {
     mutationFn: api.callingCampaigns.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calling-campaigns'] });
-      showAlert('Calling Campaign created successfully!', 'success');
+      showAlert('Your calling campaign is saved and ready.', 'success', 'Campaign ready');
       resetForm();
       setActiveTab('list');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to create calling campaign', 'error');
+      showAlert(err.message || 'We could not save this calling campaign. Please check the details and try again.', 'error');
     },
   });
 
@@ -78,10 +78,10 @@ export default function CallingCampaignsPage() {
       if (selectedCampaignId) {
         queryClient.invalidateQueries({ queryKey: ['calling-campaign', selectedCampaignId] });
       }
-      showAlert('AI Dialer simulation launched in background!', 'success');
+      showAlert('The calling simulation has started. Results will appear as calls finish.', 'success', 'Calling started');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to launch dialer', 'error');
+      showAlert(err.message || 'We could not start the calling campaign. Please add contacts first.', 'error');
     },
   });
 
@@ -96,7 +96,7 @@ export default function CallingCampaignsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      showAlert('Please specify a campaign name', 'error');
+      showAlert('Please enter a campaign name so you can recognize it later.', 'error');
       return;
     }
 

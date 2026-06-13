@@ -7,9 +7,27 @@ const AI_REQUEST_TIMEOUT_MS = 45000;
 async function handleResponse(res: Response) {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || res.statusText || 'An error occurred while fetching the API');
+    throw new Error(toFriendlyApiError(errorData.message || res.statusText, res.status));
   }
   return res.json();
+}
+
+function toFriendlyApiError(message: unknown, status: number) {
+  const text = Array.isArray(message) ? message.join(' ') : String(message || '');
+  const lower = text.toLowerCase();
+
+  if (status === 401) return 'Your session has expired. Please log in again.';
+  if (status === 403) return 'You do not have permission to do that.';
+  if (status === 404) return 'We could not find that item. It may have been removed.';
+  if (status >= 500) return 'The server had a problem. Please try again in a moment.';
+  if (lower.includes('duplicate') || lower.includes('already exists')) return 'This item already exists.';
+  if (lower.includes('missing') || lower.includes('required')) return 'Please fill in the required information.';
+  if (lower.includes('invalid')) return 'Some information looks incorrect. Please check it and try again.';
+  if (lower.includes('no pending contacts')) return 'Everyone in this campaign has already been sent. Use Launch Again to send it again.';
+  if (lower.includes('no contacts')) return 'Please add recipients before launching this campaign.';
+  if (lower.includes('template')) return 'Please choose or create an email template first.';
+
+  return text || 'Something went wrong. Please try again.';
 }
 
 async function request(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
@@ -44,11 +62,11 @@ async function requestWithAuth(path: string, init?: RequestInit, timeoutMs = REQ
     return handleResponse(response);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error(`API request timed out. Check that the backend is running at ${BASE_URL}.`);
+      throw new Error('This is taking longer than expected. Please try again.');
     }
 
     if (error instanceof TypeError) {
-      throw new Error(`Cannot connect to backend at ${BASE_URL}. Make sure the NestJS server is running.`);
+      throw new Error('We could not reach the app server. Please try again in a moment.');
     }
 
     throw error;

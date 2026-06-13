@@ -15,23 +15,27 @@ export default function Alert() {
   };
 
   const borderColors = {
-    success: 'border-emerald-500/20 bg-emerald-950/20 text-emerald-100',
-    error: 'border-rose-500/20 bg-rose-950/20 text-rose-100',
-    info: 'border-indigo-500/20 bg-indigo-950/20 text-indigo-100',
+    success: 'border-emerald-500/25 bg-emerald-950/90 text-emerald-50 shadow-emerald-950/20',
+    error: 'border-rose-500/25 bg-rose-950/90 text-rose-50 shadow-rose-950/20',
+    info: 'border-indigo-500/25 bg-indigo-950/90 text-indigo-50 shadow-indigo-950/20',
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 z-50 w-[calc(100vw-2rem)] max-w-sm animate-in slide-in-from-bottom-5 fade-in duration-300 sm:w-full">
       <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl ${
+        className={`flex items-start gap-3 rounded-2xl border px-4 py-4 backdrop-blur-md shadow-2xl ${
           borderColors[alert.type]
         }`}
       >
-        {icons[alert.type]}
-        <p className="text-sm font-medium pr-4">{alert.message}</p>
+        <div className="mt-0.5 shrink-0">{icons[alert.type]}</div>
+        <div className="min-w-0 flex-1 pr-2">
+          <p className="text-sm font-bold leading-5">{alert.title}</p>
+          <p className="mt-0.5 text-sm leading-5 opacity-90">{alert.message}</p>
+        </div>
         <button
           onClick={clearAlert}
-          className="text-zinc-400 hover:text-zinc-200 transition-colors p-1 rounded-lg hover:bg-white/5"
+          aria-label="Close notification"
+          className="shrink-0 rounded-lg p-1 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
         >
           <X className="h-4 w-4" />
         </button>

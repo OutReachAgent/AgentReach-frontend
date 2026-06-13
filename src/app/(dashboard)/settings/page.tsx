@@ -41,10 +41,10 @@ export default function SettingsPage() {
     mutationFn: api.settings.update,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
-      showAlert('Settings updated successfully!', 'success');
+      showAlert('Your settings have been saved.', 'success', 'Settings saved');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to update settings', 'error');
+      showAlert(err.message || 'We could not save your settings. Please check the fields and try again.', 'error');
     },
   });
 
@@ -52,13 +52,13 @@ export default function SettingsPage() {
     mutationFn: api.settings.testSes,
     onSuccess: (res) => {
       if (res.success) {
-        showAlert(res.message || 'AWS SES credentials verified successfully!', 'success');
+        showAlert(res.message || 'Your email sending connection is working.', 'success', 'Email settings verified');
       } else {
-        showAlert(res.error || 'AWS SES verification failed', 'error');
+        showAlert(res.error || 'We could not verify your email sending settings. Please check your AWS details.', 'error');
       }
     },
     onError: (err: any) => {
-      showAlert(err.message || 'AWS SES test failed', 'error');
+      showAlert(err.message || 'We could not test your email sending settings. Please try again.', 'error');
     },
   });
 
@@ -66,13 +66,13 @@ export default function SettingsPage() {
     mutationFn: api.settings.testOpenRouter,
     onSuccess: (res) => {
       if (res.success) {
-        showAlert(res.message || 'OpenRouter API Key verified successfully!', 'success');
+        showAlert(res.message || 'Your AI connection is working.', 'success', 'AI settings verified');
       } else {
-        showAlert(res.error || 'OpenRouter verification failed', 'error');
+        showAlert(res.error || 'We could not verify your AI settings. Please check the API key.', 'error');
       }
     },
     onError: (err: any) => {
-      showAlert(err.message || 'OpenRouter test failed', 'error');
+      showAlert(err.message || 'We could not test your AI settings. Please try again.', 'error');
     },
   });
 

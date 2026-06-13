@@ -96,12 +96,12 @@ export default function EmailCampaignsPage() {
         });
       }
       queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
-      showAlert('Campaign created successfully!', 'success');
+      showAlert('Your campaign is saved. You can open it anytime to add contacts or start sending.', 'success', 'Campaign ready');
       resetWizard();
       setActiveTab('list');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to create campaign', 'error');
+      showAlert(err.message || 'We could not save this campaign. Please check the details and try again.', 'error');
     },
   });
 
@@ -109,11 +109,11 @@ export default function EmailCampaignsPage() {
     mutationFn: api.emailCampaigns.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
-      showAlert('Campaign deleted successfully!', 'success');
+      showAlert('The campaign has been removed from your list.', 'success', 'Campaign deleted');
       if (activeTab === 'detail') setActiveTab('list');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to delete campaign', 'error');
+      showAlert(err.message || 'We could not delete this campaign. Please try again.', 'error');
     },
   });
 
@@ -124,10 +124,10 @@ export default function EmailCampaignsPage() {
       if (selectedCampaignId) {
         queryClient.invalidateQueries({ queryKey: ['email-campaign', selectedCampaignId] });
       }
-      showAlert(res?.message || 'Campaign delivery launched in background!', 'success');
+      showAlert(res?.message || 'Your emails are being sent now. You can stay on this page and watch the results update.', 'success', 'Campaign started');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to launch campaign', 'error');
+      showAlert(err.message || 'We could not start this campaign. Please add contacts and choose a template first.', 'error');
     },
   });
 
@@ -151,10 +151,10 @@ export default function EmailCampaignsPage() {
       setGeneratedTemplate(res);
       setSelectedTemplateId(res.id);
       queryClient.invalidateQueries({ queryKey: ['templates'] });
-      showAlert('AI email template generated, saved, and selected!', 'success');
+      showAlert('Your AI template is ready and already selected for this campaign.', 'success', 'Template ready');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to generate AI template', 'error');
+      showAlert(err.message || 'We could not create the AI template. Please try again or write it manually.', 'error');
     },
   });
 
@@ -171,10 +171,10 @@ export default function EmailCampaignsPage() {
     onSuccess: (res) => {
       setSelectedTemplateId(res.id);
       queryClient.invalidateQueries({ queryKey: ['templates'] });
-      showAlert('Manual email template saved and selected!', 'success');
+      showAlert('Your template is saved and selected for this campaign.', 'success', 'Template saved');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to save manual template', 'error');
+      showAlert(err.message || 'We could not save this template. Please check the name, subject, and message.', 'error');
     },
   });
 
@@ -183,12 +183,12 @@ export default function EmailCampaignsPage() {
       api.emailCampaigns.addContacts(id, contactIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-campaign', selectedCampaignId] });
-      showAlert('Contacts added to campaign successfully!', 'success');
+      showAlert('The selected contacts were added to this campaign.', 'success', 'Recipients added');
       setIsAddContactsOpen(false);
       setAddSelectedContactIds([]);
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to add contacts', 'error');
+      showAlert(err.message || 'We could not add those contacts. Please try again.', 'error');
     },
   });
 
@@ -197,10 +197,10 @@ export default function EmailCampaignsPage() {
       api.emailCampaigns.removeContact(id, contactId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-campaign', selectedCampaignId] });
-      showAlert('Contact removed from campaign.', 'info');
+      showAlert('That recipient was removed from this campaign.', 'info', 'Recipient removed');
     },
     onError: (err: any) => {
-      showAlert(err.message || 'Failed to remove contact', 'error');
+      showAlert(err.message || 'We could not remove that recipient. Please try again.', 'error');
     },
   });
 
@@ -210,11 +210,11 @@ export default function EmailCampaignsPage() {
 
   const handleCreateCampaignSubmit = () => {
     if (!campaignName.trim()) {
-      showAlert('Please specify a campaign name', 'error');
+      showAlert('Please enter a name so you can recognize this campaign later.', 'error');
       return;
     }
     if (!selectedTemplateId) {
-      showAlert('Please select, generate, or manually create a template', 'error');
+      showAlert('Please choose or create an email template before saving the campaign.', 'error');
       return;
     }
 
@@ -259,7 +259,7 @@ export default function EmailCampaignsPage() {
 
   const handleGenerateAiTemplate = () => {
     if (!aiGoal.trim() || !aiAudience.trim()) {
-      showAlert('Please add an AI goal and audience first', 'error');
+      showAlert('Tell the AI what you want to achieve and who you are emailing.', 'error');
       return;
     }
 
@@ -274,7 +274,7 @@ export default function EmailCampaignsPage() {
 
   const handleCreateManualTemplate = () => {
     if (!manualTemplateName.trim() || !manualTemplateSubject.trim() || !manualTemplateBody.trim()) {
-      showAlert('Please complete the manual template name, subject, and body', 'error');
+      showAlert('Please add a template name, subject line, and email message before saving.', 'error');
       return;
     }
 
@@ -609,7 +609,7 @@ export default function EmailCampaignsPage() {
                   type="button"
                   onClick={() => {
                     if (!campaignName.trim()) {
-                      showAlert('Please specify a campaign name', 'error');
+                      showAlert('Please enter a name so you can recognize this campaign later.', 'error');
                       return;
                     }
                     setWizardStep(2);
@@ -880,7 +880,7 @@ export default function EmailCampaignsPage() {
                   type="button"
                   onClick={() => {
                     if (!selectedTemplateId) {
-                      showAlert('Please select, generate, or manually create a template first', 'error');
+                      showAlert('Please choose or create an email template before moving to contacts.', 'error');
                       return;
                     }
                     setWizardStep(3);
