@@ -6,6 +6,8 @@ import { useOutreachStore } from '@/store/useOutreachStore';
 import { useState, useEffect } from 'react';
 import { Settings, Server, Key, Mail, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 
+const DEFAULT_OPENROUTER_MODEL = 'nex-agi/nex-n2-pro:free';
+
 export default function SettingsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
@@ -15,7 +17,7 @@ export default function SettingsPage() {
   const [awsRegion, setAwsRegion] = useState('us-east-1');
   const [awsSenderEmail, setAwsSenderEmail] = useState('');
   const [openRouterApiKey, setOpenRouterApiKey] = useState('');
-  const [openRouterModel, setOpenRouterModel] = useState('meta-llama/llama-3-8b-instruct:free');
+  const [openRouterModel, setOpenRouterModel] = useState(DEFAULT_OPENROUTER_MODEL);
 
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
@@ -31,7 +33,7 @@ export default function SettingsPage() {
       setAwsRegion(settings.awsRegion || 'us-east-1');
       setAwsSenderEmail(settings.awsSenderEmail || '');
       setOpenRouterApiKey(settings.openRouterApiKey || '');
-      setOpenRouterModel(settings.openRouterModel || 'meta-llama/llama-3-8b-instruct:free');
+      setOpenRouterModel(settings.openRouterModel || DEFAULT_OPENROUTER_MODEL);
     }
   }, [settings]);
 
@@ -213,7 +215,7 @@ export default function SettingsPage() {
                 type="text"
                 value={openRouterModel}
                 onChange={(e) => setOpenRouterModel(e.target.value)}
-                placeholder="meta-llama/llama-3-8b-instruct:free"
+                placeholder={DEFAULT_OPENROUTER_MODEL}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
               />
             </div>

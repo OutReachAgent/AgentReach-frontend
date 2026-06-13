@@ -12,6 +12,7 @@ function Providers({ children }: { children: ReactNode }) {
           queries: {
             staleTime: 5000,
             refetchOnWindowFocus: false,
+            retry: 1,
           },
         },
       })

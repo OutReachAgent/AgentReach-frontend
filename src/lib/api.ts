@@ -1,4 +1,6 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const REQUEST_TIMEOUT_MS = 8000;
+const AI_REQUEST_TIMEOUT_MS = 45000;
 
 async function handleResponse(res: Response) {
   if (!res.ok) {
@@ -8,144 +10,169 @@ async function handleResponse(res: Response) {
   return res.json();
 }
 
+async function request(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+    });
+    return handleResponse(response);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`API request timed out. Check that the backend is running at ${BASE_URL}.`);
+    }
+
+    if (error instanceof TypeError) {
+      throw new Error(`Cannot connect to backend at ${BASE_URL}. Make sure the NestJS server is running.`);
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 export const api = {
   // Settings
   settings: {
-    get: () => fetch(`${BASE_URL}/settings`).then(handleResponse),
+    get: () => request('/settings'),
     update: (data: any) =>
-      fetch(`${BASE_URL}/settings`, {
+      request('/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
-    testSes: () => fetch(`${BASE_URL}/settings/test-ses`, { method: 'POST' }).then(handleResponse),
-    testOpenRouter: () => fetch(`${BASE_URL}/settings/test-openrouter`, { method: 'POST' }).then(handleResponse),
+      }),
+    testSes: () => request('/settings/test-ses', { method: 'POST' }),
+    testOpenRouter: () => request('/settings/test-openrouter', { method: 'POST' }),
   },
 
   // Contacts
   contacts: {
-    list: () => fetch(`${BASE_URL}/contacts`).then(handleResponse),
-    get: (id: string) => fetch(`${BASE_URL}/contacts/${id}`).then(handleResponse),
+    list: () => request('/contacts'),
+    get: (id: string) => request(`/contacts/${id}`),
     create: (data: any) =>
-      fetch(`${BASE_URL}/contacts`, {
+      request('/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }),
     update: (id: string, data: any) =>
-      fetch(`${BASE_URL}/contacts/${id}`, {
+      request(`/contacts/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
-    delete: (id: string) => fetch(`${BASE_URL}/contacts/${id}`, { method: 'DELETE' }).then(handleResponse),
+      }),
+    delete: (id: string) => request(`/contacts/${id}`, { method: 'DELETE' }),
     parseFile: (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      return fetch(`${BASE_URL}/contacts/parse-file`, {
+      return request('/contacts/parse-file', {
         method: 'POST',
         body: formData,
-      }).then(handleResponse);
+      });
     },
     import: (data: any) =>
-      fetch(`${BASE_URL}/contacts/import`, {
+      request('/contacts/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }),
   },
 
   // Templates
   templates: {
-    list: () => fetch(`${BASE_URL}/templates`).then(handleResponse),
-    predefined: () => fetch(`${BASE_URL}/templates/predefined`).then(handleResponse),
-    get: (id: string) => fetch(`${BASE_URL}/templates/${id}`).then(handleResponse),
+    list: () => request('/templates'),
+    predefined: () => request('/templates/predefined'),
+    get: (id: string) => request(`/templates/${id}`),
     create: (data: any) =>
-      fetch(`${BASE_URL}/templates`, {
+      request('/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }),
     update: (id: string, data: any) =>
-      fetch(`${BASE_URL}/templates/${id}`, {
+      request(`/templates/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
-    delete: (id: string) => fetch(`${BASE_URL}/templates/${id}`, { method: 'DELETE' }).then(handleResponse),
+      }),
+    delete: (id: string) => request(`/templates/${id}`, { method: 'DELETE' }),
     generate: (data: { goal: string; audience: string; tone: string; instructions?: string }) =>
-      fetch(`${BASE_URL}/templates/generate`, {
+      request('/templates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }, AI_REQUEST_TIMEOUT_MS),
   },
 
   // Email Campaigns
   emailCampaigns: {
-    list: () => fetch(`${BASE_URL}/email-campaigns`).then(handleResponse),
-    get: (id: string) => fetch(`${BASE_URL}/email-campaigns/${id}`).then(handleResponse),
+    list: () => request('/email-campaigns'),
+    get: (id: string) => request(`/email-campaigns/${id}`),
     create: (data: any) =>
-      fetch(`${BASE_URL}/email-campaigns`, {
+      request('/email-campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }),
     update: (id: string, data: any) =>
-      fetch(`${BASE_URL}/email-campaigns/${id}`, {
+      request(`/email-campaigns/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
-    delete: (id: string) => fetch(`${BASE_URL}/email-campaigns/${id}`, { method: 'DELETE' }).then(handleResponse),
+      }),
+    delete: (id: string) => request(`/email-campaigns/${id}`, { method: 'DELETE' }),
     addContacts: (id: string, contactIds: string[]) =>
-      fetch(`${BASE_URL}/email-campaigns/${id}/contacts`, {
+      request(`/email-campaigns/${id}/contacts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contactIds }),
-      }).then(handleResponse),
+      }),
     removeContact: (id: string, contactId: string) =>
-      fetch(`${BASE_URL}/email-campaigns/${id}/contacts/${contactId}`, {
+      request(`/email-campaigns/${id}/contacts/${contactId}`, {
         method: 'DELETE',
-      }).then(handleResponse),
-    launch: (id: string) => fetch(`${BASE_URL}/email-campaigns/${id}/launch`, { method: 'POST' }).then(handleResponse),
+      }),
+    launch: (id: string) => request(`/email-campaigns/${id}/launch`, { method: 'POST' }),
   },
 
   // Calling Campaigns
   callingCampaigns: {
-    dashboard: () => fetch(`${BASE_URL}/calling-campaigns/dashboard`).then(handleResponse),
-    list: () => fetch(`${BASE_URL}/calling-campaigns`).then(handleResponse),
-    get: (id: string) => fetch(`${BASE_URL}/calling-campaigns/${id}`).then(handleResponse),
+    dashboard: () => request('/calling-campaigns/dashboard'),
+    list: () => request('/calling-campaigns'),
+    get: (id: string) => request(`/calling-campaigns/${id}`),
     create: (data: any) =>
-      fetch(`${BASE_URL}/calling-campaigns`, {
+      request('/calling-campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
+      }),
     update: (id: string, data: any) =>
-      fetch(`${BASE_URL}/calling-campaigns/${id}`, {
+      request(`/calling-campaigns/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      }).then(handleResponse),
-    delete: (id: string) => fetch(`${BASE_URL}/calling-campaigns/${id}`, { method: 'DELETE' }).then(handleResponse),
-    launch: (id: string) => fetch(`${BASE_URL}/calling-campaigns/${id}/launch`, { method: 'POST' }).then(handleResponse),
+      }),
+    delete: (id: string) => request(`/calling-campaigns/${id}`, { method: 'DELETE' }),
+    launch: (id: string) => request(`/calling-campaigns/${id}/launch`, { method: 'POST' }),
   },
 
   // History
   history: {
     emails: (params: { startDate?: string; endDate?: string; campaignId?: string; status?: string }) => {
       const query = new URLSearchParams(params as any).toString();
-      return fetch(`${BASE_URL}/history/emails?${query}`).then(handleResponse);
+      return request(`/history/emails?${query}`);
     },
     calls: (params: { startDate?: string; endDate?: string; campaignId?: string; outcome?: string }) => {
       const query = new URLSearchParams(params as any).toString();
-      return fetch(`${BASE_URL}/history/calls?${query}`).then(handleResponse);
+      return request(`/history/calls?${query}`);
     },
   },
 
   // Analytics
   analytics: {
-    get: () => fetch(`${BASE_URL}/analytics`).then(handleResponse),
+    get: () => request('/analytics'),
   },
 };

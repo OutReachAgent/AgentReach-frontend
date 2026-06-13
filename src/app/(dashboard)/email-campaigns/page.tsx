@@ -11,16 +11,17 @@ import {
   Trash2,
   X,
   Sparkles,
-  Users,
   Eye,
   CheckCircle,
-  AlertCircle,
-  Clock,
   ArrowRight,
   PlusCircle,
   CheckSquare,
-  ChevronRight,
+  Code2,
+  FileText,
+  PenLine,
 } from 'lucide-react';
+
+type TemplateFormat = 'HTML' | 'TEXT';
 
 export default function EmailCampaignsPage() {
   const queryClient = useQueryClient();
@@ -34,6 +35,7 @@ export default function EmailCampaignsPage() {
   const [campaignName, setCampaignName] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [templateFormat, setTemplateFormat] = useState<TemplateFormat>('HTML');
 
   // AI Generator Form State
   const [aiGoal, setAiGoal] = useState('');
@@ -41,6 +43,11 @@ export default function EmailCampaignsPage() {
   const [aiTone, setAiTone] = useState('Professional');
   const [aiInstructions, setAiInstructions] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState<any | null>(null);
+
+  // Manual Template Form State
+  const [manualTemplateName, setManualTemplateName] = useState('');
+  const [manualTemplateSubject, setManualTemplateSubject] = useState('');
+  const [manualTemplateBody, setManualTemplateBody] = useState('');
 
   // Add Contacts modal in campaign details
   const [isAddContactsOpen, setIsAddContactsOpen] = useState(false);
@@ -110,12 +117,12 @@ export default function EmailCampaignsPage() {
 
   const launchCampaignMutation = useMutation({
     mutationFn: api.emailCampaigns.launch,
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['email-campaigns'] });
       if (selectedCampaignId) {
         queryClient.invalidateQueries({ queryKey: ['email-campaign', selectedCampaignId] });
       }
-      showAlert('Campaign delivery launched in background!', 'success');
+      showAlert(res?.message || 'Campaign delivery launched in background!', 'success');
     },
     onError: (err: any) => {
       showAlert(err.message || 'Failed to launch campaign', 'error');
@@ -123,14 +130,49 @@ export default function EmailCampaignsPage() {
   });
 
   const generateAiTemplateMutation = useMutation({
-    mutationFn: api.templates.generate,
+    mutationFn: async (data: { goal: string; audience: string; tone: string; instructions?: string; format: TemplateFormat }) => {
+      const generated = await api.templates.generate(data);
+      return api.templates.create({
+        name: `AI ${data.format} - ${data.audience}`,
+        subject: generated.subject,
+        bodyHtml: data.format === 'HTML' ? generated.bodyHtml : '',
+        bodyText: generated.bodyText,
+        type: 'AI',
+        category: `AI Generated ${data.format}`,
+        goal: data.goal,
+        audience: data.audience,
+        tone: data.tone,
+        instructions: data.instructions,
+      });
+    },
     onSuccess: (res) => {
       setGeneratedTemplate(res);
       setSelectedTemplateId(res.id);
-      showAlert('AI Email Template generated and saved!', 'success');
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      showAlert('AI email template generated, saved, and selected!', 'success');
     },
     onError: (err: any) => {
       showAlert(err.message || 'Failed to generate AI template', 'error');
+    },
+  });
+
+  const createManualTemplateMutation = useMutation({
+    mutationFn: (data: { name: string; subject: string; body: string; format: TemplateFormat }) =>
+      api.templates.create({
+        name: data.name,
+        subject: data.subject,
+        bodyHtml: data.format === 'HTML' ? data.body : '',
+        bodyText: data.format === 'TEXT' ? data.body : htmlToText(data.body),
+        type: 'CUSTOM',
+        category: `Manual ${data.format}`,
+      }),
+    onSuccess: (res) => {
+      setSelectedTemplateId(res.id);
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      showAlert('Manual email template saved and selected!', 'success');
+    },
+    onError: (err: any) => {
+      showAlert(err.message || 'Failed to save manual template', 'error');
     },
   });
 
@@ -170,7 +212,7 @@ export default function EmailCampaignsPage() {
       return;
     }
     if (!selectedTemplateId) {
-      showAlert('Please select or generate a template', 'error');
+      showAlert('Please select, generate, or manually create a template', 'error');
       return;
     }
 
@@ -190,6 +232,55 @@ export default function EmailCampaignsPage() {
     setAiTone('Professional');
     setAiInstructions('');
     setGeneratedTemplate(null);
+    setTemplateFormat('HTML');
+    setManualTemplateName('');
+    setManualTemplateSubject('');
+    setManualTemplateBody('');
+  };
+
+  const htmlToText = (html: string) =>
+    html
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+  const handleGenerateAiTemplate = () => {
+    if (!aiGoal.trim() || !aiAudience.trim()) {
+      showAlert('Please add an AI goal and audience first', 'error');
+      return;
+    }
+
+    generateAiTemplateMutation.mutate({
+      goal: aiGoal,
+      audience: aiAudience,
+      tone: aiTone,
+      instructions: aiInstructions,
+      format: templateFormat,
+    });
+  };
+
+  const handleCreateManualTemplate = () => {
+    if (!manualTemplateName.trim() || !manualTemplateSubject.trim() || !manualTemplateBody.trim()) {
+      showAlert('Please complete the manual template name, subject, and body', 'error');
+      return;
+    }
+
+    createManualTemplateMutation.mutate({
+      name: manualTemplateName,
+      subject: manualTemplateSubject,
+      body: manualTemplateBody,
+      format: templateFormat,
+    });
   };
 
   const toggleContactSelection = (id: string) => {
@@ -307,13 +398,13 @@ export default function EmailCampaignsPage() {
                       <Eye className="h-3.5 w-3.5" />
                       View Details
                     </button>
-                    {camp.status === 'DRAFT' && (
+                    {camp.status !== 'RUNNING' && (
                       <button
                         onClick={() => handleLaunchCampaign(camp.id)}
                         className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
                       >
                         <Play className="h-3.5 w-3.5" />
-                        Launch
+                        {camp.status === 'DRAFT' ? 'Launch' : 'Launch Again'}
                       </button>
                     )}
                   </div>
@@ -358,12 +449,12 @@ export default function EmailCampaignsPage() {
                   >
                     <PlusCircle className="h-3.5 w-3.5" /> Add Contacts
                   </button>
-                  {campaignDetails.status === 'DRAFT' && (
+                  {campaignDetails.status !== 'RUNNING' && (
                     <button
                       onClick={() => handleLaunchCampaign(campaignDetails.id)}
                       className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
                     >
-                      <Play className="h-3.5 w-3.5" /> Launch Campaign
+                      <Play className="h-3.5 w-3.5" /> {campaignDetails.status === 'DRAFT' ? 'Launch Campaign' : 'Launch Again'}
                     </button>
                   )}
                 </div>
@@ -460,7 +551,7 @@ export default function EmailCampaignsPage() {
 
       {/* Create Campaign Wizard Tab */}
       {activeTab === 'create' && (
-        <div className="space-y-6 max-w-3xl bg-zinc-900/30 border border-zinc-850 p-6 rounded-2xl shadow-xl">
+        <div className="space-y-6 max-w-5xl bg-zinc-900/30 border border-zinc-850 p-6 rounded-2xl shadow-xl">
           {/* Wizard step banner */}
           <div className="flex items-center gap-3 pb-5 border-b border-zinc-850">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm ${wizardStep === 1 ? 'bg-indigo-500 text-white' : 'bg-zinc-850 text-zinc-400'}`}>1</div>
@@ -504,7 +595,33 @@ export default function EmailCampaignsPage() {
           {/* STEP 2: Template Selection / Generation */}
           {wizardStep === 2 && (
             <div className="space-y-6 py-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Template Format</h4>
+                <div className="grid grid-cols-2 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormat('HTML')}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                      templateFormat === 'HTML' ? 'bg-indigo-500 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <Code2 className="h-3.5 w-3.5" />
+                    HTML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemplateFormat('TEXT')}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition-all ${
+                      templateFormat === 'TEXT' ? 'bg-indigo-500 text-white' : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Text
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Select Predefined/Custom templates */}
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Select Pre-existing Template</h4>
@@ -527,7 +644,7 @@ export default function EmailCampaignsPage() {
                 </div>
 
                 {/* AI Generator Panel */}
-                <div className="space-y-4 border-l border-zinc-850 pl-6">
+                <div className="space-y-4 lg:border-l lg:border-zinc-850 lg:pl-6">
                   <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 text-purple-400">
                     <Sparkles className="h-3.5 w-3.5" /> Generate Template with AI
                   </h4>
@@ -567,21 +684,72 @@ export default function EmailCampaignsPage() {
                         </select>
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 mb-1">Instructions</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Mention a portfolio, offer, deadline, or qualification."
+                        value={aiInstructions}
+                        onChange={(e) => setAiInstructions(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none resize-none"
+                      />
+                    </div>
                     <button
                       type="button"
                       disabled={generateAiTemplateMutation.isPending}
-                      onClick={() =>
-                        generateAiTemplateMutation.mutate({
-                          goal: aiGoal,
-                          audience: aiAudience,
-                          tone: aiTone,
-                          instructions: aiInstructions,
-                        })
-                      }
+                      onClick={handleGenerateAiTemplate}
                       className="w-full py-2 bg-gradient-to-tr from-purple-500 via-purple-600 to-indigo-500 text-xs font-bold text-white rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-purple-500/10 hover:brightness-110 disabled:opacity-50"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
-                      {generateAiTemplateMutation.isPending ? 'Generating copy...' : 'Generate and select copy'}
+                      {generateAiTemplateMutation.isPending ? 'Generating copy...' : `Generate ${templateFormat} copy`}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Manual Template Panel */}
+                <div className="space-y-4 lg:border-l lg:border-zinc-850 lg:pl-6">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 text-emerald-400">
+                    <PenLine className="h-3.5 w-3.5" /> Manual Template
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 mb-1">Template Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Founder intro"
+                        value={manualTemplateName}
+                        onChange={(e) => setManualTemplateName(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 mb-1">Subject</label>
+                      <input
+                        type="text"
+                        placeholder="Hi {{firstName}}, quick idea"
+                        value={manualTemplateSubject}
+                        onChange={(e) => setManualTemplateSubject(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-zinc-500 mb-1">{templateFormat === 'HTML' ? 'HTML Body' : 'Text Body'}</label>
+                      <textarea
+                        rows={9}
+                        placeholder={templateFormat === 'HTML' ? '<p>Hi {{firstName}},</p>' : 'Hi {{firstName}},'}
+                        value={manualTemplateBody}
+                        onChange={(e) => setManualTemplateBody(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none resize-none font-mono"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={createManualTemplateMutation.isPending}
+                      onClick={handleCreateManualTemplate}
+                      className="w-full py-2 bg-emerald-500 text-xs font-bold text-white rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10 hover:brightness-110 disabled:opacity-50"
+                    >
+                      <PenLine className="h-3.5 w-3.5" />
+                      {createManualTemplateMutation.isPending ? 'Saving template...' : `Save ${templateFormat} template`}
                     </button>
                   </div>
                 </div>
@@ -610,7 +778,7 @@ export default function EmailCampaignsPage() {
                   type="button"
                   onClick={() => {
                     if (!selectedTemplateId) {
-                      showAlert('Please select or generate a template first', 'error');
+                      showAlert('Please select, generate, or manually create a template first', 'error');
                       return;
                     }
                     setWizardStep(3);
