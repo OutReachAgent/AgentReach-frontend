@@ -1,6 +1,6 @@
 # ReachConvert Frontend
 
-This is the Next.js dashboard for ReachConvert. It provides the user-facing screens for login, profile settings, contacts, templates, email campaigns, AI calling campaigns, history, analytics, and application settings.
+This is the Next.js dashboard for ReachConvert, a bulk email and AI calling app for exploring job opportunities. The frontend gives the user a simple interface to manage job outreach contacts, create email templates, launch campaigns, organize AI calling follow-ups, and review outreach history.
 
 ## Tech Stack
 
@@ -16,12 +16,24 @@ This is the Next.js dashboard for ReachConvert. It provides the user-facing scre
 
 - `/login`: login and password reset UI
 - `/dashboard`: outreach overview
-- `/contacts`: contact management
-- `/email-campaigns`: email template selection, preview, and campaign launch
-- `/calling-campaigns`: AI calling campaign management
-- `/history`: outreach history
+- `/contacts`: recruiters, hiring teams, companies, and opportunity contacts
+- `/email-campaigns`: bulk email template selection, preview, launch, and relaunch
+- `/calling-campaigns`: AI calling follow-up campaign management
+- `/history`: job outreach activity history
 - `/settings`: AWS SES and AI provider settings
 - `/profile`: user profile, password update, themes, and accent colours
+
+## User Workflow
+
+1. Log in to the dashboard.
+2. Add contacts connected to job opportunities.
+3. Create an email template manually or with AI.
+4. Choose HTML or plain text format.
+5. Preview the email before sending.
+6. Launch the bulk email campaign.
+7. Relaunch the campaign later for follow-up.
+8. Use AI calling campaigns to track phone-based outreach.
+9. Review history and analytics.
 
 ## Setup
 
@@ -115,7 +127,7 @@ Theme definitions live in `src/lib/localAuth.ts`. CSS variables and Tailwind cla
 ```text
 src/app/login/page.tsx                    # Login and password reset page
 src/app/(dashboard)/profile/page.tsx      # Profile, themes, accent colours
-src/app/(dashboard)/email-campaigns/page.tsx
+src/app/(dashboard)/email-campaigns/page.tsx # Bulk email campaigns and previews
 src/components/AuthGuard.tsx              # Route protection
 src/components/Sidebar.tsx                # Dashboard navigation
 src/components/Alert.tsx                  # Toast/alert messages
@@ -129,3 +141,4 @@ src/store/useOutreachStore.ts             # Shared UI state
 - Keep `NEXT_PUBLIC_API_URL` pointed at the deployed backend API.
 - Run `npm run build` before deployment.
 - Do not store secrets in frontend environment variables. Anything prefixed with `NEXT_PUBLIC_` is visible in the browser.
+- Keep user-facing messages clear and non-technical because the app is designed for practical job outreach.
