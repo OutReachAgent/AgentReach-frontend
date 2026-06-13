@@ -100,7 +100,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
     delete: (id: string) => request(`/templates/${id}`, { method: 'DELETE' }),
-    generate: (data: { goal: string; audience: string; tone: string; instructions?: string }) =>
+    generate: (data: { goal: string; audience: string; tone: string; instructions?: string; format?: 'HTML' | 'TEXT' }) =>
       request('/templates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

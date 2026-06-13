@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Server, Key, Mail, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const DEFAULT_OPENROUTER_MODEL = 'nex-agi/nex-n2-pro:free';
+const CAMPAIGN_SENDER_EMAIL = 'oswin.alex@oswinalex.site';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
@@ -15,7 +16,6 @@ export default function SettingsPage() {
   const [awsAccessKeyId, setAwsAccessKeyId] = useState('');
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState('');
   const [awsRegion, setAwsRegion] = useState('us-east-1');
-  const [awsSenderEmail, setAwsSenderEmail] = useState('');
   const [openRouterApiKey, setOpenRouterApiKey] = useState('');
   const [openRouterModel, setOpenRouterModel] = useState(DEFAULT_OPENROUTER_MODEL);
 
@@ -31,7 +31,6 @@ export default function SettingsPage() {
       setAwsAccessKeyId(settings.awsAccessKeyId || '');
       setAwsSecretAccessKey(settings.awsSecretAccessKey || '');
       setAwsRegion(settings.awsRegion || 'us-east-1');
-      setAwsSenderEmail(settings.awsSenderEmail || '');
       setOpenRouterApiKey(settings.openRouterApiKey || '');
       setOpenRouterModel(settings.openRouterModel || DEFAULT_OPENROUTER_MODEL);
     }
@@ -83,7 +82,7 @@ export default function SettingsPage() {
       awsAccessKeyId,
       awsSecretAccessKey,
       awsRegion,
-      awsSenderEmail,
+      awsSenderEmail: CAMPAIGN_SENDER_EMAIL,
       openRouterApiKey,
       openRouterModel,
     });
@@ -162,10 +161,9 @@ export default function SettingsPage() {
               </label>
               <input
                 type="email"
-                value={awsSenderEmail}
-                onChange={(e) => setAwsSenderEmail(e.target.value)}
-                placeholder="sender@domain.com"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+                value={CAMPAIGN_SENDER_EMAIL}
+                readOnly
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400 focus:outline-none"
               />
             </div>
           </div>

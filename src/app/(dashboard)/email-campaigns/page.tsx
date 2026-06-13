@@ -283,6 +283,21 @@ export default function EmailCampaignsPage() {
     });
   };
 
+  const selectedTemplate = templates.find((tpl: any) => tpl.id === selectedTemplateId);
+  const manualDraftTemplate = manualTemplateBody.trim()
+    ? {
+        subject: manualTemplateSubject || 'Manual template draft',
+        bodyHtml: templateFormat === 'HTML' ? manualTemplateBody : '',
+        bodyText: templateFormat === 'TEXT' ? manualTemplateBody : htmlToText(manualTemplateBody),
+      }
+    : null;
+  const previewTemplate = generatedTemplate || selectedTemplate || manualDraftTemplate;
+  const previewHtml = previewTemplate?.bodyHtml?.trim();
+  const previewText = previewTemplate?.bodyText?.trim();
+  const previewSrcDoc = previewHtml
+    ? `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#fff;color:#111827;font-family:Arial,sans-serif}.email-preview{box-sizing:border-box;width:100%;min-height:100%;padding:20px;font-size:15px;line-height:1.55}a{color:#2563eb}</style></head><body><div class="email-preview">${previewHtml}</div></body></html>`
+    : '';
+
   const toggleContactSelection = (id: string) => {
     setSelectedContactIds(
       selectedContactIds.includes(id)
@@ -629,7 +644,10 @@ export default function EmailCampaignsPage() {
                     {templates.map((tpl: any) => (
                       <div
                         key={tpl.id}
-                        onClick={() => setSelectedTemplateId(tpl.id)}
+                        onClick={() => {
+                          setSelectedTemplateId(tpl.id);
+                          setGeneratedTemplate(null);
+                        }}
                         className={`p-4 border rounded-xl cursor-pointer transition-all ${
                           selectedTemplateId === tpl.id
                             ? 'border-indigo-500 bg-indigo-500/5 text-white'
@@ -718,7 +736,11 @@ export default function EmailCampaignsPage() {
                         type="text"
                         placeholder="e.g. Founder intro"
                         value={manualTemplateName}
-                        onChange={(e) => setManualTemplateName(e.target.value)}
+                        onChange={(e) => {
+                          setManualTemplateName(e.target.value);
+                          setGeneratedTemplate(null);
+                          setSelectedTemplateId(null);
+                        }}
                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none"
                       />
                     </div>
@@ -728,7 +750,11 @@ export default function EmailCampaignsPage() {
                         type="text"
                         placeholder="Hi {{firstName}}, quick idea"
                         value={manualTemplateSubject}
-                        onChange={(e) => setManualTemplateSubject(e.target.value)}
+                        onChange={(e) => {
+                          setManualTemplateSubject(e.target.value);
+                          setGeneratedTemplate(null);
+                          setSelectedTemplateId(null);
+                        }}
                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none"
                       />
                     </div>
@@ -738,7 +764,11 @@ export default function EmailCampaignsPage() {
                         rows={9}
                         placeholder={templateFormat === 'HTML' ? '<p>Hi {{firstName}},</p>' : 'Hi {{firstName}},'}
                         value={manualTemplateBody}
-                        onChange={(e) => setManualTemplateBody(e.target.value)}
+                        onChange={(e) => {
+                          setManualTemplateBody(e.target.value);
+                          setGeneratedTemplate(null);
+                          setSelectedTemplateId(null);
+                        }}
                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none resize-none font-mono"
                       />
                     </div>
@@ -755,14 +785,27 @@ export default function EmailCampaignsPage() {
                 </div>
               </div>
 
-              {/* Show generated preview if generated */}
-              {generatedTemplate && (
+              {previewTemplate && (
                 <div className="mt-4 p-4 bg-zinc-950 border border-zinc-850 rounded-2xl space-y-2">
-                  <p className="text-xs font-bold text-purple-400">Generated Email Template Preview</p>
-                  <p className="text-sm font-semibold text-white">Subject: {generatedTemplate.subject}</p>
-                  <div className="text-xs text-zinc-400 leading-relaxed max-h-32 overflow-y-auto bg-zinc-900/40 p-3 rounded-lg border border-zinc-850 font-mono whitespace-pre-wrap">
-                    {generatedTemplate.bodyText}
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs font-bold text-purple-400">Email Template Preview</p>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      {previewHtml ? 'HTML Render' : 'Plain Text'}
+                    </span>
                   </div>
+                  <p className="text-sm font-semibold text-white">Subject: {previewTemplate.subject}</p>
+                  {previewHtml ? (
+                    <iframe
+                      title="HTML email preview"
+                      sandbox=""
+                      srcDoc={previewSrcDoc}
+                      className="h-64 w-full rounded-xl border border-zinc-850 bg-white"
+                    />
+                  ) : (
+                    <div className="text-xs text-zinc-400 leading-relaxed max-h-64 overflow-y-auto bg-zinc-900/40 p-3 rounded-lg border border-zinc-850 font-mono whitespace-pre-wrap">
+                      {previewText}
+                    </div>
+                  )}
                 </div>
               )}
 
