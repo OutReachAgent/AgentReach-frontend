@@ -16,7 +16,7 @@ import {
   Moon,
   Sun,
 } from 'lucide-react';
-import { applyTheme, getStoredUser, LocalUserProfile, saveStoredUser, signOut } from '@/lib/localAuth';
+import { applyTheme, getStoredUser, getThemeFamily, LocalUserProfile, saveStoredUser, signOut } from '@/lib/localAuth';
 import { api } from '@/lib/api';
 
 export default function Sidebar() {
@@ -43,13 +43,14 @@ export default function Sidebar() {
 
   const toggleTheme = () => {
     const currentUser = getStoredUser();
+    const isLight = getThemeFamily(currentUser.theme) === 'light';
     const nextUser: LocalUserProfile = {
       ...currentUser,
-      theme: currentUser.theme === 'dark' ? 'light' : 'dark',
+      theme: isLight ? 'dark-midnight' : 'light-cloud',
     };
 
     saveStoredUser(nextUser);
-    applyTheme(nextUser.theme);
+    applyTheme(nextUser.theme, nextUser.accentColor);
     setUser(nextUser);
     api.auth.updateProfile({ theme: nextUser.theme }).catch(() => {
       // Keep the local preference responsive even if the API call fails.
@@ -130,8 +131,8 @@ export default function Sidebar() {
               onClick={toggleTheme}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-zinc-200"
             >
-              {user?.theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-              {user?.theme === 'light' ? 'Dark' : 'Light'}
+              {user && getThemeFamily(user.theme) === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              {user && getThemeFamily(user.theme) === 'light' ? 'Dark' : 'Light'}
             </button>
             <button
               type="button"

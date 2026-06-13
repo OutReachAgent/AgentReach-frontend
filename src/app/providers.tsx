@@ -20,7 +20,8 @@ function Providers({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    applyTheme(getStoredUser().theme);
+    const user = getStoredUser();
+    applyTheme(user.theme, user.accentColor);
   }, []);
 
   return (

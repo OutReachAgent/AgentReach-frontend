@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const user = getStoredUser();
-    applyTheme(user.theme);
+    applyTheme(user.theme, user.accentColor);
     setEmail(user.email);
     setResetEmail(user.email);
   }, []);
@@ -31,7 +31,7 @@ export default function LoginPage() {
     api.auth.login({ email, password })
       .then((session) => {
         saveAuthSession(session);
-        applyTheme(session.user.theme);
+        applyTheme(session.user.theme, session.user.accentColor);
         router.replace('/dashboard');
       })
       .catch((error: Error) => {

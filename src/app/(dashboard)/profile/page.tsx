@@ -1,10 +1,19 @@
 'use client';
 
 import { api } from '@/lib/api';
-import { applyTheme, getStoredUser, LocalUserProfile, saveStoredUser } from '@/lib/localAuth';
+import {
+  ACCENT_OPTIONS,
+  applyTheme,
+  getStoredUser,
+  LocalUserProfile,
+  saveStoredUser,
+  THEME_OPTIONS,
+  ThemeMode,
+} from '@/lib/localAuth';
 import { useOutreachStore } from '@/store/useOutreachStore';
-import { Mail, Moon, Save, Sun, UserRound } from 'lucide-react';
+import { Check, Mail, Moon, Palette, Save, Sun, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 export default function ProfilePage() {
   const { showAlert } = useOutreachStore();
@@ -15,8 +24,15 @@ export default function ProfilePage() {
     setProfile(getStoredUser());
   }, []);
 
-  const updateProfile = (key: keyof LocalUserProfile, value: string) => {
-    setProfile((current) => (current ? { ...current, [key]: value } : current));
+  const updateProfile = <K extends keyof LocalUserProfile>(key: K, value: LocalUserProfile[K]) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const next = { ...current, [key]: value };
+      if (key === 'theme' || key === 'accentColor') {
+        applyTheme(next.theme, next.accentColor);
+      }
+      return next;
+    });
   };
 
   const handleSave = (event: React.FormEvent) => {
@@ -42,7 +58,7 @@ export default function ProfilePage() {
     })
       .then((updatedProfile) => {
         saveStoredUser(updatedProfile);
-        applyTheme(updatedProfile.theme);
+        applyTheme(updatedProfile.theme, updatedProfile.accentColor);
         setProfile(updatedProfile);
         setPassword('');
         showAlert('Profile updated successfully.', 'success');
@@ -77,31 +93,71 @@ export default function ProfilePage() {
             <h3 className="text-lg font-bold text-white">{profile.name}</h3>
             <p className="mt-1 text-xs text-zinc-500">{profile.email}</p>
           </div>
-          <div className="mt-6 grid grid-cols-2 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
-            <button
-              type="button"
-              onClick={() => updateProfile('theme', 'dark')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
-                profile.theme === 'dark' ? 'bg-indigo-500 text-white' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Moon className="h-3.5 w-3.5" />
-              Dark
-            </button>
-            <button
-              type="button"
-              onClick={() => updateProfile('theme', 'light')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
-                profile.theme === 'light' ? 'bg-indigo-500 text-white' : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Sun className="h-3.5 w-3.5" />
-              Light
-            </button>
+          <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
+              <Palette className="h-3.5 w-3.5 text-indigo-400" />
+              Selected look
+            </div>
+            <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">Campaign Panel</p>
+                  <p className="text-xs text-zinc-500">Preview of buttons and highlights</p>
+                </div>
+                <span className="h-3 w-3 rounded-full bg-indigo-500" />
+              </div>
+              <button
+                type="button"
+                className="mt-4 w-full rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-500/20"
+              >
+                Primary Button
+              </button>
+            </div>
           </div>
         </section>
 
         <section className="rounded-2xl border border-zinc-850 bg-zinc-900/40 p-6 shadow-xl">
+          <div className="mb-6 space-y-5 border-b border-zinc-850 pb-6">
+            <ThemeGroup
+              title="Dark themes"
+              icon={<Moon className="h-4 w-4 text-indigo-400" />}
+              themes={THEME_OPTIONS.filter((theme) => theme.mode === 'dark')}
+              selectedTheme={profile.theme}
+              onSelect={(theme) => updateProfile('theme', theme)}
+            />
+            <ThemeGroup
+              title="Light themes"
+              icon={<Sun className="h-4 w-4 text-indigo-400" />}
+              themes={THEME_OPTIONS.filter((theme) => theme.mode === 'light')}
+              selectedTheme={profile.theme}
+              onSelect={(theme) => updateProfile('theme', theme)}
+            />
+
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Palette className="h-4 w-4 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white">Button and element colours</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {ACCENT_OPTIONS.map((accent) => (
+                  <button
+                    key={accent.id}
+                    type="button"
+                    onClick={() => updateProfile('accentColor', accent.id)}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition ${
+                      profile.accentColor === accent.id
+                        ? 'border-indigo-500 bg-zinc-950 text-white'
+                        : 'border-zinc-800 bg-zinc-950/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="h-4 w-4 rounded-full" style={{ backgroundColor: accent.value }} />
+                    {accent.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <ProfileField label="Full Name" value={profile.name} onChange={(value) => updateProfile('name', value)} />
             <ProfileField label="Initials" value={profile.initials} onChange={(value) => updateProfile('initials', value)} />
@@ -133,6 +189,56 @@ export default function ProfilePage() {
       <div className="flex items-center gap-2 rounded-2xl border border-zinc-850 bg-zinc-900/30 p-4 text-xs text-zinc-500">
         <Mail className="h-4 w-4 text-zinc-500" />
         Password reset uses the account email saved in this profile.
+      </div>
+    </div>
+  );
+}
+
+function ThemeGroup({
+  title,
+  icon,
+  themes,
+  selectedTheme,
+  onSelect,
+}: {
+  title: string;
+  icon: ReactNode;
+  themes: { id: ThemeMode; name: string; swatches: string[] }[];
+  selectedTheme: ThemeMode;
+  onSelect: (theme: ThemeMode) => void;
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        {icon}
+        <h3 className="text-sm font-bold text-white">{title}</h3>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {themes.map((theme) => {
+          const selected = selectedTheme === theme.id;
+          return (
+            <button
+              key={theme.id}
+              type="button"
+              onClick={() => onSelect(theme.id)}
+              className={`rounded-xl border p-3 text-left transition ${
+                selected
+                  ? 'border-indigo-500 bg-zinc-950 text-white shadow-lg shadow-indigo-500/10'
+                  : 'border-zinc-800 bg-zinc-950/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold">{theme.name}</span>
+                {selected ? <Check className="h-4 w-4 text-indigo-400" /> : null}
+              </div>
+              <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-lg border border-zinc-800">
+                {theme.swatches.map((color) => (
+                  <span key={color} className="h-8" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

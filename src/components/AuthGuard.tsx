@@ -18,7 +18,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     api.auth.me()
       .then((user) => {
         saveStoredUser(user);
-        applyTheme(user.theme);
+        applyTheme(user.theme, user.accentColor);
         setAllowed(true);
       })
       .catch(() => {
