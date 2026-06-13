@@ -1,6 +1,7 @@
 'use client';
 
-import { applyTheme, getStoredUser, saveStoredUser, signIn } from '@/lib/localAuth';
+import { api } from '@/lib/api';
+import { applyTheme, getStoredUser, saveAuthSession } from '@/lib/localAuth';
 import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -27,15 +28,15 @@ export default function LoginPage() {
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();
-    const user = getStoredUser();
-
-    if (email.trim().toLowerCase() !== user.email.toLowerCase() || password !== user.password) {
-      setMessage('Invalid email or password.');
-      return;
-    }
-
-    signIn();
-    router.replace('/dashboard');
+    api.auth.login({ email, password })
+      .then((session) => {
+        saveAuthSession(session);
+        applyTheme(session.user.theme);
+        router.replace('/dashboard');
+      })
+      .catch((error: Error) => {
+        setMessage(error.message || 'Invalid email or password.');
+      });
   };
 
   const handleResetRequest = (event: React.FormEvent) => {
@@ -65,14 +66,18 @@ export default function LoginPage() {
       return;
     }
 
-    const user = getStoredUser();
-    saveStoredUser({ ...user, password: newPassword });
-    setPassword(newPassword);
-    setMode('login');
-    setResetVerified(false);
-    setNewPassword('');
-    setConfirmPassword('');
-    setMessage('Password reset. Sign in with the new password.');
+    api.auth.resetPassword({ email: resetEmail, newPassword })
+      .then(() => {
+        setPassword(newPassword);
+        setMode('login');
+        setResetVerified(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        setMessage('Password reset. Sign in with the new password.');
+      })
+      .catch((error: Error) => {
+        setMessage(error.message || 'Could not reset password.');
+      });
   };
 
   const openReset = () => {

@@ -1,3 +1,5 @@
+import { getAccessToken, getRefreshToken, saveAuthSession, saveTokens, signOut } from './localAuth';
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const REQUEST_TIMEOUT_MS = 8000;
 const AI_REQUEST_TIMEOUT_MS = 45000;
@@ -11,14 +13,34 @@ async function handleResponse(res: Response) {
 }
 
 async function request(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return requestWithAuth(path, init, timeoutMs, true);
+}
+
+async function requestWithAuth(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS, allowRefresh = true) {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const headers = new Headers(init?.headers);
+    const accessToken = getAccessToken();
+
+    if (accessToken && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+
     const response = await fetch(`${BASE_URL}${path}`, {
       ...init,
+      headers,
       signal: controller.signal,
     });
+
+    if (response.status === 401 && allowRefresh && path !== '/auth/refresh') {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return requestWithAuth(path, init, timeoutMs, false);
+      }
+    }
+
     return handleResponse(response);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -35,7 +57,62 @@ async function request(path: string, init?: RequestInit, timeoutMs = REQUEST_TIM
   }
 }
 
+async function refreshAccessToken() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      signOut();
+      return false;
+    }
+
+    const session = await response.json();
+    saveAuthSession(session);
+    saveTokens(session.accessToken, session.refreshToken);
+    return true;
+  } catch {
+    signOut();
+    return false;
+  }
+}
+
 export const api = {
+  auth: {
+    login: (data: { email: string; password: string }) =>
+      request('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    refresh: (refreshToken: string) =>
+      request('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      }),
+    me: () => request('/auth/me'),
+    updateProfile: (data: any) =>
+      request('/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    resetPassword: (data: { email: string; newPassword: string }) =>
+      request('/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    logout: () => request('/auth/logout', { method: 'POST' }),
+  },
+
   // Settings
   settings: {
     get: () => request('/settings'),

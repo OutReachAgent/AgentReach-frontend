@@ -1,8 +1,8 @@
 export type ThemeMode = 'dark' | 'light';
 
 export interface LocalUserProfile {
+  id?: string;
   email: string;
-  password: string;
   name: string;
   initials: string;
   title: string;
@@ -12,11 +12,11 @@ export interface LocalUserProfile {
 }
 
 export const AUTH_USER_KEY = 'reachconvert_user';
-export const AUTH_SESSION_KEY = 'reachconvert_session';
+export const ACCESS_TOKEN_KEY = 'reachconvert_access_token';
+export const REFRESH_TOKEN_KEY = 'reachconvert_refresh_token';
 
 export const DEFAULT_USER: LocalUserProfile = {
   email: 'oswinalex1@gmail.com',
-  password: 'DBIT@2026',
   name: 'Oswin Alex',
   initials: 'OA',
   title: 'Founder',
@@ -50,15 +50,31 @@ export function saveStoredUser(user: LocalUserProfile) {
 }
 
 export function isAuthenticated() {
-  return typeof window !== 'undefined' && window.localStorage.getItem(AUTH_SESSION_KEY) === 'true';
+  return typeof window !== 'undefined' && !!getAccessToken() && !!getRefreshToken();
 }
 
-export function signIn() {
-  window.localStorage.setItem(AUTH_SESSION_KEY, 'true');
+export function saveAuthSession(tokens: { accessToken: string; refreshToken: string; user: LocalUserProfile }) {
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  saveStoredUser(tokens.user);
 }
 
 export function signOut() {
-  window.localStorage.removeItem(AUTH_SESSION_KEY);
+  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function getAccessToken() {
+  return typeof window === 'undefined' ? null : window.localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function getRefreshToken() {
+  return typeof window === 'undefined' ? null : window.localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function saveTokens(accessToken: string, refreshToken: string) {
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 export function applyTheme(theme: ThemeMode) {

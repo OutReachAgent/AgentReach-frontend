@@ -17,6 +17,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { applyTheme, getStoredUser, LocalUserProfile, saveStoredUser, signOut } from '@/lib/localAuth';
+import { api } from '@/lib/api';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -50,11 +51,16 @@ export default function Sidebar() {
     saveStoredUser(nextUser);
     applyTheme(nextUser.theme);
     setUser(nextUser);
+    api.auth.updateProfile({ theme: nextUser.theme }).catch(() => {
+      // Keep the local preference responsive even if the API call fails.
+    });
   };
 
   const handleLogout = () => {
-    signOut();
-    router.replace('/login');
+    api.auth.logout().finally(() => {
+      signOut();
+      router.replace('/login');
+    });
   };
 
   return (

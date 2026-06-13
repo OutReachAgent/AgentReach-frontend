@@ -1,5 +1,6 @@
 'use client';
 
+import { api } from '@/lib/api';
 import { applyTheme, getStoredUser, LocalUserProfile, saveStoredUser } from '@/lib/localAuth';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { Mail, Moon, Save, Sun, UserRound } from 'lucide-react';
@@ -33,14 +34,22 @@ export default function ProfilePage() {
       email: profile.email.trim(),
       name: profile.name.trim(),
       initials: profile.initials.trim().slice(0, 3).toUpperCase() || 'OA',
-      password: password || profile.password,
     };
 
-    saveStoredUser(nextProfile);
-    applyTheme(nextProfile.theme);
-    setProfile(nextProfile);
-    setPassword('');
-    showAlert('Profile updated successfully.', 'success');
+    api.auth.updateProfile({
+      ...nextProfile,
+      ...(password ? { password } : {}),
+    })
+      .then((updatedProfile) => {
+        saveStoredUser(updatedProfile);
+        applyTheme(updatedProfile.theme);
+        setProfile(updatedProfile);
+        setPassword('');
+        showAlert('Profile updated successfully.', 'success');
+      })
+      .catch((error: Error) => {
+        showAlert(error.message || 'Failed to update profile.', 'error');
+      });
   };
 
   if (!profile) {
