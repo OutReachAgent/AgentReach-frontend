@@ -1,76 +1,131 @@
 # ReachConvert Frontend
 
-A production-ready Next.js application built with TypeScript, Tailwind CSS, and strict code quality standards.
+This is the Next.js dashboard for ReachConvert. It provides the user-facing screens for login, profile settings, contacts, templates, email campaigns, AI calling campaigns, history, analytics, and application settings.
 
-## 🚀 Features
+## Tech Stack
 
-- **Next.js (App Router)**: Modern routing and server components.
-- **TypeScript**: Strict type checking configured for enterprise development.
-- **Tailwind CSS**: Rapid, modern styling.
-- **ESLint**: Custom code quality rules enforced.
-- **Absolute Imports**: Absolute imports configured with `@/*` mapping.
-- **Environment Support**: Centralized configuration and validation.
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- TanStack Query
+- Zustand
+- Lucide React icons
 
----
+## Main Screens
 
-## 🛠️ Getting Started
+- `/login`: login and password reset UI
+- `/dashboard`: outreach overview
+- `/contacts`: contact management
+- `/email-campaigns`: email template selection, preview, and campaign launch
+- `/calling-campaigns`: AI calling campaign management
+- `/history`: outreach history
+- `/settings`: AWS SES and AI provider settings
+- `/profile`: user profile, password update, themes, and accent colours
 
-### Prerequisites
+## Setup
 
-Ensure you have **Node.js 18+** and **npm** (or your preferred package manager) installed.
+```bash
+cd AgentReach-frontend
+npm install
+cp .env.example .env
+```
 
-### Setup
+Update `.env` if your backend runs on a different URL:
 
-1. Clone the repository and navigate to the folder:
-   ```bash
-   cd AgentReach-frontend
-   ```
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+## Run Locally
 
-3. Create the environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   Define your environment variables inside the `.env` file:
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:3001
-   ```
+```bash
+npm run dev
+```
 
----
+Open `http://localhost:3000`. If that port is busy, Next.js will show the alternate port in the terminal.
 
-## 💻 Available Scripts
+## Available Scripts
 
-In the project directory, you can run:
+```bash
+npm run dev
+```
 
-### `npm run dev`
-Runs the app in development mode.
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Starts the development server using webpack.
 
-### `npm run build`
-Builds the application for production to the `.next` folder.
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm run build
+```
 
-### `npm run start`
-Starts the application in production mode.
-Run this after `npm run build` to launch the production server.
+Creates a production build.
 
-### `npm run lint`
-Runs ESLint to check for syntax and style issues.
-Strict linting is enforced with zero errors.
+```bash
+npm run start
+```
 
----
+Runs the production build after `npm run build`.
 
-## 📁 Project Structure
+```bash
+npm run lint
+```
+
+Runs ESLint.
+
+## Authentication
+
+The frontend stores the current session in local storage:
+
+- `reachconvert_access_token`
+- `reachconvert_refresh_token`
+- `reachconvert_user`
+
+Protected dashboard pages use `AuthGuard`. If a session is missing or invalid, the user is sent back to `/login`.
+
+## Theme System
+
+Profile settings support 8 themes and 6 accent colours.
+
+Dark themes:
+
+- Midnight
+- Slate
+- Graphite
+- Violet
+
+Light themes:
+
+- Cloud
+- Paper
+- Mint
+- Rose
+
+Accent colours:
+
+- Indigo
+- Emerald
+- Sky
+- Rose
+- Amber
+- Violet
+
+Theme definitions live in `src/lib/localAuth.ts`. CSS variables and Tailwind class overrides live in `src/app/globals.css`.
+
+## Important Files
 
 ```text
-src/
-├── app/              # App router (pages, layouts, API routes)
-├── components/       # Reusable UI components
-├── hooks/            # Custom React hooks
-├── utils/            # Helper functions and utilities
-└── types/            # TypeScript interfaces and type definitions
+src/app/login/page.tsx                    # Login and password reset page
+src/app/(dashboard)/profile/page.tsx      # Profile, themes, accent colours
+src/app/(dashboard)/email-campaigns/page.tsx
+src/components/AuthGuard.tsx              # Route protection
+src/components/Sidebar.tsx                # Dashboard navigation
+src/components/Alert.tsx                  # Toast/alert messages
+src/lib/api.ts                            # Backend API client
+src/lib/localAuth.ts                      # Local session and theme helpers
+src/store/useOutreachStore.ts             # Shared UI state
 ```
+
+## Production Notes
+
+- Keep `NEXT_PUBLIC_API_URL` pointed at the deployed backend API.
+- Run `npm run build` before deployment.
+- Do not store secrets in frontend environment variables. Anything prefixed with `NEXT_PUBLIC_` is visible in the browser.
