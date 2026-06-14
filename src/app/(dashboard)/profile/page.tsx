@@ -12,17 +12,13 @@ import {
 } from '@/lib/localAuth';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { Check, Mail, Moon, Palette, Save, Sun, UserRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 export default function ProfilePage() {
   const { showAlert } = useOutreachStore();
-  const [profile, setProfile] = useState<LocalUserProfile | null>(null);
+  const [profile, setProfile] = useState<LocalUserProfile | null>(() => getStoredUser());
   const [password, setPassword] = useState('');
-
-  useEffect(() => {
-    setProfile(getStoredUser());
-  }, []);
 
   const updateProfile = <K extends keyof LocalUserProfile>(key: K, value: LocalUserProfile[K]) => {
     setProfile((current) => {

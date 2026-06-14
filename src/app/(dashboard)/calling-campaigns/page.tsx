@@ -2,19 +2,17 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { LooseApiResponse } from '@/lib/api';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { useState } from 'react';
 import {
   PhoneCall,
   Plus,
   Play,
-  Trash2,
-  X,
   User,
   Volume2,
   Clock,
   MessageSquare,
-  VolumeX,
   Pause,
   ChevronDown,
   ChevronUp,
@@ -66,7 +64,7 @@ export default function CallingCampaignsPage() {
       resetForm();
       setActiveTab('list');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not save this calling campaign. Please check the details and try again.', 'error');
     },
   });
@@ -80,7 +78,7 @@ export default function CallingCampaignsPage() {
       }
       showAlert('The calling simulation has started. Results will appear as calls finish.', 'success', 'Calling started');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not start the calling campaign. Please add contacts first.', 'error');
     },
   });
@@ -185,7 +183,7 @@ export default function CallingCampaignsPage() {
               <div key={n} className="h-48 bg-zinc-900 border border-zinc-850 rounded-2xl animate-pulse"></div>
             ))
           ) : campaigns.length > 0 ? (
-            campaigns.map((camp: any) => {
+            campaigns.map((camp: LooseApiResponse) => {
               const statusColors: Record<string, string> = {
                 DRAFT: 'bg-zinc-850 text-zinc-400 border-zinc-800',
                 RUNNING: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/10',
@@ -278,7 +276,7 @@ export default function CallingCampaignsPage() {
                 
                 {campaignDetails.calls && campaignDetails.calls.length > 0 ? (
                   <div className="space-y-4">
-                    {campaignDetails.calls.map((call: any) => {
+                    {campaignDetails.calls.map((call: LooseApiResponse) => {
                       const isExpanded = expandedCallId === call.id;
                       const isPlaying = playingCallId === call.id;
                       

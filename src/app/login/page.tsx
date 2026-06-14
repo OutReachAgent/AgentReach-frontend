@@ -10,21 +10,19 @@ type AuthMode = 'login' | 'reset';
 
 export default function LoginPage() {
   const router = useRouter();
+  const storedUser = getStoredUser();
   const [mode, setMode] = useState<AuthMode>('login');
-  const [email, setEmail] = useState('oswinalex1@gmail.com');
+  const [email, setEmail] = useState(storedUser.email);
   const [password, setPassword] = useState('');
-  const [resetEmail, setResetEmail] = useState('oswinalex1@gmail.com');
+  const [resetEmail, setResetEmail] = useState(storedUser.email);
   const [resetVerified, setResetVerified] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const user = getStoredUser();
-    applyTheme(user.theme, user.accentColor);
-    setEmail(user.email);
-    setResetEmail(user.email);
-  }, []);
+    applyTheme(storedUser.theme, storedUser.accentColor);
+  }, [storedUser.accentColor, storedUser.theme]);
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();

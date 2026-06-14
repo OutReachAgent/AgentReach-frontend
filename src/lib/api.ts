@@ -4,12 +4,61 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const REQUEST_TIMEOUT_MS = 8000;
 const AI_REQUEST_TIMEOUT_MS = 45000;
 
-async function handleResponse(res: Response) {
+type ApiPayload = { [key: string]: unknown };
+export type LooseApiResponse = ReturnType<typeof JSON.parse>;
+type AuthProfileUpdate = {
+  name?: string;
+  email?: string;
+  theme?: string;
+  accentColor?: string;
+};
+type SettingsUpdate = {
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  awsRegion?: string;
+  openRouterApiKey?: string;
+  openRouterModel?: string;
+  awsSenderEmail?: string;
+};
+type DirectoryPayload = {
+  name?: string;
+  description?: string;
+};
+type ContactPayload = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  phoneNumber?: string;
+  company?: string;
+  jobTitle?: string;
+  linkedinUrl?: string;
+  notes?: string;
+  directoryId?: string | null;
+  customFields?: Record<string, string>;
+};
+type ContactImportPayload = ApiPayload;
+type TemplatePayload = {
+  [key: string]: unknown;
+  name?: string;
+  subject?: string;
+  bodyHtml?: string;
+  bodyText?: string;
+};
+type CampaignPayload = {
+  [key: string]: unknown;
+  name?: string;
+  templateId?: string;
+  status?: string;
+};
+type HistoryParams = Record<string, string | undefined>;
+
+async function handleResponse<T = LooseApiResponse>(res: Response): Promise<T> {
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData = await res.json().catch((): ApiPayload => ({}));
     throw new Error(toFriendlyApiError(errorData.message || res.statusText, res.status));
   }
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 function toFriendlyApiError(message: unknown, status: number) {
@@ -30,11 +79,11 @@ function toFriendlyApiError(message: unknown, status: number) {
   return text || 'Something went wrong. Please try again.';
 }
 
-async function request(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
-  return requestWithAuth(path, init, timeoutMs, true);
+async function request<T = LooseApiResponse>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
+  return requestWithAuth<T>(path, init, timeoutMs, true);
 }
 
-async function requestWithAuth(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS, allowRefresh = true) {
+async function requestWithAuth<T = LooseApiResponse>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS, allowRefresh = true): Promise<T> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
@@ -55,11 +104,11 @@ async function requestWithAuth(path: string, init?: RequestInit, timeoutMs = REQ
     if (response.status === 401 && allowRefresh && path !== '/auth/refresh') {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
-        return requestWithAuth(path, init, timeoutMs, false);
+        return requestWithAuth<T>(path, init, timeoutMs, false);
       }
     }
 
-    return handleResponse(response);
+    return handleResponse<T>(response);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('This is taking longer than expected. Please try again.');
@@ -101,6 +150,16 @@ async function refreshAccessToken() {
   }
 }
 
+function toQueryString(params: HistoryParams) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) query.set(key, value);
+  });
+
+  return query.toString();
+}
+
 export const api = {
   auth: {
     login: (data: { email: string; password: string }) =>
@@ -116,7 +175,7 @@ export const api = {
         body: JSON.stringify({ refreshToken }),
       }),
     me: () => request('/auth/me'),
-    updateProfile: (data: any) =>
+    updateProfile: (data: AuthProfileUpdate) =>
       request('/auth/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -134,7 +193,7 @@ export const api = {
   // Settings
   settings: {
     get: () => request('/settings'),
-    update: (data: any) =>
+    update: (data: SettingsUpdate) =>
       request('/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -149,13 +208,13 @@ export const api = {
     list: () => request('/contacts'),
     directories: {
       list: () => request('/contacts/directories'),
-      create: (data: any) =>
+      create: (data: DirectoryPayload) =>
         request('/contacts/directories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         }),
-      update: (id: string, data: any) =>
+      update: (id: string, data: DirectoryPayload) =>
         request(`/contacts/directories/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -164,13 +223,13 @@ export const api = {
       delete: (id: string) => request(`/contacts/directories/${id}`, { method: 'DELETE' }),
     },
     get: (id: string) => request(`/contacts/${id}`),
-    create: (data: any) =>
+    create: (data: ContactPayload) =>
       request('/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: any) =>
+    update: (id: string, data: ContactPayload) =>
       request(`/contacts/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -185,7 +244,7 @@ export const api = {
         body: formData,
       });
     },
-    import: (data: any) =>
+    import: (data: ContactImportPayload) =>
       request('/contacts/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,38 +257,69 @@ export const api = {
     list: () => request('/templates'),
     predefined: () => request('/templates/predefined'),
     get: (id: string) => request(`/templates/${id}`),
-    create: (data: any) =>
+    create: (data: TemplatePayload) =>
       request('/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: any) =>
+    update: (id: string, data: TemplatePayload) =>
       request(`/templates/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
     delete: (id: string) => request(`/templates/${id}`, { method: 'DELETE' }),
-    generate: (data: { goal: string; audience: string; tone: string; instructions?: string; format?: 'HTML' | 'TEXT' }) =>
+    parseReferencePdf: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return request('/templates/reference-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    generate: (data: {
+      goal: string;
+      audience: string;
+      tone: string;
+      instructions?: string;
+      referenceDocumentText?: string;
+      referenceDocumentName?: string;
+      format?: 'HTML' | 'TEXT';
+    }) =>
       request('/templates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }, AI_REQUEST_TIMEOUT_MS),
+    startGenerate: (data: {
+      goal: string;
+      audience: string;
+      tone: string;
+      instructions?: string;
+      referenceDocumentText?: string;
+      referenceDocumentName?: string;
+      format?: 'HTML' | 'TEXT';
+    }) =>
+      request('/templates/generate-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    generationStatus: (id: string) => request(`/templates/generate-jobs/${id}`),
   },
 
   // Email Campaigns
   emailCampaigns: {
     list: () => request('/email-campaigns'),
     get: (id: string) => request(`/email-campaigns/${id}`),
-    create: (data: any) =>
+    create: (data: CampaignPayload) =>
       request('/email-campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: any) =>
+    update: (id: string, data: CampaignPayload) =>
       request(`/email-campaigns/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -254,13 +344,13 @@ export const api = {
     dashboard: () => request('/calling-campaigns/dashboard'),
     list: () => request('/calling-campaigns'),
     get: (id: string) => request(`/calling-campaigns/${id}`),
-    create: (data: any) =>
+    create: (data: CampaignPayload) =>
       request('/calling-campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: any) =>
+    update: (id: string, data: CampaignPayload) =>
       request(`/calling-campaigns/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -273,11 +363,11 @@ export const api = {
   // History
   history: {
     emails: (params: { startDate?: string; endDate?: string; campaignId?: string; status?: string }) => {
-      const query = new URLSearchParams(params as any).toString();
+      const query = toQueryString(params);
       return request(`/history/emails?${query}`);
     },
     calls: (params: { startDate?: string; endDate?: string; campaignId?: string; outcome?: string }) => {
-      const query = new URLSearchParams(params as any).toString();
+      const query = toQueryString(params);
       return request(`/history/calls?${query}`);
     },
   },

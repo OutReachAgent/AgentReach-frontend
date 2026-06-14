@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { useState, useEffect } from 'react';
-import { Settings, Server, Key, Mail, Check, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Settings, Server, Key, Mail, Check, RefreshCw } from 'lucide-react';
 
 const DEFAULT_OPENROUTER_MODEL = 'nex-agi/nex-n2-pro:free';
 const CAMPAIGN_SENDER_EMAIL = 'oswin.alex@oswinalex.site';
@@ -28,11 +28,13 @@ export default function SettingsPage() {
   // Load values once loaded
   useEffect(() => {
     if (settings) {
-      setAwsAccessKeyId(settings.awsAccessKeyId || '');
-      setAwsSecretAccessKey(settings.awsSecretAccessKey || '');
-      setAwsRegion(settings.awsRegion || 'us-east-1');
-      setOpenRouterApiKey(settings.openRouterApiKey || '');
-      setOpenRouterModel(settings.openRouterModel || DEFAULT_OPENROUTER_MODEL);
+      queueMicrotask(() => {
+        setAwsAccessKeyId(settings.awsAccessKeyId || '');
+        setAwsSecretAccessKey(settings.awsSecretAccessKey || '');
+        setAwsRegion(settings.awsRegion || 'us-east-1');
+        setOpenRouterApiKey(settings.openRouterApiKey || '');
+        setOpenRouterModel(settings.openRouterModel || DEFAULT_OPENROUTER_MODEL);
+      });
     }
   }, [settings]);
 
@@ -43,7 +45,7 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       showAlert('Your settings have been saved.', 'success', 'Settings saved');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not save your settings. Please check the fields and try again.', 'error');
     },
   });
@@ -57,7 +59,7 @@ export default function SettingsPage() {
         showAlert(res.error || 'We could not verify your email sending settings. Please check your AWS details.', 'error');
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not test your email sending settings. Please try again.', 'error');
     },
   });
@@ -71,7 +73,7 @@ export default function SettingsPage() {
         showAlert(res.error || 'We could not verify your AI settings. Please check the API key.', 'error');
       }
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not test your AI settings. Please try again.', 'error');
     },
   });

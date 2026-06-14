@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { LooseApiResponse } from '@/lib/api';
 import {
   Mail,
   Phone,
@@ -21,8 +22,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  AreaChart,
-  Area,
 } from 'recharts';
 
 export default function DashboardPage() {
@@ -187,7 +186,7 @@ export default function DashboardPage() {
 
           <div className="space-y-4 flex-1">
             {segmentPerformance.length > 0 ? (
-              segmentPerformance.map((seg: any) => (
+              segmentPerformance.map((seg: LooseApiResponse) => (
                 <div key={seg.segment} className="p-3 bg-zinc-900/60 border border-zinc-850/50 rounded-xl space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-semibold text-zinc-200 truncate pr-2">{seg.segment}</span>
@@ -250,7 +249,7 @@ export default function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-zinc-850">
               {templatePerformance.length > 0 ? (
-                templatePerformance.map((tpl: any) => (
+                templatePerformance.map((tpl: LooseApiResponse) => (
                   <tr key={tpl.name} className="hover:bg-zinc-900/30 transition-colors">
                     <td className="py-3.5 font-medium text-white">{tpl.name}</td>
                     <td className="py-3.5 text-zinc-400">{tpl.sent} sent</td>

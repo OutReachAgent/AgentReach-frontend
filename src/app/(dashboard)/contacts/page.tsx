@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { LooseApiResponse } from '@/lib/api';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { useState } from 'react';
 import {
@@ -14,7 +15,6 @@ import {
   X,
   FileSpreadsheet,
   CheckCircle,
-  HelpCircle,
   Plus,
   Minus,
   AlertCircle,
@@ -55,12 +55,12 @@ export default function ContactsPage() {
   const [uploadStep, setUploadStep] = useState(1); // 1: Select File, 2: Map Columns, 3: Preview & Settings
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
-  const [parsedRows, setParsedRows] = useState<any[]>([]);
-  const [parsedPreview, setParsedPreview] = useState<any[]>([]);
+  const [parsedRows, setParsedRows] = useState<LooseApiResponse[]>([]);
+  const [parsedPreview, setParsedPreview] = useState<LooseApiResponse[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [duplicateStrategy, setDuplicateStrategy] = useState<'SKIP' | 'OVERWRITE'>('SKIP');
   const [importDirectoryId, setImportDirectoryId] = useState('');
-  const [importResult, setImportResult] = useState<any | null>(null);
+  const [importResult, setImportResult] = useState<LooseApiResponse | null>(null);
 
   // Fetch Contacts
   const { data: contacts = [], isLoading } = useQuery({
@@ -82,20 +82,20 @@ export default function ContactsPage() {
       showAlert('The contact has been added to your list.', 'success', 'Contact saved');
       closeManualModal();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not save this contact. Please check the details and try again.', 'error');
     },
   });
 
   const updateContactMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.contacts.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: LooseApiResponse }) => api.contacts.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       showAlert('The contact details have been updated.', 'success', 'Contact updated');
       closeManualModal();
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not update this contact. Please try again.', 'error');
     },
   });
@@ -107,32 +107,32 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       showAlert('The contact has been deleted.', 'success', 'Contact deleted');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not delete this contact. Please try again.', 'error');
     },
   });
 
   const createDirectoryMutation = useMutation({
     mutationFn: api.contacts.directories.create,
-    onSuccess: (directory: any) => {
+    onSuccess: (directory: LooseApiResponse) => {
       queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       setSelectedDirectoryId(directory.id);
       closeDirectoryModal();
       showAlert('The contact directory has been created.', 'success', 'Directory ready');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not create this directory. Please try again.', 'error');
     },
   });
 
   const updateDirectoryMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.contacts.directories.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: LooseApiResponse }) => api.contacts.directories.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       closeDirectoryModal();
       showAlert('The contact directory has been updated.', 'success', 'Directory updated');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not update this directory. Please try again.', 'error');
     },
   });
@@ -145,7 +145,7 @@ export default function ContactsPage() {
       setSelectedDirectoryId('all');
       showAlert('The directory was removed and its contacts were kept unassigned.', 'success', 'Directory deleted');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not delete this directory. Please try again.', 'error');
     },
   });
@@ -171,7 +171,7 @@ export default function ContactsPage() {
       setMapping(initialMap);
       setUploadStep(2);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not read this file. Please upload a CSV or Excel file.', 'error');
     },
   });
@@ -185,7 +185,7 @@ export default function ContactsPage() {
       setUploadStep(4);
       showAlert(`${res.importedCount} contacts added and ${res.updatedCount} updated.`, 'success', 'Import complete');
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       showAlert(err.message || 'We could not import the contacts. Please check the file and try again.', 'error');
     },
   });
@@ -217,7 +217,7 @@ export default function ContactsPage() {
     setDirectoryDescription('');
   };
 
-  const openDirectoryModal = (directory?: any) => {
+  const openDirectoryModal = (directory?: LooseApiResponse) => {
     setEditingDirectoryId(directory?.id || null);
     setDirectoryName(directory?.name || '');
     setDirectoryDescription(directory?.description || '');
@@ -238,7 +238,7 @@ export default function ContactsPage() {
     }
   };
 
-  const handleEditClick = (contact: any) => {
+  const handleEditClick = (contact: LooseApiResponse) => {
     setEditingId(contact.id);
     setFirstName(contact.firstName);
     setLastName(contact.lastName);
@@ -254,7 +254,7 @@ export default function ContactsPage() {
       try {
         const parsed = JSON.parse(contact.customFields);
         setCustomFields(Object.entries(parsed).map(([key, value]) => ({ key, value: String(value) })));
-      } catch (e) {
+      } catch {
         setCustomFields([]);
       }
     } else {
@@ -266,7 +266,7 @@ export default function ContactsPage() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const formattedCustomFields: Record<string, any> = {};
+    const formattedCustomFields: Record<string, LooseApiResponse> = {};
     customFields.forEach(c => {
       if (c.key.trim()) formattedCustomFields[c.key.trim()] = c.value;
     });
@@ -322,12 +322,12 @@ export default function ContactsPage() {
     setCustomFields(list);
   };
 
-  const directoryCounts = contacts.reduce((acc: Record<string, number>, contact: any) => {
+  const directoryCounts = contacts.reduce((acc: Record<string, number>, contact: LooseApiResponse) => {
     const key = contact.directoryId || 'uncategorized';
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
-  const selectedDirectory = directories.find((directory: any) => directory.id === selectedDirectoryId);
+  const selectedDirectory = directories.find((directory: LooseApiResponse) => directory.id === selectedDirectoryId);
   const selectedDirectoryLabel =
     selectedDirectoryId === 'all'
       ? 'All Contacts'
@@ -336,12 +336,12 @@ export default function ContactsPage() {
         : selectedDirectory?.name || 'Directory';
 
   // Filters
-  const directoryContacts = contacts.filter((contact: any) => {
+  const directoryContacts = contacts.filter((contact: LooseApiResponse) => {
     if (selectedDirectoryId === 'all') return true;
     if (selectedDirectoryId === 'uncategorized') return !contact.directoryId;
     return contact.directoryId === selectedDirectoryId;
   });
-  const filteredContacts = directoryContacts.filter((c: any) => {
+  const filteredContacts = directoryContacts.filter((c: LooseApiResponse) => {
     const term = search.toLowerCase();
     return (
       c.firstName.toLowerCase().includes(term) ||
@@ -424,7 +424,7 @@ export default function ContactsPage() {
               </button>
             ))}
 
-            {directories.map((directory: any) => (
+            {directories.map((directory: LooseApiResponse) => (
               <div
                 key={directory.id}
                 className={`group flex items-center gap-1 rounded-xl border transition-colors ${
@@ -514,7 +514,7 @@ export default function ContactsPage() {
                       </tr>
                     ))
                   ) : filteredContacts.length > 0 ? (
-                    filteredContacts.map((contact: any) => (
+                    filteredContacts.map((contact: LooseApiResponse) => (
                       <tr key={contact.id} className="hover:bg-zinc-900/40 transition-colors">
                         <td className="px-6 py-4 font-medium text-white">
                           {contact.firstName} {contact.lastName}
@@ -699,7 +699,7 @@ export default function ContactsPage() {
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="">Unassigned</option>
-                  {directories.map((directory: any) => (
+                  {directories.map((directory: LooseApiResponse) => (
                     <option key={directory.id} value={directory.id}>
                       {directory.name}
                     </option>
@@ -954,7 +954,7 @@ export default function ContactsPage() {
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                     >
                       <option value="">Unassigned</option>
-                      {directories.map((directory: any) => (
+                      {directories.map((directory: LooseApiResponse) => (
                         <option key={directory.id} value={directory.id}>
                           {directory.name}
                         </option>

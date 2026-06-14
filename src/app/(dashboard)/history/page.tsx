@@ -2,17 +2,15 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { LooseApiResponse } from '@/lib/api';
 import { useState } from 'react';
 import {
   History,
   Mail,
   PhoneCall,
-  Search,
   Calendar,
   Filter,
   CheckCircle,
-  AlertCircle,
-  XCircle,
   Clock,
 } from 'lucide-react';
 
@@ -146,10 +144,10 @@ export default function HistoryPage() {
           >
             <option value="">All Campaigns</option>
             {tab === 'emails'
-              ? emailCampaigns.map((c: any) => (
+              ? emailCampaigns.map((c: LooseApiResponse) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))
-              : callingCampaigns.map((c: any) => (
+              : callingCampaigns.map((c: LooseApiResponse) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
           </select>
@@ -222,7 +220,7 @@ export default function HistoryPage() {
                     </tr>
                   ))
                 ) : emailHistory.length > 0 ? (
-                  emailHistory.map((item: any) => {
+                  emailHistory.map((item: LooseApiResponse) => {
                     const contactName = item.contact
                       ? `${item.contact.firstName || ''} ${item.contact.lastName || ''}`.trim() || 'Unnamed Contact'
                       : 'Removed Contact';
@@ -301,7 +299,7 @@ export default function HistoryPage() {
                     </tr>
                   ))
                 ) : callHistory.length > 0 ? (
-                  callHistory.map((item: any) => {
+                  callHistory.map((item: LooseApiResponse) => {
                     const contactName = item.contact
                       ? `${item.contact.firstName || ''} ${item.contact.lastName || ''}`.trim() || 'Unnamed Contact'
                       : 'Removed Contact';
