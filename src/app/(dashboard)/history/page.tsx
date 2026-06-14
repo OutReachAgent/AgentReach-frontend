@@ -223,6 +223,9 @@ export default function HistoryPage() {
                   ))
                 ) : emailHistory.length > 0 ? (
                   emailHistory.map((item: any) => {
+                    const contactName = item.contact
+                      ? `${item.contact.firstName || ''} ${item.contact.lastName || ''}`.trim() || 'Unnamed Contact'
+                      : 'Removed Contact';
                     const deliveryColors: Record<string, string> = {
                       PENDING: 'bg-zinc-850 text-zinc-400',
                       SENT: 'bg-blue-500/10 text-blue-400 border-blue-500/10',
@@ -233,9 +236,9 @@ export default function HistoryPage() {
                     return (
                       <tr key={item.id} className="hover:bg-zinc-900/40 transition-colors">
                         <td className="px-6 py-4 font-medium text-white">
-                          {item.contact.firstName} {item.contact.lastName}
+                          {contactName}
                         </td>
-                        <td className="px-6 py-4 text-zinc-400">{item.contact.email}</td>
+                        <td className="px-6 py-4 text-zinc-400">{item.contact?.email || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-300 truncate max-w-xs">{item.subject || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-400">{item.campaign?.name || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-500 text-xs">
@@ -299,6 +302,9 @@ export default function HistoryPage() {
                   ))
                 ) : callHistory.length > 0 ? (
                   callHistory.map((item: any) => {
+                    const contactName = item.contact
+                      ? `${item.contact.firstName || ''} ${item.contact.lastName || ''}`.trim() || 'Unnamed Contact'
+                      : 'Removed Contact';
                     const outcomeColors: Record<string, string> = {
                       PENDING: 'bg-zinc-850 text-zinc-400',
                       ANSWERED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10',
@@ -310,9 +316,9 @@ export default function HistoryPage() {
                     return (
                       <tr key={item.id} className="hover:bg-zinc-900/40 transition-colors">
                         <td className="px-6 py-4 font-medium text-white">
-                          {item.contact.firstName} {item.contact.lastName}
+                          {contactName}
                         </td>
-                        <td className="px-6 py-4 text-zinc-400">{item.contact.phoneNumber || 'N/A'}</td>
+                        <td className="px-6 py-4 text-zinc-400">{item.contact?.phoneNumber || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-400">{item.campaign?.name || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-400 flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-zinc-500" /> {item.duration}s

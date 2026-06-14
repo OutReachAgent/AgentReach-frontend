@@ -19,10 +19,22 @@ import {
   Code2,
   FileText,
   PenLine,
+  Paperclip,
+  Upload,
 } from 'lucide-react';
 
 type TemplateFormat = 'HTML' | 'TEXT';
 type TemplateBuilderMode = 'AI' | 'MANUAL';
+type TemplateAttachment = {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  contentBase64: string;
+};
+
+const MAX_TEMPLATE_ATTACHMENTS = 5;
+const MAX_TEMPLATE_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 export default function EmailCampaignsPage() {
   const queryClient = useQueryClient();
@@ -50,6 +62,7 @@ export default function EmailCampaignsPage() {
   const [manualTemplateName, setManualTemplateName] = useState('');
   const [manualTemplateSubject, setManualTemplateSubject] = useState('');
   const [manualTemplateBody, setManualTemplateBody] = useState('');
+  const [manualTemplateAttachments, setManualTemplateAttachments] = useState<TemplateAttachment[]>([]);
 
   // Add Contacts modal in campaign details
   const [isAddContactsOpen, setIsAddContactsOpen] = useState(false);
@@ -159,7 +172,7 @@ export default function EmailCampaignsPage() {
   });
 
   const createManualTemplateMutation = useMutation({
-    mutationFn: (data: { name: string; subject: string; body: string; format: TemplateFormat }) =>
+    mutationFn: (data: { name: string; subject: string; body: string; format: TemplateFormat; attachments: TemplateAttachment[] }) =>
       api.templates.create({
         name: data.name,
         subject: data.subject,
@@ -167,6 +180,7 @@ export default function EmailCampaignsPage() {
         bodyText: data.format === 'TEXT' ? data.body : htmlToText(data.body),
         type: 'CUSTOM',
         category: `Manual ${data.format}`,
+        attachments: data.attachments,
       }),
     onSuccess: (res) => {
       setSelectedTemplateId(res.id);
@@ -175,6 +189,18 @@ export default function EmailCampaignsPage() {
     },
     onError: (err: any) => {
       showAlert(err.message || 'We could not save this template. Please check the name, subject, and message.', 'error');
+    },
+  });
+
+  const updateTemplateAttachmentsMutation = useMutation({
+    mutationFn: ({ id, attachments }: { id: string; attachments: TemplateAttachment[] }) =>
+      api.templates.update(id, { attachments }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+      showAlert('Template attachments have been updated.', 'success', 'Attachments saved');
+    },
+    onError: (err: any) => {
+      showAlert(err.message || 'We could not update template attachments. Please try again.', 'error');
     },
   });
 
@@ -239,6 +265,7 @@ export default function EmailCampaignsPage() {
     setManualTemplateName('');
     setManualTemplateSubject('');
     setManualTemplateBody('');
+    setManualTemplateAttachments([]);
   };
 
   const htmlToText = (html: string) =>
@@ -283,6 +310,7 @@ export default function EmailCampaignsPage() {
       subject: manualTemplateSubject,
       body: manualTemplateBody,
       format: templateFormat,
+      attachments: manualTemplateAttachments,
     });
   };
 
@@ -298,10 +326,12 @@ export default function EmailCampaignsPage() {
         subject: manualTemplateSubject || 'Manual template draft',
         bodyHtml: templateFormat === 'HTML' ? manualTemplateBody : '',
         bodyText: templateFormat === 'TEXT' ? manualTemplateBody : htmlToText(manualTemplateBody),
+        attachments: manualTemplateAttachments,
       }
     : null;
   const builderPreviewTemplate = templateBuilderMode === 'AI' ? generatedTemplate : manualDraftTemplate;
   const previewTemplate = selectedTemplate || builderPreviewTemplate;
+  const previewAttachments: TemplateAttachment[] = previewTemplate?.attachments || [];
   const previewHtml = previewTemplate?.bodyHtml?.trim();
   const previewText = previewTemplate?.bodyText?.trim();
   const previewSource = selectedTemplate
@@ -335,6 +365,113 @@ export default function EmailCampaignsPage() {
         ? addSelectedContactIds.filter((cid) => cid !== id)
         : [...addSelectedContactIds, id]
     );
+  };
+
+  const fileToTemplateAttachment = (file: File): Promise<TemplateAttachment> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        resolve({
+          id: `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          name: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+          contentBase64: result.split(',')[1] || '',
+        });
+      };
+      reader.onerror = () => reject(new Error('Could not read attachment file'));
+      reader.readAsDataURL(file);
+    });
+
+  const readAttachmentFiles = async (files: FileList | null, existingCount: number) => {
+    const list = Array.from(files || []);
+    if (list.length === 0) return [];
+
+    if (existingCount + list.length > MAX_TEMPLATE_ATTACHMENTS) {
+      showAlert(`Templates can include up to ${MAX_TEMPLATE_ATTACHMENTS} attachments.`, 'error');
+      return [];
+    }
+
+    const oversized = list.find((file) => file.size > MAX_TEMPLATE_ATTACHMENT_BYTES);
+    if (oversized) {
+      showAlert(`${oversized.name} is larger than 5 MB.`, 'error');
+      return [];
+    }
+
+    return Promise.all(list.map(fileToTemplateAttachment));
+  };
+
+  const handleManualAttachmentFiles = async (files: FileList | null) => {
+    const attachments = await readAttachmentFiles(files, manualTemplateAttachments.length);
+    if (attachments.length > 0) {
+      setManualTemplateAttachments([...manualTemplateAttachments, ...attachments]);
+      setGeneratedTemplate(null);
+      setSelectedTemplateId(null);
+    }
+  };
+
+  const updateManualAttachmentName = (id: string, name: string) => {
+    setManualTemplateAttachments(
+      manualTemplateAttachments.map((attachment) =>
+        attachment.id === id ? { ...attachment, name } : attachment
+      )
+    );
+  };
+
+  const removeManualAttachment = (id: string) => {
+    setManualTemplateAttachments(manualTemplateAttachments.filter((attachment) => attachment.id !== id));
+  };
+
+  const updateSelectedTemplateAttachments = (attachments: TemplateAttachment[]) => {
+    if (!selectedTemplate) return;
+    updateTemplateAttachmentsMutation.mutate({ id: selectedTemplate.id, attachments });
+  };
+
+  const handleSelectedTemplateAttachmentFiles = async (files: FileList | null) => {
+    if (!selectedTemplate) return;
+    const currentAttachments = selectedTemplate.attachments || [];
+    const attachments = await readAttachmentFiles(files, currentAttachments.length);
+    if (attachments.length > 0) {
+      updateSelectedTemplateAttachments([...currentAttachments, ...attachments]);
+    }
+  };
+
+  const replaceSelectedTemplateAttachment = async (attachmentId: string, files: FileList | null) => {
+    if (!selectedTemplate) return;
+    const [replacement] = await readAttachmentFiles(files, 0);
+    if (!replacement) return;
+
+    updateSelectedTemplateAttachments(
+      (selectedTemplate.attachments || []).map((attachment: TemplateAttachment) =>
+        attachment.id === attachmentId ? { ...replacement, id: attachmentId } : attachment
+      )
+    );
+  };
+
+  const renameSelectedTemplateAttachment = (attachmentId: string, name: string) => {
+    if (!selectedTemplate) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
+
+    updateSelectedTemplateAttachments(
+      (selectedTemplate.attachments || []).map((attachment: TemplateAttachment) =>
+        attachment.id === attachmentId ? { ...attachment, name: cleanName } : attachment
+      )
+    );
+  };
+
+  const removeSelectedTemplateAttachment = (attachmentId: string) => {
+    if (!selectedTemplate) return;
+    updateSelectedTemplateAttachments(
+      (selectedTemplate.attachments || []).filter((attachment: TemplateAttachment) => attachment.id !== attachmentId)
+    );
+  };
+
+  const formatAttachmentSize = (size: number) => {
+    if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+    return `${size || 0} B`;
   };
 
   return (
@@ -803,6 +940,52 @@ export default function EmailCampaignsPage() {
                           className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none resize-none font-mono"
                         />
                       </div>
+                      <div className="md:col-span-2 space-y-2 rounded-xl border border-zinc-850 bg-zinc-950/60 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Paperclip className="h-4 w-4 text-zinc-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Attachments</span>
+                          </div>
+                          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-[10px] font-bold text-zinc-400 hover:text-white">
+                            <Upload className="h-3.5 w-3.5" />
+                            Add
+                            <input
+                              type="file"
+                              multiple
+                              className="hidden"
+                              onChange={async (e) => {
+                                await handleManualAttachmentFiles(e.target.files);
+                                e.currentTarget.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        {manualTemplateAttachments.length > 0 ? (
+                          <div className="space-y-2">
+                            {manualTemplateAttachments.map((attachment) => (
+                              <div key={attachment.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={attachment.name}
+                                  onChange={(e) => updateManualAttachmentName(attachment.id, e.target.value)}
+                                  className="min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
+                                />
+                                <span className="text-[10px] text-zinc-600">{formatAttachmentSize(attachment.size)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeManualAttachment(attachment.id)}
+                                  className="rounded-lg p-1.5 text-zinc-500 hover:bg-rose-950/30 hover:text-rose-400"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-zinc-600">No attachments added.</p>
+                        )}
+                      </div>
                       <button
                         type="button"
                         disabled={createManualTemplateMutation.isPending}
@@ -843,6 +1026,78 @@ export default function EmailCampaignsPage() {
                       <p className="mt-2 text-sm font-bold text-zinc-900">
                         {previewTemplate.subject || 'No subject'}
                       </p>
+                      <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2 text-xs font-bold text-zinc-700">
+                            <Paperclip className="h-4 w-4 text-zinc-500" />
+                            Attachments ({previewAttachments.length})
+                          </div>
+                          {selectedTemplate && (
+                            <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-bold text-zinc-600 hover:bg-zinc-100">
+                              <Upload className="h-3.5 w-3.5" />
+                              Add
+                              <input
+                                type="file"
+                                multiple
+                                className="hidden"
+                                onChange={async (e) => {
+                                  await handleSelectedTemplateAttachmentFiles(e.target.files);
+                                  e.currentTarget.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {previewAttachments.length > 0 ? (
+                          <div className="mt-2 space-y-2">
+                            {previewAttachments.map((attachment) => (
+                              <div key={attachment.id} className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
+                                {selectedTemplate ? (
+                                  <input
+                                    key={`${attachment.id}-${attachment.name}`}
+                                    type="text"
+                                    defaultValue={attachment.name}
+                                    onBlur={(e) => {
+                                      if (e.target.value !== attachment.name) {
+                                        renameSelectedTemplateAttachment(attachment.id, e.target.value);
+                                      }
+                                    }}
+                                    className="min-w-0 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-indigo-400"
+                                  />
+                                ) : (
+                                  <span className="truncate text-xs font-semibold text-zinc-800">{attachment.name}</span>
+                                )}
+                                <span className="text-[10px] text-zinc-500">{formatAttachmentSize(attachment.size)}</span>
+                                {selectedTemplate && (
+                                  <label className="flex cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-zinc-600 hover:bg-zinc-100">
+                                    Replace
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        await replaceSelectedTemplateAttachment(attachment.id, e.target.files);
+                                        e.currentTarget.value = '';
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                                {selectedTemplate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSelectedTemplateAttachment(attachment.id)}
+                                    className="flex items-center justify-center rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-500 hover:bg-rose-50"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-[11px] text-zinc-500">No attachments on this template.</p>
+                        )}
+                      </div>
                     </div>
                     {previewHtml ? (
                       <iframe

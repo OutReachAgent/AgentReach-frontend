@@ -19,7 +19,11 @@ import {
   Minus,
   AlertCircle,
   ChevronRight,
+  Folder,
+  FolderPlus,
 } from 'lucide-react';
+
+type DirectoryFilter = 'all' | 'uncategorized' | string;
 
 export default function ContactsPage() {
   const queryClient = useQueryClient();
@@ -28,6 +32,11 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
+  const [selectedDirectoryId, setSelectedDirectoryId] = useState<DirectoryFilter>('all');
+  const [directoryName, setDirectoryName] = useState('');
+  const [directoryDescription, setDirectoryDescription] = useState('');
+  const [editingDirectoryId, setEditingDirectoryId] = useState<string | null>(null);
 
   // Manual Contact Form State
   const [firstName, setFirstName] = useState('');
@@ -38,6 +47,7 @@ export default function ContactsPage() {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [notes, setNotes] = useState('');
+  const [contactDirectoryId, setContactDirectoryId] = useState('');
   const [customFields, setCustomFields] = useState<{ key: string; value: string }[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -49,6 +59,7 @@ export default function ContactsPage() {
   const [parsedPreview, setParsedPreview] = useState<any[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [duplicateStrategy, setDuplicateStrategy] = useState<'SKIP' | 'OVERWRITE'>('SKIP');
+  const [importDirectoryId, setImportDirectoryId] = useState('');
   const [importResult, setImportResult] = useState<any | null>(null);
 
   // Fetch Contacts
@@ -57,11 +68,17 @@ export default function ContactsPage() {
     queryFn: api.contacts.list,
   });
 
+  const { data: directories = [] } = useQuery({
+    queryKey: ['contact-directories'],
+    queryFn: api.contacts.directories.list,
+  });
+
   // Mutations
   const createContactMutation = useMutation({
     mutationFn: api.contacts.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       showAlert('The contact has been added to your list.', 'success', 'Contact saved');
       closeManualModal();
     },
@@ -74,6 +91,7 @@ export default function ContactsPage() {
     mutationFn: ({ id, data }: { id: string; data: any }) => api.contacts.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       showAlert('The contact details have been updated.', 'success', 'Contact updated');
       closeManualModal();
     },
@@ -86,10 +104,49 @@ export default function ContactsPage() {
     mutationFn: api.contacts.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       showAlert('The contact has been deleted.', 'success', 'Contact deleted');
     },
     onError: (err: any) => {
       showAlert(err.message || 'We could not delete this contact. Please try again.', 'error');
+    },
+  });
+
+  const createDirectoryMutation = useMutation({
+    mutationFn: api.contacts.directories.create,
+    onSuccess: (directory: any) => {
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
+      setSelectedDirectoryId(directory.id);
+      closeDirectoryModal();
+      showAlert('The contact directory has been created.', 'success', 'Directory ready');
+    },
+    onError: (err: any) => {
+      showAlert(err.message || 'We could not create this directory. Please try again.', 'error');
+    },
+  });
+
+  const updateDirectoryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.contacts.directories.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
+      closeDirectoryModal();
+      showAlert('The contact directory has been updated.', 'success', 'Directory updated');
+    },
+    onError: (err: any) => {
+      showAlert(err.message || 'We could not update this directory. Please try again.', 'error');
+    },
+  });
+
+  const deleteDirectoryMutation = useMutation({
+    mutationFn: api.contacts.directories.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
+      setSelectedDirectoryId('all');
+      showAlert('The directory was removed and its contacts were kept unassigned.', 'success', 'Directory deleted');
+    },
+    onError: (err: any) => {
+      showAlert(err.message || 'We could not delete this directory. Please try again.', 'error');
     },
   });
 
@@ -123,6 +180,7 @@ export default function ContactsPage() {
     mutationFn: api.contacts.import,
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['contact-directories'] });
       setImportResult(res);
       setUploadStep(4);
       showAlert(`${res.importedCount} contacts added and ${res.updatedCount} updated.`, 'success', 'Import complete');
@@ -143,7 +201,41 @@ export default function ContactsPage() {
     setLinkedinUrl('');
     setPhoneNumber('');
     setNotes('');
+    setContactDirectoryId('');
     setCustomFields([]);
+  };
+
+  const openManualModal = () => {
+    setContactDirectoryId(selectedDirectoryId !== 'all' && selectedDirectoryId !== 'uncategorized' ? selectedDirectoryId : '');
+    setIsManualModalOpen(true);
+  };
+
+  const closeDirectoryModal = () => {
+    setIsDirectoryModalOpen(false);
+    setEditingDirectoryId(null);
+    setDirectoryName('');
+    setDirectoryDescription('');
+  };
+
+  const openDirectoryModal = (directory?: any) => {
+    setEditingDirectoryId(directory?.id || null);
+    setDirectoryName(directory?.name || '');
+    setDirectoryDescription(directory?.description || '');
+    setIsDirectoryModalOpen(true);
+  };
+
+  const handleDirectorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      name: directoryName,
+      description: directoryDescription || undefined,
+    };
+
+    if (editingDirectoryId) {
+      updateDirectoryMutation.mutate({ id: editingDirectoryId, data: payload });
+    } else {
+      createDirectoryMutation.mutate(payload);
+    }
   };
 
   const handleEditClick = (contact: any) => {
@@ -156,6 +248,7 @@ export default function ContactsPage() {
     setLinkedinUrl(contact.linkedinUrl || '');
     setPhoneNumber(contact.phoneNumber || '');
     setNotes(contact.notes || '');
+    setContactDirectoryId(contact.directoryId || '');
     
     if (contact.customFields) {
       try {
@@ -187,6 +280,7 @@ export default function ContactsPage() {
       linkedinUrl: linkedinUrl || undefined,
       phoneNumber: phoneNumber || undefined,
       notes: notes || undefined,
+      directoryId: contactDirectoryId || null,
       customFields: Object.keys(formattedCustomFields).length > 0 ? formattedCustomFields : undefined,
     };
 
@@ -211,6 +305,7 @@ export default function ContactsPage() {
       rows: parsedRows,
       mapping,
       duplicateStrategy,
+      directoryId: importDirectoryId || undefined,
     });
   };
 
@@ -227,8 +322,26 @@ export default function ContactsPage() {
     setCustomFields(list);
   };
 
+  const directoryCounts = contacts.reduce((acc: Record<string, number>, contact: any) => {
+    const key = contact.directoryId || 'uncategorized';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const selectedDirectory = directories.find((directory: any) => directory.id === selectedDirectoryId);
+  const selectedDirectoryLabel =
+    selectedDirectoryId === 'all'
+      ? 'All Contacts'
+      : selectedDirectoryId === 'uncategorized'
+        ? 'Unassigned'
+        : selectedDirectory?.name || 'Directory';
+
   // Filters
-  const filteredContacts = contacts.filter((c: any) => {
+  const directoryContacts = contacts.filter((contact: any) => {
+    if (selectedDirectoryId === 'all') return true;
+    if (selectedDirectoryId === 'uncategorized') return !contact.directoryId;
+    return contact.directoryId === selectedDirectoryId;
+  });
+  const filteredContacts = directoryContacts.filter((c: any) => {
     const term = search.toLowerCase();
     return (
       c.firstName.toLowerCase().includes(term) ||
@@ -254,14 +367,17 @@ export default function ContactsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => {
+              setImportDirectoryId(selectedDirectoryId !== 'all' && selectedDirectoryId !== 'uncategorized' ? selectedDirectoryId : '');
+              setIsUploadModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-850 hover:text-white transition-all"
           >
             <Upload className="h-3.5 w-3.5" />
             Bulk Upload
           </button>
           <button
-            onClick={() => setIsManualModalOpen(true)}
+            onClick={openManualModal}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 hover:brightness-110 transition-all"
           >
             <UserPlus className="h-3.5 w-3.5" />
@@ -270,111 +386,259 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      {/* Toolbar & Search */}
-      <div className="flex items-center gap-3 p-4 bg-zinc-900/40 border border-zinc-850 rounded-2xl">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-zinc-500" />
-          <input
-            type="text"
-            placeholder="Search by name, email, company or job title..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
-          />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
+        <aside className="bg-zinc-900/30 border border-zinc-850 rounded-2xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Directories</p>
+              <p className="text-xs text-zinc-500 mt-1">{contacts.length} total contacts</p>
+            </div>
+            <button
+              onClick={() => openDirectoryModal()}
+              className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:border-indigo-500/40 transition-colors"
+              title="Create directory"
+            >
+              <FolderPlus className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            {[
+              { id: 'all', name: 'All Contacts', count: contacts.length },
+              { id: 'uncategorized', name: 'Unassigned', count: directoryCounts.uncategorized || 0 },
+            ].map((directory) => (
+              <button
+                key={directory.id}
+                onClick={() => setSelectedDirectoryId(directory.id)}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                  selectedDirectoryId === directory.id
+                    ? 'bg-indigo-500/10 border-indigo-500/30 text-white'
+                    : 'bg-zinc-950/40 border-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                }`}
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <Folder className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-xs font-semibold truncate">{directory.name}</span>
+                </span>
+                <span className="text-[11px] text-zinc-500">{directory.count}</span>
+              </button>
+            ))}
+
+            {directories.map((directory: any) => (
+              <div
+                key={directory.id}
+                className={`group flex items-center gap-1 rounded-xl border transition-colors ${
+                  selectedDirectoryId === directory.id
+                    ? 'bg-indigo-500/10 border-indigo-500/30'
+                    : 'bg-zinc-950/40 border-transparent hover:bg-zinc-900'
+                }`}
+              >
+                <button
+                  onClick={() => setSelectedDirectoryId(directory.id)}
+                  className="min-w-0 flex-1 flex items-center justify-between gap-3 px-3 py-2.5 text-left"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <Folder className={`h-4 w-4 flex-shrink-0 ${selectedDirectoryId === directory.id ? 'text-indigo-300' : 'text-zinc-500'}`} />
+                    <span className={`text-xs font-semibold truncate ${selectedDirectoryId === directory.id ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>
+                      {directory.name}
+                    </span>
+                  </span>
+                  <span className="text-[11px] text-zinc-500">{directoryCounts[directory.id] || directory.contactCount || 0}</span>
+                </button>
+                <button
+                  onClick={() => openDirectoryModal(directory)}
+                  className="p-1.5 text-zinc-600 hover:text-zinc-200 rounded-lg"
+                  title="Rename directory"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete "${directory.name}"? Contacts in it will stay in Unassigned.`)) {
+                      deleteDirectoryMutation.mutate(directory.id);
+                    }
+                  }}
+                  className="mr-1.5 p-1.5 text-zinc-600 hover:text-rose-400 rounded-lg"
+                  title="Delete directory"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className="space-y-4 min-w-0">
+          {/* Toolbar & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-zinc-900/40 border border-zinc-850 rounded-2xl">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white truncate">{selectedDirectoryLabel}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">{directoryContacts.length} contacts in this view</p>
+            </div>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search by name, email, company or job title..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Main Table */}
+          <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-zinc-300">
+                <thead className="text-xs text-zinc-500 uppercase border-b border-zinc-850 bg-zinc-900/60">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">Name</th>
+                    <th className="px-6 py-4 font-semibold">Email</th>
+                    <th className="px-6 py-4 font-semibold">Organization</th>
+                    <th className="px-6 py-4 font-semibold">LinkedIn</th>
+                    <th className="px-6 py-4 font-semibold">Phone</th>
+                    <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-850">
+                  {isLoading ? (
+                    [1, 2, 3].map((n) => (
+                      <tr key={n} className="animate-pulse">
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-36"></div></td>
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-20"></div></td>
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-16"></div></td>
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
+                        <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-12 ml-auto"></div></td>
+                      </tr>
+                    ))
+                  ) : filteredContacts.length > 0 ? (
+                    filteredContacts.map((contact: any) => (
+                      <tr key={contact.id} className="hover:bg-zinc-900/40 transition-colors">
+                        <td className="px-6 py-4 font-medium text-white">
+                          {contact.firstName} {contact.lastName}
+                        </td>
+                        <td className="px-6 py-4 text-zinc-400">{contact.email}</td>
+                        <td className="px-6 py-4 text-zinc-400">
+                          {contact.company ? (
+                            <div>
+                              <p className="text-zinc-300 font-semibold">{contact.company}</p>
+                              <p className="text-xs text-zinc-500">{contact.jobTitle || 'Role N/A'}</p>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {contact.linkedinUrl ? (
+                            <a
+                              href={contact.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-full border border-indigo-500/10 font-bold hover:bg-indigo-500/20"
+                            >
+                              LinkedIn
+                            </a>
+                          ) : (
+                            <span className="text-zinc-600">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-zinc-400">{contact.phoneNumber || <span className="text-zinc-600">-</span>}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEditClick(contact)}
+                              className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this contact?')) {
+                                  deleteContactMutation.mutate(contact.id);
+                                }
+                              }}
+                              className="p-1.5 hover:bg-rose-950/30 text-zinc-400 hover:text-rose-400 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                        No contacts found. Create a manual record or upload a list file.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
       </div>
 
-      {/* Main Table */}
-      <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-zinc-300">
-            <thead className="text-xs text-zinc-500 uppercase border-b border-zinc-850 bg-zinc-900/60">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Name</th>
-                <th className="px-6 py-4 font-semibold">Email</th>
-                <th className="px-6 py-4 font-semibold">Organization</th>
-                <th className="px-6 py-4 font-semibold">LinkedIn</th>
-                <th className="px-6 py-4 font-semibold">Phone</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-850">
-              {isLoading ? (
-                [1, 2, 3].map((n) => (
-                  <tr key={n} className="animate-pulse">
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-36"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-20"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-16"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
-                    <td className="px-6 py-4"><div className="h-4 bg-zinc-800 rounded w-12 ml-auto"></div></td>
-                  </tr>
-                ))
-              ) : filteredContacts.length > 0 ? (
-                filteredContacts.map((contact: any) => (
-                  <tr key={contact.id} className="hover:bg-zinc-900/40 transition-colors">
-                    <td className="px-6 py-4 font-medium text-white">
-                      {contact.firstName} {contact.lastName}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-400">{contact.email}</td>
-                    <td className="px-6 py-4 text-zinc-400">
-                      {contact.company ? (
-                        <div>
-                          <p className="text-zinc-300 font-semibold">{contact.company}</p>
-                          <p className="text-xs text-zinc-500">{contact.jobTitle || 'Role N/A'}</p>
-                        </div>
-                      ) : (
-                        <span className="text-zinc-600">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {contact.linkedinUrl ? (
-                        <a
-                          href={contact.linkedinUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded-full border border-indigo-500/10 font-bold hover:bg-indigo-500/20"
-                        >
-                          LinkedIn
-                        </a>
-                      ) : (
-                        <span className="text-zinc-600">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-400">{contact.phoneNumber || <span className="text-zinc-600">-</span>}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEditClick(contact)}
-                          className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this contact?')) {
-                              deleteContactMutation.mutate(contact.id);
-                            }
-                          }}
-                          className="p-1.5 hover:bg-rose-950/30 text-zinc-400 hover:text-rose-400 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
-                    No contacts found. Create a manual record or upload a list file.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Directory Creation/Edit Modal */}
+      {isDirectoryModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
+              <h3 className="text-lg font-bold text-white">
+                {editingDirectoryId ? 'Edit Contact Directory' : 'Create Contact Directory'}
+              </h3>
+              <button
+                onClick={closeDirectoryModal}
+                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDirectorySubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Directory Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={directoryName}
+                  onChange={(e) => setDirectoryName(e.target.value)}
+                  placeholder="Recruiters, Hiring Managers, Warm Leads..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Description</label>
+                <textarea
+                  value={directoryDescription}
+                  onChange={(e) => setDirectoryDescription(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 h-20 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800/60">
+                <button
+                  type="button"
+                  onClick={closeDirectoryModal}
+                  className="px-4 py-2.5 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-400 hover:text-zinc-200 rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createDirectoryMutation.isPending || updateDirectoryMutation.isPending}
+                  className="px-4 py-2.5 bg-gradient-to-tr from-indigo-500 to-purple-600 text-xs font-semibold text-white rounded-xl shadow-md transition-all hover:brightness-110 disabled:opacity-50"
+                >
+                  {editingDirectoryId ? 'Update Directory' : 'Create Directory'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Manual Contact Creation Modal */}
       {isManualModalOpen && (
@@ -425,6 +689,22 @@ export default function ContactsPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Directory</label>
+                <select
+                  value={contactDirectoryId}
+                  onChange={(e) => setContactDirectoryId(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="">Unassigned</option>
+                  {directories.map((directory: any) => (
+                    <option key={directory.id} value={directory.id}>
+                      {directory.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -566,6 +846,7 @@ export default function ContactsPage() {
                   setIsUploadModalOpen(false);
                   setUploadStep(1);
                   setUploadFile(null);
+                  setImportDirectoryId('');
                   setImportResult(null);
                 }}
                 className="text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -663,6 +944,24 @@ export default function ContactsPage() {
               {/* Step 3: Duplicate Strategy & Preview */}
               {uploadStep === 3 && (
                 <div className="space-y-4">
+                  <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-2xl space-y-2">
+                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                      Import into directory
+                    </label>
+                    <select
+                      value={importDirectoryId}
+                      onChange={(e) => setImportDirectoryId(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="">Unassigned</option>
+                      {directories.map((directory: any) => (
+                        <option key={directory.id} value={directory.id}>
+                          {directory.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Strategy selection */}
                   <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-2xl space-y-3">
                     <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
@@ -789,6 +1088,7 @@ export default function ContactsPage() {
                         setIsUploadModalOpen(false);
                         setUploadStep(1);
                         setUploadFile(null);
+                        setImportDirectoryId('');
                         setImportResult(null);
                       }}
                       className="px-6 py-2.5 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-400 hover:text-zinc-200 rounded-xl"

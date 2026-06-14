@@ -147,6 +147,22 @@ export const api = {
   // Contacts
   contacts: {
     list: () => request('/contacts'),
+    directories: {
+      list: () => request('/contacts/directories'),
+      create: (data: any) =>
+        request('/contacts/directories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, data: any) =>
+        request(`/contacts/directories/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      delete: (id: string) => request(`/contacts/directories/${id}`, { method: 'DELETE' }),
+    },
     get: (id: string) => request(`/contacts/${id}`),
     create: (data: any) =>
       request('/contacts', {
