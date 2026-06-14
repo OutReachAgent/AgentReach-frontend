@@ -779,6 +779,18 @@ export default function EmailCampaignsPage() {
     return `${size || 0} B`;
   };
 
+  const addDirectoryFilteredContacts = filterContactsByDirectory(contacts, addContactsDirectoryId);
+  const availableAddContacts = addDirectoryFilteredContacts.filter((contact) => {
+    const alreadyInCampaign = campaignDetails?.contacts?.some((campaignContact) => campaignContact.contactId === contact.id);
+    const term = addContactsSearch.toLowerCase();
+    const matchSearch =
+      contact.firstName.toLowerCase().includes(term) ||
+      contact.lastName.toLowerCase().includes(term) ||
+      contact.email.toLowerCase().includes(term);
+
+    return !alreadyInCampaign && matchSearch;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -916,7 +928,11 @@ export default function EmailCampaignsPage() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setIsAddContactsOpen(true)}
+                    onClick={() => {
+                      setAddContactsDirectoryId('all');
+                      setAddSelectedContactIds([]);
+                      setIsAddContactsOpen(true);
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white"
                   >
                     <PlusCircle className="h-3.5 w-3.5" /> Add Contacts
@@ -1787,6 +1803,7 @@ export default function EmailCampaignsPage() {
               <button
                 onClick={() => {
                   setIsAddContactsOpen(false);
+                  setAddContactsDirectoryId('all');
                   setAddSelectedContactIds([]);
                 }}
                 className="text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -1796,6 +1813,28 @@ export default function EmailCampaignsPage() {
             </div>
 
             <div className="p-6 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  <Folder className="h-3 w-3" />
+                  Contact Directory
+                </span>
+                <select
+                  value={addContactsDirectoryId}
+                  onChange={(e) => handleAddContactsDirectoryChange(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="all">All Contacts ({contacts.length})</option>
+                  <option value="uncategorized">
+                    Unassigned ({contacts.filter((contact) => !contact.directoryId).length})
+                  </option>
+                  {contactDirectories.map((directory) => (
+                    <option key={directory.id} value={directory.id}>
+                      {directory.name} ({contacts.filter((contact) => contact.directoryId === directory.id).length || directory.contactCount || 0})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <input
                 type="text"
                 placeholder="Search contacts by name or email..."
@@ -1805,17 +1844,8 @@ export default function EmailCampaignsPage() {
               />
 
               <div className="border border-zinc-850 rounded-xl bg-zinc-950/40 divide-y divide-zinc-850 max-h-[300px] overflow-y-auto">
-                {contacts
-                  // Filter out contacts already in campaign
-                  .filter((c) => {
-                    const alreadyInCampaign = campaignDetails?.contacts?.some((cc) => cc.contactId === c.id);
-                    const matchSearch =
-                      c.firstName.toLowerCase().includes(addContactsSearch.toLowerCase()) ||
-                      c.lastName.toLowerCase().includes(addContactsSearch.toLowerCase()) ||
-                      c.email.toLowerCase().includes(addContactsSearch.toLowerCase());
-                    return !alreadyInCampaign && matchSearch;
-                  })
-                  .map((c) => (
+                {availableAddContacts.length > 0 ? (
+                  availableAddContacts.map((c) => (
                     <div
                       key={c.id}
                       onClick={() => toggleAddContactSelection(c.id)}
@@ -1833,7 +1863,12 @@ export default function EmailCampaignsPage() {
                         {addSelectedContactIds.includes(c.id) && <CheckSquare className="h-3 w-3" />}
                       </div>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-zinc-500 text-xs">
+                    No available contacts found in this directory.
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800/60">
@@ -1841,6 +1876,7 @@ export default function EmailCampaignsPage() {
                   type="button"
                   onClick={() => {
                     setIsAddContactsOpen(false);
+                    setAddContactsDirectoryId('all');
                     setAddSelectedContactIds([]);
                   }}
                   className="px-4 py-2.5 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-400 hover:text-zinc-200 rounded-xl transition-all"
