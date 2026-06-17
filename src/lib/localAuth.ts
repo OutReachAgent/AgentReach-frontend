@@ -47,11 +47,11 @@ export const ACCESS_TOKEN_KEY = 'reachconvert_access_token';
 export const REFRESH_TOKEN_KEY = 'reachconvert_refresh_token';
 
 export const DEFAULT_USER: LocalUserProfile = {
-  email: 'oswinalex1@gmail.com',
-  name: 'Oswin Alex',
-  initials: 'OA',
-  title: 'Founder',
-  company: 'ReachConvert',
+  email: '',
+  name: '',
+  initials: '',
+  title: '',
+  company: '',
   phone: '',
   theme: 'dark-midnight',
   accentColor: 'indigo',
