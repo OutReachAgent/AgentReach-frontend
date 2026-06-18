@@ -357,12 +357,27 @@ export default function CallingCampaignsPage() {
 
   const launchCampaignMutation = useMutation({
     mutationFn: api.callingCampaigns.launch,
-    onSuccess: () => {
+    onSuccess: (result: LooseApiResponse) => {
       queryClient.invalidateQueries({ queryKey: ['calling-campaigns'] });
       if (selectedCampaignId) {
         queryClient.invalidateQueries({ queryKey: ['calling-campaign', selectedCampaignId] });
       }
-      showAlert('The calling campaign has started. Twilio queue status will appear in the call logs.', 'success', 'Calling started');
+      const twilio = result?.twilio;
+      if (twilio && Number(twilio.placed || 0) === 0 && Number(twilio.failed || 0) > 0) {
+        showAlert(
+          twilio.errors?.[0] || 'Twilio did not queue any calls. Check Twilio settings and PUBLIC_API_URL.',
+          'error',
+          'Calling not queued',
+        );
+        return;
+      }
+      showAlert(
+        twilio
+          ? `Twilio queued ${twilio.placed || 0} call(s). Failed: ${twilio.failed || 0}.`
+          : 'The calling campaign has started. Twilio queue status will appear in the call logs.',
+        'success',
+        'Calling started',
+      );
     },
     onError: (err: Error) => {
       showAlert(err.message || 'We could not start the calling campaign. Please add contacts first.', 'error');
