@@ -430,6 +430,24 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
+    generate: (data: { prompt: string; tone?: string }) =>
+      request(
+        "/calling-campaigns/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ),
+    startGenerate: (data: { prompt: string; tone?: string }) =>
+      request("/calling-campaigns/generate-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    generationStatus: (id: string) =>
+      request(`/calling-campaigns/generate-jobs/${id}`),
     update: (id: string, data: CampaignPayload) =>
       request(`/calling-campaigns/${id}`, {
         method: "PATCH",

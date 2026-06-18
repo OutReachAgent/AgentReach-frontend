@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { LooseApiResponse } from '@/lib/api';
 import { useOutreachStore } from '@/store/useOutreachStore';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   PhoneCall,
   Plus,
@@ -24,6 +24,8 @@ import {
   Folder,
   Languages,
   Headphones,
+  Bot,
+  Sparkles,
 } from 'lucide-react';
 
 type DirectoryFilter = 'all' | 'uncategorized' | string;
@@ -44,37 +46,79 @@ type ContactDirectory = {
   contactCount?: number;
 };
 
-const VOICE_OPTIONS = [
-  { value: 'Kore', label: 'Kore - Firm' },
-  { value: 'Puck', label: 'Puck - Upbeat' },
-  { value: 'Zephyr', label: 'Zephyr - Bright' },
-  { value: 'Charon', label: 'Charon - Informative' },
-  { value: 'Fenrir', label: 'Fenrir - Excitable' },
-  { value: 'Leda', label: 'Leda - Youthful' },
-  { value: 'Orus', label: 'Orus - Firm' },
-  { value: 'Aoede', label: 'Aoede - Breezy' },
-  { value: 'Callirrhoe', label: 'Callirrhoe - Easy-going' },
-  { value: 'Autonoe', label: 'Autonoe - Bright' },
-  { value: 'Enceladus', label: 'Enceladus - Breathy' },
-  { value: 'Iapetus', label: 'Iapetus - Clear' },
-  { value: 'Umbriel', label: 'Umbriel - Easy-going' },
-  { value: 'Algieba', label: 'Algieba - Smooth' },
-  { value: 'Despina', label: 'Despina - Smooth' },
-  { value: 'Erinome', label: 'Erinome - Clear' },
-  { value: 'Algenib', label: 'Algenib - Gravelly' },
-  { value: 'Rasalgethi', label: 'Rasalgethi - Informative' },
-  { value: 'Laomedeia', label: 'Laomedeia - Upbeat' },
-  { value: 'Achernar', label: 'Achernar - Soft' },
-  { value: 'Alnilam', label: 'Alnilam - Firm' },
-  { value: 'Schedar', label: 'Schedar - Even' },
-  { value: 'Gacrux', label: 'Gacrux - Mature' },
-  { value: 'Pulcherrima', label: 'Pulcherrima - Forward' },
-  { value: 'Achird', label: 'Achird - Friendly' },
-  { value: 'Zubenelgenubi', label: 'Zubenelgenubi - Casual' },
-  { value: 'Vindemiatrix', label: 'Vindemiatrix - Gentle' },
-  { value: 'Sadachbia', label: 'Sadachbia - Lively' },
-  { value: 'Sadaltager', label: 'Sadaltager - Knowledgeable' },
-  { value: 'Sulafat', label: 'Sulafat - Warm' },
+type GeneratedCallingCampaign = {
+  name: string;
+  objective: string;
+  prompt: string;
+  botName: string;
+  botRole: string;
+  botPersonality: string;
+  botKnowledge: string;
+  botRules: string;
+  botObjectionHandling: string;
+  botGreeting: string;
+  voice: string;
+  language: string;
+};
+
+type CallingCampaignGenerationJob = {
+  id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  result?: GeneratedCallingCampaign;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const DEFAULT_BOT_PROFILE = {
+  name: 'Alex',
+  role: 'calling specialist',
+  personality: 'Warm, concise, curious, and naturally conversational.',
+  rules: 'Ask permission before continuing. Listen first. Never overpromise.',
+  objectionHandling:
+    'If they are busy, ask for a better callback time. If they are unsure, offer to send details.',
+  greeting:
+    'Hi {{firstName}}, this is {{botName}}. I know this is a quick call, so I will be brief.',
+};
+
+type VoiceGender = 'female' | 'male';
+
+const VOICE_OPTIONS: {
+  value: string;
+  label: string;
+  language: string;
+  gender: VoiceGender;
+}[] = [
+  { value: 'Zephyr', label: 'Zephyr - Bright', language: 'en', gender: 'female' },
+  { value: 'Puck', label: 'Puck - Upbeat', language: 'en', gender: 'male' },
+  { value: 'Charon', label: 'Charon - Informative', language: 'en', gender: 'male' },
+  { value: 'Kore', label: 'Kore - Firm', language: 'en-IN', gender: 'female' },
+  { value: 'Fenrir', label: 'Fenrir - Excitable', language: 'en', gender: 'male' },
+  { value: 'Leda', label: 'Leda - Youthful', language: 'en', gender: 'female' },
+  { value: 'Orus', label: 'Orus - Firm', language: 'en-IN', gender: 'male' },
+  { value: 'Aoede', label: 'Aoede - Breezy', language: 'en', gender: 'female' },
+  { value: 'Callirrhoe', label: 'Callirrhoe - Easy-going', language: 'en', gender: 'female' },
+  { value: 'Autonoe', label: 'Autonoe - Bright', language: 'en-IN', gender: 'female' },
+  { value: 'Enceladus', label: 'Enceladus - Breathy', language: 'en', gender: 'male' },
+  { value: 'Iapetus', label: 'Iapetus - Clear', language: 'en-IN', gender: 'male' },
+  { value: 'Umbriel', label: 'Umbriel - Easy-going', language: 'en', gender: 'male' },
+  { value: 'Algieba', label: 'Algieba - Smooth', language: 'en', gender: 'male' },
+  { value: 'Despina', label: 'Despina - Smooth', language: 'en-IN', gender: 'female' },
+  { value: 'Erinome', label: 'Erinome - Clear', language: 'en', gender: 'female' },
+  { value: 'Algenib', label: 'Algenib - Gravelly', language: 'en', gender: 'male' },
+  { value: 'Rasalgethi', label: 'Rasalgethi - Informative', language: 'en-IN', gender: 'male' },
+  { value: 'Laomedeia', label: 'Laomedeia - Upbeat', language: 'en', gender: 'female' },
+  { value: 'Achernar', label: 'Achernar - Soft', language: 'en-IN', gender: 'female' },
+  { value: 'Alnilam', label: 'Alnilam - Firm', language: 'en', gender: 'male' },
+  { value: 'Schedar', label: 'Schedar - Even', language: 'en', gender: 'male' },
+  { value: 'Gacrux', label: 'Gacrux - Mature', language: 'en-IN', gender: 'female' },
+  { value: 'Pulcherrima', label: 'Pulcherrima - Forward', language: 'en', gender: 'female' },
+  { value: 'Achird', label: 'Achird - Friendly', language: 'en-IN', gender: 'male' },
+  { value: 'Zubenelgenubi', label: 'Zubenelgenubi - Casual', language: 'en', gender: 'male' },
+  { value: 'Vindemiatrix', label: 'Vindemiatrix - Gentle', language: 'en-IN', gender: 'female' },
+  { value: 'Sadachbia', label: 'Sadachbia - Lively', language: 'en', gender: 'female' },
+  { value: 'Sadaltager', label: 'Sadaltager - Knowledgeable', language: 'en', gender: 'male' },
+  { value: 'Sulafat', label: 'Sulafat - Warm', language: 'en-IN', gender: 'female' },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -131,39 +175,6 @@ const LANGUAGE_OPTIONS = [
   { value: 'af', label: 'Afrikaans' },
 ];
 
-const INDIAN_ENGLISH_VOICE_PRESETS = [
-  { label: 'Priya', tone: 'Warm', voice: 'Sulafat' },
-  { label: 'Arjun', tone: 'Clear', voice: 'Iapetus' },
-  { label: 'Ananya', tone: 'Bright', voice: 'Autonoe' },
-  { label: 'Rohan', tone: 'Firm', voice: 'Kore' },
-  { label: 'Meera', tone: 'Soft', voice: 'Achernar' },
-  { label: 'Dev', tone: 'Friendly', voice: 'Achird' },
-];
-
-const CALLING_PROMPT_TEMPLATES = [
-  {
-    id: 'job-opportunity',
-    label: 'Job Opportunity',
-    objective: 'Introduce a relevant job opportunity and confirm the candidate is open to a short screening conversation.',
-    prompt:
-      'You are a friendly recruiter from {{companyName}} calling {{firstName}} about a job opportunity that may match their background. Start by confirming this is a good time to speak. Briefly explain the role, ask whether they are currently open to new opportunities, and ask 2-3 qualifying questions about experience, notice period, expected compensation, and preferred work location. If they are interested, ask for permission to share the job description and schedule the next step. Keep the tone professional, warm, and concise. If they are busy, politely ask for a better callback time.',
-  },
-  {
-    id: 'product-pitch',
-    label: 'Product Pitch',
-    objective: 'Pitch a product or service, qualify interest, and book a demo or follow-up call.',
-    prompt:
-      'You are a helpful sales representative from {{companyName}} calling {{firstName}} to introduce {{productName}}. Begin with a polite permission-based opener. Mention one clear pain point the product solves, then ask discovery questions about their current workflow, tools, budget, and decision timeline. If there is interest, suggest a short demo or follow-up meeting. Do not sound pushy. Listen for objections, answer briefly, and end with a clear next step.',
-  },
-  {
-    id: 'enquiry',
-    label: 'Enquiry Follow-Up',
-    objective: 'Follow up on an enquiry, understand the requirement, and capture the next action.',
-    prompt:
-      'You are a support and sales assistant from {{companyName}} calling {{firstName}} about their recent enquiry. Confirm what they were looking for, ask clarifying questions about requirement, timeline, budget, location, and preferred contact method. Provide a short helpful answer based on the available context, then ask whether they would like a quote, demo, consultation, or callback from a specialist. Be patient, clear, and service-oriented. Summarize the next step before ending the call.',
-  },
-];
-
 const normalizeVoiceValue = (value?: string) =>
   VOICE_OPTIONS.some((option) => option.value === value) ? value || 'Kore' : 'Kore';
 
@@ -181,6 +192,41 @@ const getVoiceLabel = (value: string) =>
 
 const getLanguageLabel = (value: string) =>
   LANGUAGE_OPTIONS.find((option) => option.value === value)?.label || value;
+
+const getVoiceDefaultLanguage = (value: string) =>
+  VOICE_OPTIONS.find((option) => option.value === value)?.language || 'en';
+
+const getVoiceDefaultGender = (value: string): VoiceGender =>
+  VOICE_OPTIONS.find((option) => option.value === value)?.gender || 'female';
+
+const getVoicesForLanguage = (value: string) =>
+  VOICE_OPTIONS.filter((option) => option.language === value);
+
+const getVoicesForLanguageAndGender = (languageValue: string, genderValue: VoiceGender) =>
+  VOICE_OPTIONS.filter((option) => option.language === languageValue && option.gender === genderValue);
+
+const VOICE_LANGUAGE_OPTIONS = LANGUAGE_OPTIONS.filter((languageOption) =>
+  VOICE_OPTIONS.some((voiceOption) => voiceOption.language === languageOption.value),
+);
+
+const normalizeCampaignLanguage = (voiceValue?: string, languageValue?: string) => {
+  const normalizedLanguage = languageValue ? normalizeLanguageValue(languageValue) : '';
+  return getVoicesForLanguage(normalizedLanguage).length
+    ? normalizedLanguage
+    : getVoiceDefaultLanguage(normalizeVoiceValue(voiceValue));
+};
+
+const normalizeVoiceForLanguageAndGender = (
+  voiceValue: string | undefined,
+  languageValue: string,
+  genderValue: VoiceGender,
+) => {
+  const normalizedVoice = normalizeVoiceValue(voiceValue);
+  const languageVoices = getVoicesForLanguageAndGender(languageValue, genderValue);
+  return languageVoices.some((option) => option.value === normalizedVoice)
+    ? normalizedVoice
+    : languageVoices[0]?.value || normalizedVoice;
+};
 
 export default function CallingCampaignsPage() {
   const queryClient = useQueryClient();
@@ -200,14 +246,25 @@ export default function CallingCampaignsPage() {
   const [name, setName] = useState('');
   const [objective, setObjective] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [aiCampaignPrompt, setAiCampaignPrompt] = useState('');
+  const [aiCampaignTone, setAiCampaignTone] = useState('Warm, natural, concise, and helpful');
   const [voice, setVoice] = useState('Kore');
   const [language, setLanguage] = useState('en-IN');
-  const [voiceMode, setVoiceMode] = useState<'indian' | 'global'>('indian');
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
   const [voicePreviewUrl, setVoicePreviewUrl] = useState('');
   const [voicePreviewText, setVoicePreviewText] = useState('Hello, this is a quick ReachConvert voice preview.');
+  const [botName, setBotName] = useState(DEFAULT_BOT_PROFILE.name);
+  const [botRole, setBotRole] = useState(DEFAULT_BOT_PROFILE.role);
+  const [botPersonality, setBotPersonality] = useState(DEFAULT_BOT_PROFILE.personality);
+  const [botKnowledge, setBotKnowledge] = useState('');
+  const [botRules, setBotRules] = useState(DEFAULT_BOT_PROFILE.rules);
+  const [botObjectionHandling, setBotObjectionHandling] = useState(DEFAULT_BOT_PROFILE.objectionHandling);
+  const [botGreeting, setBotGreeting] = useState(DEFAULT_BOT_PROFILE.greeting);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [selectedContactDirectoryId, setSelectedContactDirectoryId] = useState<DirectoryFilter>('all');
+  const [generationJobId, setGenerationJobId] = useState<string | null>(null);
+  const handledGenerationJobIdRef = useRef<string | null>(null);
   const [isAddContactsOpen, setIsAddContactsOpen] = useState(false);
   const [addContactSearch, setAddContactSearch] = useState('');
   const [addContactsDirectoryId, setAddContactsDirectoryId] = useState<DirectoryFilter>('all');
@@ -237,6 +294,17 @@ export default function CallingCampaignsPage() {
     refetchInterval: (query) => {
       // Fast refetch when simulation is running to show real-time call updates!
       return query.state.data?.status === 'RUNNING' ? 2000 : false;
+    },
+  });
+
+  const { data: generationJob } = useQuery<CallingCampaignGenerationJob>({
+    queryKey: ['calling-campaign-generation-job', generationJobId],
+    queryFn: () =>
+      api.callingCampaigns.generationStatus(generationJobId!) as Promise<CallingCampaignGenerationJob>,
+    enabled: !!generationJobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === 'COMPLETED' || status === 'FAILED' ? false : 3000;
     },
   });
 
@@ -336,18 +404,85 @@ export default function CallingCampaignsPage() {
     },
   });
 
+  const generateCallingCampaignMutation = useMutation<CallingCampaignGenerationJob, Error>({
+    mutationFn: () =>
+      api.callingCampaigns.startGenerate({
+        prompt: aiCampaignPrompt,
+        tone: aiCampaignTone,
+      }) as Promise<CallingCampaignGenerationJob>,
+    onSuccess: (job) => {
+      setGenerationJobId(job.id);
+      handledGenerationJobIdRef.current = null;
+      showAlert('AI calling campaign generation started. Status will refresh automatically.', 'info', 'Generating campaign');
+    },
+    onError: (err: Error) => {
+      showAlert(err.message || 'We could not generate a calling campaign. Please try a more specific prompt.', 'error');
+    },
+  });
+
+  useEffect(() => {
+    if (!generationJob || !generationJobId || handledGenerationJobIdRef.current === generationJobId) return;
+
+    if (generationJob.status === 'COMPLETED' && generationJob.result) {
+      const generated = generationJob.result;
+      handledGenerationJobIdRef.current = generationJobId;
+      window.setTimeout(() => {
+        const nextLanguage = normalizeCampaignLanguage(generated.voice, generated.language);
+        setName((current) => generated.name || current);
+        setObjective(generated.objective || '');
+        setPrompt(generated.prompt || aiCampaignPrompt);
+        setBotName(generated.botName || DEFAULT_BOT_PROFILE.name);
+        setBotRole(generated.botRole || DEFAULT_BOT_PROFILE.role);
+        setBotPersonality(generated.botPersonality || DEFAULT_BOT_PROFILE.personality);
+        setBotKnowledge(generated.botKnowledge || generated.prompt || aiCampaignPrompt);
+        setBotRules(generated.botRules || DEFAULT_BOT_PROFILE.rules);
+        setBotObjectionHandling(generated.botObjectionHandling || DEFAULT_BOT_PROFILE.objectionHandling);
+        setBotGreeting(generated.botGreeting || DEFAULT_BOT_PROFILE.greeting);
+        const nextGender = getVoiceDefaultGender(normalizeVoiceValue(generated.voice));
+        setVoiceGender(nextGender);
+        setVoice(normalizeVoiceForLanguageAndGender(generated.voice, nextLanguage, nextGender));
+        setLanguage(nextLanguage);
+        setVoicePreviewUrl('');
+        setGenerationJobId(null);
+        showAlert('AI calling campaign draft generated.', 'success', 'Campaign generated');
+      }, 0);
+    }
+
+    if (generationJob.status === 'FAILED') {
+      handledGenerationJobIdRef.current = generationJobId;
+      window.setTimeout(() => {
+        setGenerationJobId(null);
+        showAlert(
+          generationJob.error || 'We could not generate a calling campaign. Please try a more specific prompt.',
+          'error',
+        );
+      }, 0);
+    }
+  }, [aiCampaignPrompt, generationJob, generationJobId, showAlert]);
+
   const resetForm = () => {
     setName('');
     setObjective('');
     setPrompt('');
+    setAiCampaignPrompt('');
+    setAiCampaignTone('Warm, natural, concise, and helpful');
     setVoice('Kore');
     setLanguage('en-IN');
-    setVoiceMode('indian');
+    setVoiceGender('female');
     setVoicePreviewUrl('');
     setVoicePreviewText('Hello, this is a quick ReachConvert voice preview.');
+    setBotName(DEFAULT_BOT_PROFILE.name);
+    setBotRole(DEFAULT_BOT_PROFILE.role);
+    setBotPersonality(DEFAULT_BOT_PROFILE.personality);
+    setBotKnowledge('');
+    setBotRules(DEFAULT_BOT_PROFILE.rules);
+    setBotObjectionHandling(DEFAULT_BOT_PROFILE.objectionHandling);
+    setBotGreeting(DEFAULT_BOT_PROFILE.greeting);
     setSelectedContactIds([]);
     setContactSearch('');
     setSelectedContactDirectoryId('all');
+    setGenerationJobId(null);
+    handledGenerationJobIdRef.current = null;
     setEditingCampaignId(null);
   };
 
@@ -408,36 +543,34 @@ export default function CallingCampaignsPage() {
     );
   };
 
-  const applyPromptTemplate = (templateId: string) => {
-    const template = CALLING_PROMPT_TEMPLATES.find((item) => item.id === templateId);
-    if (!template) return;
-    setObjective(template.objective);
-    setPrompt(template.prompt);
-  };
-
-  const applyIndianEnglishVoice = (voiceName: string) => {
+  const handleVoiceChange = (voiceName: string) => {
     setVoice(voiceName);
-    setLanguage('en-IN');
-    setVoiceMode('indian');
     setVoicePreviewUrl('');
   };
 
-  const handleVoiceModeChange = (mode: 'indian' | 'global') => {
-    setVoiceMode(mode);
+  const handleLanguageChange = (languageName: string) => {
+    const nextVoices = getVoicesForLanguageAndGender(languageName, voiceGender);
+    setLanguage(languageName);
+    if (!nextVoices.some((option) => option.value === voice)) {
+      setVoice(nextVoices[0]?.value || 'Kore');
+    }
     setVoicePreviewUrl('');
-
-    if (mode === 'indian') {
-      setLanguage('en-IN');
-      if (!INDIAN_ENGLISH_VOICE_PRESETS.some((preset) => preset.voice === voice)) {
-        setVoice('Kore');
-      }
-      return;
-    }
-
-    if (language === 'en-IN') {
-      setLanguage('en');
-    }
   };
+
+  const handleVoiceGenderChange = (gender: VoiceGender) => {
+    const nextVoices = getVoicesForLanguageAndGender(language, gender);
+    setVoiceGender(gender);
+    if (!nextVoices.some((option) => option.value === voice)) {
+      setVoice(nextVoices[0]?.value || 'Kore');
+    }
+    setVoicePreviewUrl('');
+  };
+
+  const isGeneratingCampaign =
+    generateCallingCampaignMutation.isPending ||
+    generationJob?.status === 'PENDING' ||
+    generationJob?.status === 'PROCESSING';
+  const filteredVoiceOptions = getVoicesForLanguageAndGender(language, voiceGender);
 
   const handleCreateDirectoryChange = (directoryId: DirectoryFilter) => {
     setSelectedContactDirectoryId(directoryId);
@@ -537,9 +670,19 @@ export default function CallingCampaignsPage() {
       setName(details.name || '');
       setObjective(details.objective || '');
       setPrompt(details.prompt || '');
-      setVoice(normalizeVoiceValue(details.voice));
-      setLanguage(normalizeLanguageValue(details.language));
-      setVoiceMode(normalizeLanguageValue(details.language) === 'en-IN' ? 'indian' : 'global');
+      const nextVoice = normalizeVoiceValue(details.voice);
+      const nextLanguage = normalizeCampaignLanguage(nextVoice, details.language);
+      const nextGender = getVoiceDefaultGender(nextVoice);
+      setVoiceGender(nextGender);
+      setVoice(normalizeVoiceForLanguageAndGender(nextVoice, nextLanguage, nextGender));
+      setLanguage(nextLanguage);
+      setBotName(details.botName || DEFAULT_BOT_PROFILE.name);
+      setBotRole(details.botRole || DEFAULT_BOT_PROFILE.role);
+      setBotPersonality(details.botPersonality || DEFAULT_BOT_PROFILE.personality);
+      setBotKnowledge(details.botKnowledge || '');
+      setBotRules(details.botRules || DEFAULT_BOT_PROFILE.rules);
+      setBotObjectionHandling(details.botObjectionHandling || DEFAULT_BOT_PROFILE.objectionHandling);
+      setBotGreeting(details.botGreeting || DEFAULT_BOT_PROFILE.greeting);
       setSelectedContactIds(existingContactIds);
       setContactSearch('');
       setSelectedContactDirectoryId('all');
@@ -581,6 +724,13 @@ export default function CallingCampaignsPage() {
       prompt,
       voice,
       language,
+      botName,
+      botRole,
+      botPersonality,
+      botKnowledge,
+      botRules,
+      botObjectionHandling,
+      botGreeting,
       contactIds: selectedContactIds,
     };
 
@@ -914,6 +1064,63 @@ export default function CallingCampaignsPage() {
                                   {call.errorMessage}
                                 </div>
                               )}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-3">
+                                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                                    Session
+                                  </span>
+                                  <p className="mt-1 text-xs font-semibold text-zinc-200">
+                                    {call.sessionStatus || 'pending'} · {call.callType || 'phone_call'}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-zinc-500">
+                                    {call.selectedVoice || campaignDetails.voice || 'Kore'} · {getLanguageLabel(call.selectedLanguage || campaignDetails.language || 'en-IN')}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-3">
+                                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                                    Analysis
+                                  </span>
+                                  <p className="mt-1 text-xs font-semibold text-zinc-200">
+                                    {call.analysis?.engagement_score ? `${call.analysis.engagement_score}% engagement` : 'Not scored'}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-zinc-500">
+                                    {call.analysis?.intent || call.endCallReason || 'No intent captured'}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-3">
+                                  <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                                    Timing
+                                  </span>
+                                  <p className="mt-1 text-xs font-semibold text-zinc-200">
+                                    {call.totalTime ? `${Math.round(call.totalTime / 1000)}s total` : `${call.duration || 0}s duration`}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-zinc-500">
+                                    {call.startupTime ? `${Math.round(call.startupTime / 1000)}s startup` : 'Startup not recorded'}
+                                  </p>
+                                </div>
+                              </div>
+                              {(call.summary || call.keyOutcomes) && (
+                                <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-4 space-y-2">
+                                  {call.summary && (
+                                    <p className="text-xs text-zinc-300 leading-relaxed">{call.summary}</p>
+                                  )}
+                                  {call.keyOutcomes && (
+                                    <p className="text-[11px] text-zinc-500 leading-relaxed">{call.keyOutcomes}</p>
+                                  )}
+                                </div>
+                              )}
+                              {call.topicsCovered?.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {call.topicsCovered.map((topic: string) => (
+                                    <span
+                                      key={topic}
+                                      className="rounded-full border border-indigo-500/15 bg-indigo-500/10 px-2 py-1 text-[10px] font-semibold text-indigo-200"
+                                    >
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
                                 Conversational Transcript
                               </h5>
@@ -969,27 +1176,130 @@ export default function CallingCampaignsPage() {
               />
             </div>
             <div>
-              <div className="flex flex-col gap-2 mb-2">
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Agent System Prompt</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {CALLING_PROMPT_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => applyPromptTemplate(template.id)}
-                      className="px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white hover:border-indigo-500/40 transition-colors"
-                    >
-                      {template.label}
-                    </button>
-                  ))}
+              <div className="rounded-2xl border border-indigo-500/15 bg-indigo-500/5 p-4 space-y-3 mb-4">
+                <label className="block text-xs font-semibold text-indigo-200 uppercase tracking-wider">
+                  AI Generate Campaign
+                </label>
+                <textarea
+                  placeholder="Describe the calling campaign you want. Example: Call inbound demo leads for ReachConvert, qualify their outreach needs, handle budget/timing objections, and book a 15 minute demo."
+                  value={aiCampaignPrompt}
+                  onChange={(e) => setAiCampaignPrompt(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                />
+                <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                      Tone
+                    </label>
+                    <input
+                      type="text"
+                      value={aiCampaignTone}
+                      onChange={(e) => setAiCampaignTone(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isGeneratingCampaign || !aiCampaignPrompt.trim()}
+                    onClick={() => generateCallingCampaignMutation.mutate()}
+                    className="flex h-10 items-center justify-center gap-2 px-4 bg-indigo-600 rounded-xl text-xs font-bold text-white hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    {isGeneratingCampaign ? 'Generating' : 'Generate Draft'}
+                  </button>
                 </div>
+                {generationJobId && (
+                  <p className="text-[11px] text-indigo-200">
+                    Generating campaign draft... Job {generationJobId.slice(0, 8)}
+                  </p>
+                )}
               </div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Campaign Context</label>
               <textarea
                 placeholder="e.g. You are Sarah from SalesCorp. Be friendly, ask how their automation is going, and request a 15 min follow-up call."
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  if (!botKnowledge.trim()) setBotKnowledge(e.target.value);
+                }}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 h-28 resize-none"
               />
+            </div>
+
+            <div className="rounded-2xl border border-zinc-850 bg-zinc-950/30 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-indigo-300" />
+                  Bot trainer
+                </h4>
+                <span className="text-[10px] font-semibold text-zinc-500">
+                  {botName || 'Unnamed'} · {botRole || 'Role not set'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Bot Name</label>
+                  <input
+                    type="text"
+                    value={botName}
+                    onChange={(e) => setBotName(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Bot Role</label>
+                  <input
+                    type="text"
+                    value={botRole}
+                    onChange={(e) => setBotRole(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Personality</label>
+                <textarea
+                  value={botPersonality}
+                  onChange={(e) => setBotPersonality(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-20 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Knowledge Base</label>
+                <textarea
+                  placeholder="Offer details, qualifying questions, pricing, company facts, follow-up steps..."
+                  value={botKnowledge}
+                  onChange={(e) => setBotKnowledge(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Conversation Rules</label>
+                  <textarea
+                    value={botRules}
+                    onChange={(e) => setBotRules(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Objection Handling</label>
+                  <textarea
+                    value={botObjectionHandling}
+                    onChange={(e) => setBotObjectionHandling(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Opening Line</label>
+                <input
+                  type="text"
+                  value={botGreeting}
+                  onChange={(e) => setBotGreeting(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
             </div>
 
             <div>
@@ -1086,87 +1396,62 @@ export default function CallingCampaignsPage() {
                     {getVoiceLabel(voice)} · {getLanguageLabel(language)}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleVoiceModeChange('indian')}
-                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                      voiceMode === 'indian'
-                        ? 'bg-indigo-500 text-white'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Indian English
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleVoiceModeChange('global')}
-                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
-                      voiceMode === 'global'
-                        ? 'bg-indigo-500 text-white'
-                        : 'text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    Global
-                  </button>
-                </div>
+                <Sparkles className="h-4 w-4 text-zinc-500" />
               </div>
 
-              {voiceMode === 'indian' ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {INDIAN_ENGLISH_VOICE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => applyIndianEnglishVoice(preset.voice)}
-                      className={`min-h-16 rounded-xl border px-3 py-2 text-left transition-colors ${
-                        voice === preset.voice && language === 'en-IN'
-                          ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
-                          : 'border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-indigo-500/30'
-                      }`}
-                    >
-                      <span className="block text-xs font-bold">{preset.label}</span>
-                      <span className="block text-[10px] text-zinc-500 mt-1">{preset.tone} · {preset.voice}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                      Language
-                    </label>
-                    <div className="relative">
-                      <Languages className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
-                      <select
-                        value={language}
-                        onChange={(e) => {
-                          setLanguage(e.target.value);
-                          setVoicePreviewUrl('');
-                        }}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                    Voice Type
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
+                    {(['female', 'male'] as VoiceGender[]).map((gender) => (
+                      <button
+                        key={gender}
+                        type="button"
+                        onClick={() => handleVoiceGenderChange(gender)}
+                        className={`rounded-lg px-3 py-2 text-xs font-bold capitalize transition-colors ${
+                          voiceGender === gender
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                        }`}
                       >
-                        {LANGUAGE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                        {gender}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                      Gemini Voice
-                    </label>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                    Voice Model
+                  </label>
+                  <div className="relative">
+                    <Headphones className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
                     <select
-                      value={voice}
-                      onChange={(e) => {
-                        setVoice(e.target.value);
-                        setVoicePreviewUrl('');
-                      }}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                      value={filteredVoiceOptions.some((option) => option.value === voice) ? voice : filteredVoiceOptions[0]?.value || voice}
+                      onChange={(e) => handleVoiceChange(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
                     >
-                      {VOICE_OPTIONS.map((option) => (
+                      {filteredVoiceOptions.map((option) => (
+                        <option key={`${option.value}-${option.language}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Language
+                  </label>
+                  <div className="relative">
+                    <Languages className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+                    <select
+                      value={language}
+                      onChange={(e) => handleLanguageChange(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      {VOICE_LANGUAGE_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -1174,7 +1459,7 @@ export default function CallingCampaignsPage() {
                     </select>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="rounded-xl border border-zinc-850 bg-zinc-950 p-3 space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
