@@ -25,6 +25,17 @@ type SettingsUpdate = {
   openRouterApiKey?: string;
   openRouterModel?: string;
   awsSenderEmail?: string;
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioPhoneNumber?: string;
+  geminiApiKey?: string;
+  twilioStatus?: string;
+  geminiStatus?: string;
+};
+type GeminiVoicePreviewPayload = {
+  voice: string;
+  language?: string;
+  text?: string;
 };
 type CampaignPayload = {
   [key: string]: unknown;
@@ -93,6 +104,10 @@ function toFriendlyApiError(message: unknown, status: number) {
     return "Some information looks incorrect. Please check it and try again.";
   if (lower.includes("no pending contacts"))
     return "Everyone in this campaign has already been sent. Use Launch Again to send it again.";
+  if (lower.includes("no pending calls"))
+    return "Please add contacts before launching this calling campaign.";
+  if (lower.includes("no contacts with phone numbers"))
+    return "Add at least one contact with a phone number before launching this calling campaign.";
   if (lower.includes("no contacts"))
     return "Please add recipients before launching this campaign.";
   if (lower.includes("template"))
@@ -235,6 +250,18 @@ export const api = {
     testSes: () => request("/settings/test-ses", { method: "POST" }),
     testOpenRouter: () =>
       request("/settings/test-openrouter", { method: "POST" }),
+    testTwilio: () => request("/settings/test-twilio", { method: "POST" }),
+    testGemini: () => request("/settings/test-gemini", { method: "POST" }),
+    previewGeminiVoice: (data: GeminiVoicePreviewPayload) =>
+      request(
+        "/settings/preview-gemini-voice",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ),
   },
 
   // Contacts

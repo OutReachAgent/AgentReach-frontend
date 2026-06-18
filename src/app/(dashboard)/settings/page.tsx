@@ -161,12 +161,16 @@ export default function SettingsPage() {
   const [openRouterModel, setOpenRouterModel] = useState(
     DEFAULT_OPENROUTER_MODEL,
   );
+  const [twilioAccountSid, setTwilioAccountSid] = useState("");
+  const [twilioAuthToken, setTwilioAuthToken] = useState("");
+  const [twilioPhoneNumber, setTwilioPhoneNumber] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  
   const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
 
   // Fetch all available models from OpenRouter's public API
   useEffect(() => {
-    setModelsLoading(true);
     fetch("https://openrouter.ai/api/v1/models")
       .then((res) => res.json())
       .then((data: { data: { id: string; name: string }[] }) => {
@@ -196,6 +200,10 @@ export default function SettingsPage() {
         setOpenRouterModel(
           settings.openRouterModel || DEFAULT_OPENROUTER_MODEL,
         );
+        setTwilioAccountSid(settings.twilioAccountSid || "");
+        setTwilioAuthToken(settings.twilioAuthToken || "");
+        setTwilioPhoneNumber(settings.twilioPhoneNumber || "");
+        setGeminiApiKey(settings.geminiApiKey || "");
       });
     }
   }, [settings]);
@@ -267,6 +275,50 @@ export default function SettingsPage() {
     },
   });
 
+  const testTwilioMutation = useMutation({
+    mutationFn: api.settings.testTwilio,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      if (res.success) {
+        showAlert(
+          res.message || "Your Twilio integration is working.",
+          "success",
+          "Twilio settings verified",
+        );
+      } else {
+        showAlert(
+          res.error || "We could not verify your Twilio integration. Please check details.",
+          "error",
+        );
+      }
+    },
+    onError: (err: Error) => {
+      showAlert(err.message || "We could not test your Twilio settings. Please try again.", "error");
+    },
+  });
+
+  const testGeminiMutation = useMutation({
+    mutationFn: api.settings.testGemini,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      if (res.success) {
+        showAlert(
+          res.message || "Your Gemini API key is working.",
+          "success",
+          "Gemini settings verified",
+        );
+      } else {
+        showAlert(
+          res.error || "We could not verify your Gemini API key. Please check the API key.",
+          "error",
+        );
+      }
+    },
+    onError: (err: Error) => {
+      showAlert(err.message || "We could not test your Gemini settings. Please try again.", "error");
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettingsMutation.mutate({
@@ -276,6 +328,10 @@ export default function SettingsPage() {
       awsSenderEmail: CAMPAIGN_SENDER_EMAIL,
       openRouterApiKey,
       openRouterModel,
+      twilioAccountSid,
+      twilioAuthToken,
+      twilioPhoneNumber,
+      geminiApiKey,
     });
   };
 
@@ -427,6 +483,144 @@ export default function SettingsPage() {
                 <Key className="h-3.5 w-3.5" />
               )}
               Test OpenRouter API
+            </button>
+          </div>
+        </div>
+
+        {/* Twilio Panel */}
+        <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-indigo-400" />
+              <h3 className="text-base font-bold text-white">Twilio Telephony Configuration</h3>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                settings?.twilioStatus === 'CONNECTED'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
+                  : settings?.twilioStatus === 'FAILED'
+                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
+                  : 'bg-zinc-850 text-zinc-400 border-zinc-800'
+              }`}>
+                {settings?.twilioStatus || 'DISCONNECTED'}
+              </span>
+              {settings?.twilioLastVerified && (
+                <span className="text-[10px] text-zinc-500">
+                  Verified: {new Date(settings.twilioLastVerified).toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                Twilio Account SID
+              </label>
+              <input
+                type="text"
+                value={twilioAccountSid}
+                onChange={(e) => setTwilioAccountSid(e.target.value)}
+                placeholder="AC..."
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                Twilio Auth Token
+              </label>
+              <input
+                type="password"
+                value={twilioAuthToken}
+                onChange={(e) => setTwilioAuthToken(e.target.value)}
+                placeholder="••••••••••••••••••••••••••••••••"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                Twilio Phone Number
+              </label>
+              <input
+                type="text"
+                value={twilioPhoneNumber}
+                onChange={(e) => setTwilioPhoneNumber(e.target.value)}
+                placeholder="+1234567890"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-start gap-3 pt-3">
+            <button
+              type="button"
+              disabled={testTwilioMutation.isPending}
+              onClick={() => testTwilioMutation.mutate()}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testTwilioMutation.isPending ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Server className="h-3.5 w-3.5" />
+              )}
+              Test Twilio Connection
+            </button>
+          </div>
+        </div>
+
+        {/* Gemini Panel */}
+        <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
+            <div className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-purple-400" />
+              <h3 className="text-base font-bold text-white">Google Gemini API Configuration</h3>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                settings?.geminiStatus === 'CONNECTED'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
+                  : settings?.geminiStatus === 'FAILED'
+                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
+                  : 'bg-zinc-850 text-zinc-400 border-zinc-800'
+              }`}>
+                {settings?.geminiStatus || 'DISCONNECTED'}
+              </span>
+              {settings?.geminiLastVerified && (
+                <span className="text-[10px] text-zinc-500">
+                  Verified: {new Date(settings.geminiLastVerified).toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+                Gemini API Key
+              </label>
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-start gap-3 pt-3">
+            <button
+              type="button"
+              disabled={testGeminiMutation.isPending}
+              onClick={() => testGeminiMutation.mutate()}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testGeminiMutation.isPending ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Key className="h-3.5 w-3.5" />
+              )}
+              Test Gemini Key
             </button>
           </div>
         </div>

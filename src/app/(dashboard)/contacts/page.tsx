@@ -25,6 +25,37 @@ import {
 
 type DirectoryFilter = 'all' | 'uncategorized' | string;
 
+const PHONE_COUNTRY_CODES = [
+  { value: '+91', label: 'IN +91' },
+  { value: '+1', label: 'US +1' },
+  { value: '+44', label: 'UK +44' },
+  { value: '+61', label: 'AU +61' },
+  { value: '+971', label: 'AE +971' },
+];
+
+const splitPhoneNumber = (value?: string) => {
+  const raw = value?.trim() || '';
+  const match = PHONE_COUNTRY_CODES.find((option) => raw.startsWith(option.value));
+
+  if (!raw) return { countryCode: '+91', localNumber: '' };
+  if (match) {
+    return {
+      countryCode: match.value,
+      localNumber: raw.slice(match.value.length).replace(/\D/g, ''),
+    };
+  }
+  if (raw.startsWith('+')) return { countryCode: '+91', localNumber: raw };
+
+  return { countryCode: '+91', localNumber: raw.replace(/\D/g, '') };
+};
+
+const formatPhonePayload = (countryCode: string, localNumber: string) => {
+  const raw = localNumber.trim();
+  if (!raw) return undefined;
+  if (raw.startsWith('+')) return raw;
+  return `${countryCode}${raw.replace(/\D/g, '')}`;
+};
+
 export default function ContactsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
@@ -45,6 +76,7 @@ export default function ContactsPage() {
   const [company, setCompany] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [notes, setNotes] = useState('');
   const [contactDirectoryId, setContactDirectoryId] = useState('');
@@ -199,6 +231,7 @@ export default function ContactsPage() {
     setCompany('');
     setJobTitle('');
     setLinkedinUrl('');
+    setPhoneCountryCode('+91');
     setPhoneNumber('');
     setNotes('');
     setContactDirectoryId('');
@@ -246,7 +279,9 @@ export default function ContactsPage() {
     setCompany(contact.company || '');
     setJobTitle(contact.jobTitle || '');
     setLinkedinUrl(contact.linkedinUrl || '');
-    setPhoneNumber(contact.phoneNumber || '');
+    const phone = splitPhoneNumber(contact.phoneNumber);
+    setPhoneCountryCode(phone.countryCode);
+    setPhoneNumber(phone.localNumber);
     setNotes(contact.notes || '');
     setContactDirectoryId(contact.directoryId || '');
     
@@ -278,7 +313,7 @@ export default function ContactsPage() {
       company: company || undefined,
       jobTitle: jobTitle || undefined,
       linkedinUrl: linkedinUrl || undefined,
-      phoneNumber: phoneNumber || undefined,
+      phoneNumber: formatPhonePayload(phoneCountryCode, phoneNumber),
       notes: notes || undefined,
       directoryId: contactDirectoryId || null,
       customFields: Object.keys(formattedCustomFields).length > 0 ? formattedCustomFields : undefined,
@@ -741,12 +776,26 @@ export default function ContactsPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-zinc-400 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={phoneCountryCode}
+                      onChange={(e) => setPhoneCountryCode(e.target.value)}
+                      className="w-28 bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-2 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      {PHONE_COUNTRY_CODES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="9876543210"
+                      className="min-w-0 flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
                 </div>
               </div>
 
