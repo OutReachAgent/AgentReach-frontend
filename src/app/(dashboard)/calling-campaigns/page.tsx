@@ -1566,7 +1566,7 @@ export default function CallingCampaignsPage() {
       {activeTab === "create" && (
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 max-w-3xl bg-zinc-900/30 border border-zinc-850 p-6 rounded-2xl shadow-xl"
+          className="space-y-6 w-full bg-zinc-900/30 border border-zinc-850 p-6 rounded-2xl shadow-xl"
         >
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -1580,8 +1580,7 @@ export default function CallingCampaignsPage() {
               options.
             </p>
           </div>
-
-          <div className="space-y-6">
+          <div className="space-y-6 ">
             {/* SECTION 1: Campaign Basics */}
             <div className="bg-zinc-950/40 border border-zinc-850 rounded-2xl p-5 space-y-4">
               <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
@@ -2007,7 +2006,6 @@ export default function CallingCampaignsPage() {
               </div>
             </div>
           </div>
-
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-850 mt-6">
             <button
               type="button"
