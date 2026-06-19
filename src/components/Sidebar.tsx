@@ -1,13 +1,14 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
   Mail,
   PhoneCall,
+  Bot,
   History,
   Settings,
   Zap,
@@ -15,9 +16,16 @@ import {
   LogOut,
   Moon,
   Sun,
-} from 'lucide-react';
-import { applyTheme, getStoredUser, getThemeFamily, LocalUserProfile, saveStoredUser, signOut } from '@/lib/localAuth';
-import { api } from '@/lib/api';
+} from "lucide-react";
+import {
+  applyTheme,
+  getStoredUser,
+  getThemeFamily,
+  LocalUserProfile,
+  saveStoredUser,
+  signOut,
+} from "@/lib/localAuth";
+import { api } from "@/lib/api";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -27,26 +35,28 @@ export default function Sidebar() {
   useEffect(() => {
     const refreshUser = () => setUser(getStoredUser());
     refreshUser();
-    window.addEventListener('reachconvert:user-updated', refreshUser);
-    return () => window.removeEventListener('reachconvert:user-updated', refreshUser);
+    window.addEventListener("reachconvert:user-updated", refreshUser);
+    return () =>
+      window.removeEventListener("reachconvert:user-updated", refreshUser);
   }, []);
 
   const menuItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Contacts', href: '/contacts', icon: Users },
-    { name: 'Email Campaigns', href: '/email-campaigns', icon: Mail },
-    { name: 'AI Calling', href: '/calling-campaigns', icon: PhoneCall },
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Profile', href: '/profile', icon: UserRound },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Contacts", href: "/contacts", icon: Users },
+    { name: "Email Campaigns", href: "/email-campaigns", icon: Mail },
+    { name: "AI Calling", href: "/calling-campaigns", icon: PhoneCall },
+    { name: "AI Bots", href: "/ai-calling-bots", icon: Bot },
+    { name: "History", href: "/history", icon: History },
+    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Profile", href: "/profile", icon: UserRound },
   ];
 
   const toggleTheme = () => {
     const currentUser = getStoredUser();
-    const isLight = getThemeFamily(currentUser.theme) === 'light';
+    const isLight = getThemeFamily(currentUser.theme) === "light";
     const nextUser: LocalUserProfile = {
       ...currentUser,
-      theme: isLight ? 'dark-midnight' : 'light-cloud',
+      theme: isLight ? "dark-midnight" : "light-cloud",
     };
 
     saveStoredUser(nextUser);
@@ -60,7 +70,7 @@ export default function Sidebar() {
   const handleLogout = () => {
     api.auth.logout().finally(() => {
       signOut();
-      router.replace('/login');
+      router.replace("/login");
     });
   };
 
@@ -85,7 +95,8 @@ export default function Sidebar() {
         {/* Navigation links */}
         <nav className="flex-1 px-4 space-y-1.5 mt-8">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
 
             return (
@@ -94,8 +105,8 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
                   isActive
-                    ? 'bg-zinc-900 text-white shadow-inner border border-zinc-800'
-                    : 'text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-200'
+                    ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
+                    : "text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-200"
                 }`}
               >
                 {isActive && (
@@ -103,7 +114,9 @@ export default function Sidebar() {
                 )}
                 <Icon
                   className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
-                    isActive ? 'text-indigo-400' : 'text-zinc-500 group-hover:text-zinc-400'
+                    isActive
+                      ? "text-indigo-400"
+                      : "text-zinc-500 group-hover:text-zinc-400"
                   }`}
                 />
                 <span>{item.name}</span>
@@ -118,11 +131,15 @@ export default function Sidebar() {
         <div className="rounded-xl bg-zinc-900/60 border border-zinc-850/60 p-3">
           <Link href="/profile" className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-300">
-              {user?.initials || 'OA'}
+              {user?.initials || "OA"}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-zinc-200">{user?.name || 'Oswin Alex'}</p>
-              <p className="truncate text-[10px] text-zinc-500">{user?.email || 'oswinalex1@gmail.com'}</p>
+              <p className="truncate text-xs font-semibold text-zinc-200">
+                {user?.name || "Oswin Alex"}
+              </p>
+              <p className="truncate text-[10px] text-zinc-500">
+                {user?.email || "oswinalex1@gmail.com"}
+              </p>
             </div>
           </Link>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -131,8 +148,14 @@ export default function Sidebar() {
               onClick={toggleTheme}
               className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-zinc-200"
             >
-              {user && getThemeFamily(user.theme) === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-              {user && getThemeFamily(user.theme) === 'light' ? 'Dark' : 'Light'}
+              {user && getThemeFamily(user.theme) === "light" ? (
+                <Moon className="h-3.5 w-3.5" />
+              ) : (
+                <Sun className="h-3.5 w-3.5" />
+              )}
+              {user && getThemeFamily(user.theme) === "light"
+                ? "Dark"
+                : "Light"}
             </button>
             <button
               type="button"

@@ -72,6 +72,36 @@ type TemplatePayload = {
   bodyText?: string;
 };
 
+type AiCallingBotPayload = {
+  name?: string;
+  description?: string;
+  language?: string;
+  voice?: string;
+  role?: string;
+  personality?: string;
+  knowledge?: string;
+  rules?: string;
+  objectionHandling?: string;
+  greeting?: string;
+  ragEnabled?: boolean;
+  metadata?: Record<string, unknown>;
+};
+type AiCallingBotTrainPayload = {
+  content: string;
+  sourceName?: string;
+  replace?: boolean;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  metadata?: Record<string, unknown>;
+};
+type AiCallingBotPdfTrainPayload = {
+  file: File;
+  sourceName?: string;
+  replace?: boolean;
+  chunkSize?: number;
+  chunkOverlap?: number;
+};
+
 type HistoryParams = Record<string, string | undefined>;
 
 async function handleResponse<T = LooseApiResponse>(res: Response): Promise<T> {
@@ -417,6 +447,65 @@ export const api = {
       }),
     launch: (id: string) =>
       request(`/email-campaigns/${id}/launch`, { method: "POST" }),
+  },
+
+  // AI Calling Bots
+  aiCallingBots: {
+    list: () => request("/ai-calling-bots"),
+    voices: () => request("/ai-calling-bots/voices/google"),
+    get: (id: string) => request(`/ai-calling-bots/${id}`),
+    create: (data: AiCallingBotPayload) =>
+      request("/ai-calling-bots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: AiCallingBotPayload) =>
+      request(`/ai-calling-bots/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      request(`/ai-calling-bots/${id}`, { method: "DELETE" }),
+    train: (id: string, data: AiCallingBotTrainPayload) =>
+      request(
+        `/ai-calling-bots/${id}/train`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ),
+    trainPdf: (id: string, data: AiCallingBotPdfTrainPayload) => {
+      const formData = new FormData();
+      formData.append("file", data.file);
+      if (data.sourceName) formData.append("sourceName", data.sourceName);
+      if (typeof data.replace === "boolean") {
+        formData.append("replace", String(data.replace));
+      }
+      if (typeof data.chunkSize === "number") {
+        formData.append("chunkSize", String(data.chunkSize));
+      }
+      if (typeof data.chunkOverlap === "number") {
+        formData.append("chunkOverlap", String(data.chunkOverlap));
+      }
+      return request(
+        `/ai-calling-bots/${id}/train-pdf`,
+        {
+          method: "POST",
+          body: formData,
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      );
+    },
+    search: (id: string, data: { query: string; topK?: number }) =>
+      request(`/ai-calling-bots/${id}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
   },
 
   // Calling Campaigns
