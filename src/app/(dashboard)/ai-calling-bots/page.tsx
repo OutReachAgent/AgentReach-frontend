@@ -38,16 +38,6 @@ type AiCallingBot = LooseApiResponse & {
   createdAt?: string;
 };
 
-type GoogleVoiceProfile = {
-  id: string;
-  label: string;
-  language: string;
-  voice: string;
-  twilioFallbackVoice: string;
-  accent: string;
-  gender: "male" | "female";
-};
-
 type SearchResult = {
   id: string;
   content: string;
@@ -122,11 +112,6 @@ export default function AiCallingBotsPage() {
   >({
     queryKey: ["ai-calling-bots"],
     queryFn: () => api.aiCallingBots.list() as Promise<AiCallingBot[]>,
-  });
-
-  const { data: voices = [] } = useQuery<GoogleVoiceProfile[]>({
-    queryKey: ["ai-calling-bot-voices"],
-    queryFn: () => api.aiCallingBots.voices() as Promise<GoogleVoiceProfile[]>,
   });
 
   const selectedBot = useMemo(
@@ -458,36 +443,6 @@ export default function AiCallingBotsPage() {
                       onChange={(e) => updateForm("role", e.target.value)}
                     />
                   </Field>
-                  <Field label="Language">
-                    <select
-                      className={inputClass}
-                      value={form.language}
-                      onChange={(e) => updateForm("language", e.target.value)}
-                    >
-                      {(voices.length ? voices : FALLBACK_VOICES).map(
-                        (voice) => (
-                          <option key={voice.id} value={voice.language}>
-                            {voice.label}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </Field>
-                  <Field label="Google Voice">
-                    <select
-                      className={inputClass}
-                      value={form.voice}
-                      onChange={(e) => updateForm("voice", e.target.value)}
-                    >
-                      {(voices.length ? voices : FALLBACK_VOICES).map(
-                        (voice) => (
-                          <option key={voice.voice} value={voice.voice}>
-                            {voice.label} · {voice.voice.replace("google:", "")}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </Field>
                 </div>
 
                 <Field label="Description">
@@ -743,35 +698,7 @@ export default function AiCallingBotsPage() {
   );
 }
 
-const FALLBACK_VOICES: GoogleVoiceProfile[] = [
-  {
-    id: "indian_english",
-    label: "Indian English",
-    language: "en-IN",
-    voice: "google:en-IN-Chirp3-HD-Puck",
-    twilioFallbackVoice: "Google.en-IN-Wavenet-D",
-    accent: "Indian Accent",
-    gender: "male",
-  },
-  {
-    id: "hindi",
-    label: "Hindi",
-    language: "hi-IN",
-    voice: "google:hi-IN-Chirp3-HD-Puck",
-    twilioFallbackVoice: "Google.hi-IN-Neural2-C",
-    accent: "Indian Accent",
-    gender: "male",
-  },
-  {
-    id: "english",
-    label: "English",
-    language: "en-US",
-    voice: "google:en-US-Chirp3-HD-Puck",
-    twilioFallbackVoice: "Google.en-US-Neural2-D",
-    accent: "American Accent",
-    gender: "male",
-  },
-];
+
 
 function Field({
   label,

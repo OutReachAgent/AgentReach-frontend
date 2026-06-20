@@ -3,8 +3,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { LooseApiResponse } from "@/lib/api";
+import { vertexAIVoiceLabels, vertexLanguageLabels } from "@/lib/utils";
 import { useOutreachStore } from "@/store/useOutreachStore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   PhoneCall,
   Plus,
@@ -46,17 +47,21 @@ type ContactDirectory = {
   contactCount?: number;
 };
 
+type AiCallingBot = {
+  id: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  personality?: string;
+  ragEnabled?: boolean;
+  trainingChunkCount?: number;
+  lastTrainedAt?: string;
+};
+
 type GeneratedCallingCampaign = {
   name: string;
   objective: string;
   prompt: string;
-  botName: string;
-  botRole: string;
-  botPersonality: string;
-  botKnowledge: string;
-  botRules: string;
-  botObjectionHandling: string;
-  botGreeting: string;
   voice: string;
   language: string;
 };
@@ -68,17 +73,6 @@ type CallingCampaignGenerationJob = {
   error?: string;
   createdAt: string;
   updatedAt: string;
-};
-
-const DEFAULT_BOT_PROFILE = {
-  name: "Alex",
-  role: "calling specialist",
-  personality: "Warm, concise, curious, and naturally conversational.",
-  rules: "Ask permission before continuing. Listen first. Never overpromise.",
-  objectionHandling:
-    "If they are busy, ask for a better callback time. If they are unsure, offer to send details.",
-  greeting:
-    "Hi {{firstName}}, this is {{botName}}. I know this is a quick call, so I will be brief.",
 };
 
 type VoiceGender = "female" | "male";
@@ -381,6 +375,130 @@ const normalizeVoiceForLanguageAndGender = (
     : languageVoices[0]?.value || normalizedVoice;
 };
 
+const antigravityLanguages = vertexLanguageLabels.filter(
+  (group) =>
+    group.label === "Indian Languages" || group.label === "European Languages",
+);
+
+function HDVoiceSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const togglePlay = (e: React.MouseEvent, val: string) => {
+    e.stopPropagation();
+    const url = `https://cloud.google.com/static/text-to-speech/docs/audio/chirp3-hd-${val.toLowerCase()}.wav`;
+    if (playingUrl === url) {
+      audioRef.current?.pause();
+      setPlayingUrl(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setPlayingUrl(null);
+      audio.play().catch(() => setPlayingUrl(null));
+      setPlayingUrl(url);
+    }
+  };
+
+  const selectedLabel = useMemo(() => {
+    for (const group of vertexAIVoiceLabels) {
+      for (const opt of group.options) {
+        if (opt.value === value) return opt.label;
+      }
+    }
+    return "Select HD Voice";
+  }, [value]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-left text-xs text-zinc-200 transition-colors hover:border-zinc-700 focus:border-indigo-500/50 focus:outline-none"
+      >
+        <span>{selectedLabel}</span>
+        <ChevronDown
+          className={`h-4 w-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 max-h-60 overflow-y-auto scrollbar-thin scrollbar-track-zinc-950 scrollbar-thumb-zinc-800">
+          {vertexAIVoiceLabels.map((group) => (
+            <div key={group.label}>
+              <div className="bg-zinc-900/50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                {group.label}
+              </div>
+              <ul>
+                {group.options.map((opt) => (
+                  <li key={opt.value}>
+                    <div
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors hover:bg-zinc-900 ${opt.value === value ? "bg-indigo-500/10 text-indigo-400" : "text-zinc-300"}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChange(opt.value);
+                          setOpen(false);
+                          if (audioRef.current) audioRef.current.pause();
+                          setPlayingUrl(null);
+                        }}
+                        className="flex-1 text-left flex items-center gap-2"
+                      >
+                        {opt.value === value && (
+                          <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                        )}
+                        <span className={opt.value === value ? "" : "pl-5.5"}>
+                          {opt.label}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => togglePlay(e, opt.value)}
+                        className="ml-2 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                      >
+                        {playingUrl ===
+                        `https://cloud.google.com/static/text-to-speech/docs/audio/chirp3-hd-${opt.value.toLowerCase()}.wav` ? (
+                          <Pause className="h-3.5 w-3.5" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CallingCampaignsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
@@ -409,6 +527,7 @@ export default function CallingCampaignsPage() {
   const [aiCampaignTone, setAiCampaignTone] = useState(
     "Warm, natural, concise, and helpful",
   );
+  const [voiceQuality, setVoiceQuality] = useState<"generic" | "hd">("generic");
   const [voice, setVoice] = useState("Kore");
   const [language, setLanguage] = useState("en-IN");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
@@ -416,17 +535,7 @@ export default function CallingCampaignsPage() {
   const [voicePreviewText, setVoicePreviewText] = useState(
     "Hello, this is a quick ReachConvert voice preview.",
   );
-  const [botName, setBotName] = useState(DEFAULT_BOT_PROFILE.name);
-  const [botRole, setBotRole] = useState(DEFAULT_BOT_PROFILE.role);
-  const [botPersonality, setBotPersonality] = useState(
-    DEFAULT_BOT_PROFILE.personality,
-  );
-  const [botKnowledge, setBotKnowledge] = useState("");
-  const [botRules, setBotRules] = useState(DEFAULT_BOT_PROFILE.rules);
-  const [botObjectionHandling, setBotObjectionHandling] = useState(
-    DEFAULT_BOT_PROFILE.objectionHandling,
-  );
-  const [botGreeting, setBotGreeting] = useState(DEFAULT_BOT_PROFILE.greeting);
+  const [aiCallingBotId, setAiCallingBotId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [contactSearch, setContactSearch] = useState("");
   const [selectedContactDirectoryId, setSelectedContactDirectoryId] =
@@ -445,6 +554,12 @@ export default function CallingCampaignsPage() {
   const { data: campaigns = [], isLoading: isListLoading } = useQuery({
     queryKey: ["calling-campaigns"],
     queryFn: api.callingCampaigns.list,
+  });
+
+  // Fetch AI calling bots for bot picker
+  const { data: aiBots = [] } = useQuery<AiCallingBot[]>({
+    queryKey: ["ai-calling-bots"],
+    queryFn: () => api.aiCallingBots.list() as Promise<AiCallingBot[]>,
   });
 
   const { data: contacts = [] } = useQuery<Contact[]>({
@@ -690,20 +805,6 @@ export default function CallingCampaignsPage() {
         setName((current) => generated.name || current);
         setObjective(generated.objective || "");
         setPrompt(generated.prompt || aiCampaignPrompt);
-        setBotName(generated.botName || DEFAULT_BOT_PROFILE.name);
-        setBotRole(generated.botRole || DEFAULT_BOT_PROFILE.role);
-        setBotPersonality(
-          generated.botPersonality || DEFAULT_BOT_PROFILE.personality,
-        );
-        setBotKnowledge(
-          generated.botKnowledge || generated.prompt || aiCampaignPrompt,
-        );
-        setBotRules(generated.botRules || DEFAULT_BOT_PROFILE.rules);
-        setBotObjectionHandling(
-          generated.botObjectionHandling ||
-            DEFAULT_BOT_PROFILE.objectionHandling,
-        );
-        setBotGreeting(generated.botGreeting || DEFAULT_BOT_PROFILE.greeting);
         const nextGender = getVoiceDefaultGender(
           normalizeVoiceValue(generated.voice),
         );
@@ -745,18 +846,13 @@ export default function CallingCampaignsPage() {
     setPrompt("");
     setAiCampaignPrompt("");
     setAiCampaignTone("Warm, natural, concise, and helpful");
+    setVoiceQuality("generic");
     setVoice("Kore");
     setLanguage("en-IN");
     setVoiceGender("female");
     setVoicePreviewUrl("");
     setVoicePreviewText("Hello, this is a quick ReachConvert voice preview.");
-    setBotName(DEFAULT_BOT_PROFILE.name);
-    setBotRole(DEFAULT_BOT_PROFILE.role);
-    setBotPersonality(DEFAULT_BOT_PROFILE.personality);
-    setBotKnowledge("");
-    setBotRules(DEFAULT_BOT_PROFILE.rules);
-    setBotObjectionHandling(DEFAULT_BOT_PROFILE.objectionHandling);
-    setBotGreeting(DEFAULT_BOT_PROFILE.greeting);
+    setAiCallingBotId(null);
     setSelectedContactIds([]);
     setContactSearch("");
     setSelectedContactDirectoryId("all");
@@ -842,11 +938,24 @@ export default function CallingCampaignsPage() {
   };
 
   const handleLanguageChange = (languageName: string) => {
+    if (voiceQuality === "hd") {
+      setLanguage(languageName);
+      setVoicePreviewUrl("");
+      setVoice("");
+      return;
+    }
     const nextVoices = getVoicesForLanguageAndGender(languageName, voiceGender);
     setLanguage(languageName);
     if (!nextVoices.some((option) => option.value === voice)) {
       setVoice(nextVoices[0]?.value || "Kore");
     }
+    setVoicePreviewUrl("");
+  };
+
+  const handleQualityChange = (mode: "generic" | "hd") => {
+    setVoiceQuality(mode);
+    setVoice("");
+    setLanguage("");
     setVoicePreviewUrl("");
   };
 
@@ -976,6 +1085,7 @@ export default function CallingCampaignsPage() {
       setName(details.name || "");
       setObjective(details.objective || "");
       setPrompt(details.prompt || "");
+      setVoiceQuality(details.voiceQuality || "generic");
       const nextVoice = normalizeVoiceValue(details.voice);
       const nextLanguage = normalizeCampaignLanguage(
         nextVoice,
@@ -984,20 +1094,18 @@ export default function CallingCampaignsPage() {
       const nextGender = getVoiceDefaultGender(nextVoice);
       setVoiceGender(nextGender);
       setVoice(
-        normalizeVoiceForLanguageAndGender(nextVoice, nextLanguage, nextGender),
+        details.voiceQuality === "hd"
+          ? details.voice
+          : normalizeVoiceForLanguageAndGender(
+              nextVoice,
+              nextLanguage,
+              nextGender,
+            ),
       );
-      setLanguage(nextLanguage);
-      setBotName(details.botName || DEFAULT_BOT_PROFILE.name);
-      setBotRole(details.botRole || DEFAULT_BOT_PROFILE.role);
-      setBotPersonality(
-        details.botPersonality || DEFAULT_BOT_PROFILE.personality,
+      setLanguage(
+        details.voiceQuality === "hd" ? details.language : nextLanguage,
       );
-      setBotKnowledge(details.botKnowledge || "");
-      setBotRules(details.botRules || DEFAULT_BOT_PROFILE.rules);
-      setBotObjectionHandling(
-        details.botObjectionHandling || DEFAULT_BOT_PROFILE.objectionHandling,
-      );
-      setBotGreeting(details.botGreeting || DEFAULT_BOT_PROFILE.greeting);
+      setAiCallingBotId(details.aiCallingBotId || null);
       setSelectedContactIds(existingContactIds);
       setContactSearch("");
       setSelectedContactDirectoryId("all");
@@ -1048,15 +1156,10 @@ export default function CallingCampaignsPage() {
       name,
       objective,
       prompt,
+      voiceQuality,
       voice,
       language,
-      botName,
-      botRole,
-      botPersonality,
-      botKnowledge,
-      botRules,
-      botObjectionHandling,
-      botGreeting,
+      aiCallingBotId: aiCallingBotId || undefined,
       contactIds: selectedContactIds,
     };
 
@@ -1621,10 +1724,7 @@ export default function CallingCampaignsPage() {
                 <textarea
                   placeholder="e.g. You are Sarah from SalesCorp. Be friendly, ask how their automation is going, and request a 15 min follow-up call."
                   value={prompt}
-                  onChange={(e) => {
-                    setPrompt(e.target.value);
-                    if (!botKnowledge.trim()) setBotKnowledge(e.target.value);
-                  }}
+                  onChange={(e) => setPrompt(e.target.value)}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none transition-colors"
                 />
               </div>
@@ -1684,105 +1784,108 @@ export default function CallingCampaignsPage() {
               )}
             </div>
 
-            {/* SECTION 3: Bot Trainer */}
+            {/* SECTION 2: Bot Picker */}
             <div className="bg-zinc-950/40 border border-zinc-850 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
                 <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                  2. Calling Agent Identity & Rules
+                  2. Select AI Bot
                 </h4>
-                {botName && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 border border-zinc-800">
-                    {botName} · {botRole || "Agent"}
-                  </span>
+                {aiCallingBotId && (
+                  <button
+                    type="button"
+                    onClick={() => setAiCallingBotId(null)}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-red-500 hover:text-red-400 transition-colors"
+                  >
+                    Clear
+                  </button>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Agent Name
-                  </label>
-                  <input
-                    type="text"
-                    value={botName}
-                    onChange={(e) => setBotName(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+              {aiBots.length === 0 ? (
+                <p className="text-xs text-zinc-500 italic py-2">
+                  No AI bots found. Create a bot in the{" "}
+                  <a href="/ai-calling-bots" className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300">
+                    AI Calling Bots
+                  </a>{" "}
+                  section first.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {aiBots.map((bot) => {
+                    const isSelected = aiCallingBotId === bot.id;
+                    return (
+                      <button
+                        key={bot.id}
+                        type="button"
+                        onClick={() => setAiCallingBotId(isSelected ? null : bot.id)}
+                        className={`relative text-left rounded-xl border p-3.5 transition-all ${
+                          isSelected
+                            ? "border-indigo-500 bg-indigo-950/40 shadow-sm shadow-indigo-500/20"
+                            : "border-zinc-800 bg-zinc-950 hover:border-zinc-700 hover:bg-zinc-900/60"
+                        }`}
+                      >
+                        {isSelected && (
+                          <span className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                            <CheckSquare className="h-2.5 w-2.5 text-white" />
+                          </span>
+                        )}
+                        <p className={`text-xs font-bold truncate pr-5 ${ isSelected ? "text-indigo-300" : "text-zinc-200"}` }>
+                          {bot.name || "Unnamed Bot"}
+                        </p>
+                        {bot.role && (
+                          <p className="text-[10px] text-zinc-500 truncate mt-0.5">{bot.role}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {bot.ragEnabled && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+                              RAG
+                            </span>
+                          )}
+                          {(bot.trainingChunkCount ?? 0) > 0 && (
+                            <span className="text-[9px] text-zinc-500">
+                              {bot.trainingChunkCount} chunks
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Agent Role
-                  </label>
-                  <input
-                    type="text"
-                    value={botRole}
-                    onChange={(e) => setBotRole(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                  Agent Personality
-                </label>
-                <textarea
-                  value={botPersonality}
-                  onChange={(e) => setBotPersonality(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-20 resize-none transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                  Knowledge Base & Guidelines
-                </label>
-                <textarea
-                  placeholder="Offer details, qualifying questions, pricing, company facts, follow-up steps..."
-                  value={botKnowledge}
-                  onChange={(e) => setBotKnowledge(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none transition-colors"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Conversation Rules
-                  </label>
-                  <textarea
-                    value={botRules}
-                    onChange={(e) => setBotRules(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Objection Handling
-                  </label>
-                  <textarea
-                    value={botObjectionHandling}
-                    onChange={(e) => setBotObjectionHandling(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 h-24 resize-none transition-colors"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                  Opening Greeting Line
-                </label>
-                <input
-                  type="text"
-                  value={botGreeting}
-                  onChange={(e) => setBotGreeting(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
+              )}
             </div>
 
-            {/* SECTION 4: Voice Setup */}
+            {/* SECTION 3: Voice Setup */}
             <div className="bg-zinc-950/40 border border-zinc-850 rounded-2xl p-5 space-y-4">
               <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                 3. Voice & Language Configuration
               </h4>
+
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 w-full max-w-[240px]">
+                <button
+                  type="button"
+                  onClick={() => handleQualityChange("generic")}
+                  className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                    voiceQuality === "generic"
+                      ? "bg-indigo-600 text-white"
+                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                  }`}
+                >
+                  Generic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQualityChange("hd")}
+                  className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${
+                    voiceQuality === "hd"
+                      ? "bg-indigo-600 text-white"
+                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                  }`}
+                >
+                  HD Voices
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-400 mb-2">
@@ -1795,109 +1898,139 @@ export default function CallingCampaignsPage() {
                       onChange={(e) => handleLanguageChange(e.target.value)}
                       className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                     >
-                      {VOICE_LANGUAGE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                      <option value="" disabled>
+                        Select Language
+                      </option>
+                      {voiceQuality === "generic"
+                        ? VOICE_LANGUAGE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))
+                        : antigravityLanguages.map((group) => (
+                            <optgroup key={group.label} label={group.label}>
+                              {group.options.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
                     </select>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Voice Gender
-                  </label>
-                  <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
-                    {(["female", "male"] as VoiceGender[]).map((gender) => (
-                      <button
-                        key={gender}
-                        type="button"
-                        onClick={() => handleVoiceGenderChange(gender)}
-                        className={`rounded-lg py-1.5 text-xs font-semibold capitalize transition-colors ${
-                          voiceGender === gender
-                            ? "bg-indigo-600 text-white"
-                            : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-                        }`}
-                      >
-                        {gender}
-                      </button>
-                    ))}
+                {voiceQuality === "generic" && (
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                      Voice Gender
+                    </label>
+                    <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
+                      {(["female", "male"] as VoiceGender[]).map((gender) => (
+                        <button
+                          key={gender}
+                          type="button"
+                          onClick={() => handleVoiceGenderChange(gender)}
+                          className={`rounded-lg py-1.5 text-xs font-semibold capitalize transition-colors ${
+                            voiceGender === gender
+                              ? "bg-indigo-600 text-white"
+                              : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                          }`}
+                        >
+                          {gender}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-400 mb-2">
                     Voice Model
                   </label>
                   <div className="relative">
-                    <Headphones className="absolute left-3 top-3 h-3.5 w-3.5 text-zinc-500" />
-                    <select
-                      value={
-                        filteredVoiceOptions.some(
-                          (option) => option.value === voice,
-                        )
-                          ? voice
-                          : filteredVoiceOptions[0]?.value || voice
-                      }
-                      onChange={(e) => handleVoiceChange(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                    >
-                      {filteredVoiceOptions.map((option) => (
-                        <option
-                          key={`${option.value}-${option.language}`}
-                          value={option.value}
+                    {voiceQuality === "generic" ? (
+                      <>
+                        <Headphones className="absolute left-3 top-3 h-3.5 w-3.5 text-zinc-500" />
+                        <select
+                          value={
+                            filteredVoiceOptions.some(
+                              (option) => option.value === voice,
+                            )
+                              ? voice
+                              : filteredVoiceOptions[0]?.value || voice
+                          }
+                          onChange={(e) => handleVoiceChange(e.target.value)}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                         >
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                          <option value="" disabled>
+                            Select Voice
+                          </option>
+                          {filteredVoiceOptions.map((option) => (
+                            <option
+                              key={`${option.value}-${option.language}`}
+                              value={option.value}
+                            >
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <HDVoiceSelector
+                        value={voice}
+                        onChange={handleVoiceChange}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Voice Preview Subcard */}
-              <div className="rounded-xl border border-zinc-850 bg-zinc-950/80 p-3 space-y-3">
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                  TTS Script Preview
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
-                  <input
-                    type="text"
-                    value={voicePreviewText}
-                    onChange={(e) => {
-                      setVoicePreviewText(e.target.value);
-                      setVoicePreviewUrl("");
-                    }}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    disabled={
-                      previewVoiceMutation.isPending || !voicePreviewText.trim()
-                    }
-                    onClick={() => previewVoiceMutation.mutate()}
-                    className="flex h-9 items-center justify-center gap-2 px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold text-zinc-100 disabled:opacity-50 transition-colors"
-                  >
-                    <Volume2 className="h-3.5 w-3.5 text-zinc-400" />
-                    {previewVoiceMutation.isPending
-                      ? "Generating..."
-                      : "Preview Voice"}
-                  </button>
-                </div>
-                {voicePreviewUrl && (
-                  <div className="pt-2 border-t border-zinc-850/50">
-                    <audio
-                      controls
-                      src={voicePreviewUrl}
-                      className="h-8 w-full"
+              {voiceQuality === "generic" && (
+                <div className="rounded-xl border border-zinc-850 bg-zinc-950/80 p-3 space-y-3">
+                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                    TTS Script Preview
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+                    <input
+                      type="text"
+                      value={voicePreviewText}
+                      onChange={(e) => {
+                        setVoicePreviewText(e.target.value);
+                        setVoicePreviewUrl("");
+                      }}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
                     />
+                    <button
+                      type="button"
+                      disabled={
+                        previewVoiceMutation.isPending ||
+                        !voicePreviewText.trim()
+                      }
+                      onClick={() => previewVoiceMutation.mutate()}
+                      className="flex h-9 items-center justify-center gap-2 px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold text-zinc-100 disabled:opacity-50 transition-colors"
+                    >
+                      <Volume2 className="h-3.5 w-3.5 text-zinc-400" />
+                      {previewVoiceMutation.isPending
+                        ? "Generating..."
+                        : "Preview Voice"}
+                    </button>
                   </div>
-                )}
-              </div>
+                  {voicePreviewUrl && (
+                    <div className="pt-2 border-t border-zinc-850/50">
+                      <audio
+                        controls
+                        src={voicePreviewUrl}
+                        className="h-8 w-full"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* SECTION 5: Target Audience */}
+            {/* SECTION 4: Target Audience */}
             <div className="bg-zinc-950/40 border border-zinc-850 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-zinc-850 pb-2 mb-2">
                 <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
