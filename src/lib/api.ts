@@ -32,6 +32,10 @@ type SettingsUpdate = {
   twilioStatus?: string;
   geminiStatus?: string;
 };
+type GoogleCredentialsTestPayload = {
+  googleServiceAccountJson?: string;
+};
+
 type GeminiVoicePreviewPayload = {
   voice: string;
   language?: string;
@@ -287,7 +291,12 @@ export const api = {
     testOpenRouter: () =>
       request("/settings/test-openrouter", { method: "POST" }),
     testTwilio: () => request("/settings/test-twilio", { method: "POST" }),
-    testGemini: () => request("/settings/test-gemini", { method: "POST" }),
+    testGemini: (data?: GoogleCredentialsTestPayload) =>
+      request("/settings/test-gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data || {}),
+      }),
     previewGeminiVoice: (data: GeminiVoicePreviewPayload) =>
       request(
         "/settings/preview-gemini-voice",

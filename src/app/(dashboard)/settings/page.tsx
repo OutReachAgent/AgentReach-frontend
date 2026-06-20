@@ -18,6 +18,7 @@ import {
 
 const DEFAULT_OPENROUTER_MODEL = "nex-agi/nex-n2-pro:free";
 const CAMPAIGN_SENDER_EMAIL = "oswin.alex@oswinalex.site";
+const MASKED_CREDENTIAL = "••••••••••••••••";
 
 /* ------------------------------------------------------------------ */
 /*  OpenRouter model combobox (searchable dropdown)                    */
@@ -203,7 +204,17 @@ export default function SettingsPage() {
         setTwilioAccountSid(settings.twilioAccountSid || "");
         setTwilioAuthToken(settings.twilioAuthToken || "");
         setTwilioPhoneNumber(settings.twilioPhoneNumber || "");
-        setGoogleServiceAccountJson(settings.googleServiceAccountJson || "");
+        setGoogleServiceAccountJson((prev) => {
+          const incoming = settings.googleServiceAccountJson || "";
+          if (
+            incoming === MASKED_CREDENTIAL &&
+            prev &&
+            prev !== MASKED_CREDENTIAL
+          ) {
+            return prev;
+          }
+          return incoming;
+        });
       });
     }
   }, [settings]);
@@ -298,7 +309,10 @@ export default function SettingsPage() {
   });
 
   const testGeminiMutation = useMutation({
-    mutationFn: api.settings.testGemini,
+    mutationFn: () =>
+      api.settings.testGemini({
+        googleServiceAccountJson,
+      }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       if (res.success) {
