@@ -783,7 +783,7 @@ export default function CallingCampaignsPage() {
     onError: (err: Error) => {
       showAlert(
         err.message ||
-          "We could not generate a voice preview. Please check your Gemini settings.",
+          "We could not generate a voice preview. Please check your Google credential settings.",
         "error",
       );
     },

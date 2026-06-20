@@ -302,11 +302,11 @@ export default function AiCallingBotsPage() {
     searchMutation.mutate();
   };
 
-  if (settings && !settings.geminiApiKey) {
+  if (settings && !settings.googleServiceAccountJson) {
     return (
       <MissingCredentials
-        title="Gemini Credentials Required"
-        description="To create and train AI calling bots, you need to configure your Google Gemini API Key in settings."
+        title="Google Credentials Required"
+        description="To create and train AI calling bots, you need to configure your Google service account JSON in settings."
       />
     );
   }

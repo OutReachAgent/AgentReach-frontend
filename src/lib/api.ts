@@ -28,7 +28,7 @@ type SettingsUpdate = {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioPhoneNumber?: string;
-  geminiApiKey?: string;
+  googleServiceAccountJson?: string;
   twilioStatus?: string;
   geminiStatus?: string;
 };

@@ -164,7 +164,7 @@ export default function SettingsPage() {
   const [twilioAccountSid, setTwilioAccountSid] = useState("");
   const [twilioAuthToken, setTwilioAuthToken] = useState("");
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState("");
-  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [googleServiceAccountJson, setGoogleServiceAccountJson] = useState("");
   
   const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
@@ -203,7 +203,7 @@ export default function SettingsPage() {
         setTwilioAccountSid(settings.twilioAccountSid || "");
         setTwilioAuthToken(settings.twilioAuthToken || "");
         setTwilioPhoneNumber(settings.twilioPhoneNumber || "");
-        setGeminiApiKey(settings.geminiApiKey || "");
+        setGoogleServiceAccountJson(settings.googleServiceAccountJson || "");
       });
     }
   }, [settings]);
@@ -303,19 +303,19 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       if (res.success) {
         showAlert(
-          res.message || "Your Gemini API key is working.",
+          res.message || "Your Google service account is working.",
           "success",
-          "Gemini settings verified",
+          "Google credentials verified",
         );
       } else {
         showAlert(
-          res.error || "We could not verify your Gemini API key. Please check the API key.",
+          res.error || "We could not verify your Google service account JSON.",
           "error",
         );
       }
     },
     onError: (err: Error) => {
-      showAlert(err.message || "We could not test your Gemini settings. Please try again.", "error");
+      showAlert(err.message || "We could not test your Google credentials. Please try again.", "error");
     },
   });
 
@@ -331,7 +331,7 @@ export default function SettingsPage() {
       twilioAccountSid,
       twilioAuthToken,
       twilioPhoneNumber,
-      geminiApiKey,
+      googleServiceAccountJson,
     });
   };
 
@@ -568,20 +568,20 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Gemini Panel */}
+        {/* Google Credentials Panel */}
         <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
             <div className="flex items-center gap-2">
               <Key className="h-5 w-5 text-purple-400" />
-              <h3 className="text-base font-bold text-white">Google Gemini API Configuration</h3>
+              <h3 className="text-base font-bold text-white">Google Service Account Configuration</h3>
             </div>
             <div className="flex items-center gap-4">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                 settings?.geminiStatus === 'CONNECTED'
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
                   : settings?.geminiStatus === 'FAILED'
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
-                  : 'bg-zinc-850 text-zinc-400 border-zinc-800'
+                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
+                    : 'bg-zinc-850 text-zinc-400 border-zinc-800'
               }`}>
                 {settings?.geminiStatus || 'DISCONNECTED'}
               </span>
@@ -596,15 +596,18 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                Gemini API Key
+                Google Service Account JSON
               </label>
-              <input
-                type="password"
-                value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
+              <textarea
+                value={googleServiceAccountJson}
+                onChange={(e) => setGoogleServiceAccountJson(e.target.value)}
+                placeholder="Paste full service-account JSON"
+                rows={8}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50 font-mono"
               />
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Used for Google voice preview and HD AI calling TTS. The backend stores this encrypted and returns it masked.
+              </p>
             </div>
           </div>
 
@@ -620,7 +623,7 @@ export default function SettingsPage() {
               ) : (
                 <Key className="h-3.5 w-3.5" />
               )}
-              Test Gemini Key
+              Test Google Credentials
             </button>
           </div>
         </div>
