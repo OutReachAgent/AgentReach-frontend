@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api, LooseApiResponse } from "@/lib/api";
 import { useOutreachStore } from "@/store/useOutreachStore";
+import { MissingCredentials } from "@/components/MissingCredentials";
 
 type AiCallingBot = LooseApiResponse & {
   id: string;
@@ -95,6 +96,11 @@ const toNumberOrUndefined = (value: number) =>
 export default function AiCallingBotsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
+
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: api.settings.get,
+  });
 
   const [mode, setMode] = useState<WorkspaceMode>("create");
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
@@ -295,6 +301,15 @@ export default function AiCallingBotsPage() {
       return showAlert("Enter a search question.", "error");
     searchMutation.mutate();
   };
+
+  if (settings && !settings.geminiApiKey) {
+    return (
+      <MissingCredentials
+        title="Gemini Credentials Required"
+        description="To create and train AI calling bots, you need to configure your Google Gemini API Key in settings."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

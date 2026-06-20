@@ -246,6 +246,12 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
+    register: (data: { name: string; email: string; password: string }) =>
+      request("/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
     refresh: (refreshToken: string) =>
       request("/auth/refresh", {
         method: "POST",

@@ -2,16 +2,17 @@
 
 import { api } from '@/lib/api';
 import { applyTheme, getStoredUser, saveAuthSession } from '@/lib/localAuth';
-import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, Zap, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type AuthMode = 'login' | 'reset';
+type AuthMode = 'login' | 'reset' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
   const storedUser = getStoredUser();
   const [mode, setMode] = useState<AuthMode>('login');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState(storedUser.email);
   const [password, setPassword] = useState('');
   const [resetEmail, setResetEmail] = useState(storedUser.email);
@@ -34,6 +35,27 @@ export default function LoginPage() {
       })
       .catch((error: Error) => {
         setMessage(error.message || 'Invalid email or password.');
+      });
+  };
+
+  const handleRegister = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (password.length < 8) {
+      setMessage('Password must be at least 8 characters.');
+      return;
+    }
+    if (!name.trim()) {
+      setMessage('Please enter your name.');
+      return;
+    }
+    api.auth.register({ name, email, password })
+      .then((session) => {
+        saveAuthSession(session);
+        applyTheme(session.user.theme, session.user.accentColor);
+        router.replace('/dashboard');
+      })
+      .catch((error: Error) => {
+        setMessage(error.message || 'Could not register.');
       });
   };
 
@@ -179,6 +201,75 @@ export default function LoginPage() {
                 >
                   Sign In <ArrowRight className="h-4 w-4" />
                 </button>
+                <div className="text-center text-sm text-zinc-500 pt-2">
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('register'); setMessage(''); }}
+                    className="font-semibold text-indigo-400 hover:text-indigo-300"
+                  >
+                    Sign up
+                  </button>
+                </div>
+              </form>
+            ) : mode === 'register' ? (
+              <form onSubmit={handleRegister} className="space-y-5">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-white">Create an account</h2>
+                  <p className="text-sm text-zinc-500">Get started with ReachConvert today.</p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Name</label>
+                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
+                    <User className="h-4 w-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Email</label>
+                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
+                    <Mail className="h-4 w-4 text-zinc-500" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Password</label>
+                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
+                    <KeyRound className="h-4 w-4 text-zinc-500" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110"
+                >
+                  Create Account <ArrowRight className="h-4 w-4" />
+                </button>
+                <div className="text-center text-sm text-zinc-500 pt-2">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setMessage(''); }}
+                    className="font-semibold text-indigo-400 hover:text-indigo-300"
+                  >
+                    Sign in
+                  </button>
+                </div>
               </form>
             ) : (
               <div className="space-y-5">

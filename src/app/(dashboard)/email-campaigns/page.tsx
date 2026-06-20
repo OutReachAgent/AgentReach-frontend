@@ -23,6 +23,7 @@ import {
   Upload,
   Folder,
 } from "lucide-react";
+import { MissingCredentials } from "@/components/MissingCredentials";
 
 type TemplateFormat = "HTML" | "TEXT";
 type TemplateBuilderMode = "AI" | "MANUAL";
@@ -196,6 +197,12 @@ export default function EmailCampaignsPage() {
         return query.state.data?.status === "RUNNING" ? 2000 : false;
       },
     });
+
+  // Fetch settings to check for credentials
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: api.settings.get,
+  });
 
   // Fetch templates for selection
   const { data: templates = [] } = useQuery<Template[]>({
@@ -1111,6 +1118,15 @@ export default function EmailCampaignsPage() {
       return !alreadyInCampaign && matchSearch;
     },
   );
+
+  if (settings && (!settings.awsAccessKeyId || !settings.awsSecretAccessKey)) {
+    return (
+      <MissingCredentials
+        title="AWS Credentials Required"
+        description="To create and launch email campaigns, you need to configure your AWS SES credentials in the settings."
+      />
+    );
+  }
 
   return (
     <div className="space-y-">
