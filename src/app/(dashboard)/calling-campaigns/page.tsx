@@ -399,14 +399,16 @@ function HDVoiceSelector({
   onChange,
   language,
   gender,
+  previewText,
 }: {
   value: string;
   onChange: (v: string) => void;
   language: string;
   gender: VoiceGender;
+  previewText: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const [previewingVoice, setPreviewingVoice] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -423,21 +425,34 @@ function HDVoiceSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const togglePlay = (e: React.MouseEvent, val: string) => {
+  const togglePlay = async (e: React.MouseEvent, val: string) => {
     e.stopPropagation();
-    const url = `https://cloud.google.com/static/text-to-speech/docs/audio/chirp3-hd-${val.toLowerCase()}.wav`;
-    if (playingUrl === url) {
+    const voiceName = `google:${language}-Chirp3-HD-${val}`;
+    if (previewingVoice === voiceName) {
       audioRef.current?.pause();
-      setPlayingUrl(null);
+      setPreviewingVoice(null);
     } else {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      setPreviewingVoice(voiceName);
+      try {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        const result = await api.settings.previewGeminiVoice({
+          voice: voiceName,
+          language,
+          text: previewText,
+        });
+        const audio = new Audio(result.audioDataUrl);
+        audioRef.current = audio;
+        audio.onended = () => {
+          setPreviewingVoice(null);
+        };
+        audio.play().catch(() => {
+          setPreviewingVoice(null);
+        });
+      } catch {
+        setPreviewingVoice(null);
       }
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => setPlayingUrl(null);
-      audio.play().catch(() => setPlayingUrl(null));
-      setPlayingUrl(url);
     }
   };
 
@@ -486,7 +501,7 @@ function HDVoiceSelector({
                         onChange(opt.value);
                         setOpen(false);
                         if (audioRef.current) audioRef.current.pause();
-                        setPlayingUrl(null);
+                        setPreviewingVoice(null);
                       }}
                       className="flex-1 text-left flex items-center gap-2"
                     >
@@ -502,8 +517,7 @@ function HDVoiceSelector({
                       onClick={(e) => togglePlay(e, opt.value)}
                       className="ml-2 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                     >
-                      {playingUrl ===
-                      `https://cloud.google.com/static/text-to-speech/docs/audio/chirp3-hd-${opt.value.toLowerCase()}.wav` ? (
+                      {previewingVoice === `google:${language}-Chirp3-HD-${opt.value}` ? (
                         <Pause className="h-3.5 w-3.5" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -2053,6 +2067,7 @@ export default function CallingCampaignsPage() {
                         onChange={handleVoiceChange}
                         language={language}
                         gender={voiceGender}
+                        previewText={voicePreviewText}
                       />
                     )}
                   </div>
