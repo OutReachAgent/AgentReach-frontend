@@ -3,7 +3,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { LooseApiResponse } from "@/lib/api";
-import { getHdVoices, vertexLanguageLabels } from "@/lib/utils";
+import {
+  HD_VOICE_GENDER,
+  getHdVoices,
+  vertexLanguageLabels,
+} from "@/lib/utils";
 import { useOutreachStore } from "@/store/useOutreachStore";
 import { useEffect, useRef, useState, useMemo } from "react";
 import {
@@ -52,6 +56,8 @@ type AiCallingBot = {
   id: string;
   name?: string;
   description?: string;
+  language?: string;
+  voice?: string;
   role?: string;
   personality?: string;
   ragEnabled?: boolean;
@@ -388,6 +394,59 @@ const normalizeVoiceForLanguageAndGender = (
     ? normalizedVoice
     : languageVoices[0]?.value || normalizedVoice;
 };
+
+const extractHdVoiceName = (value?: string) => {
+  const rawValue = value?.trim();
+  if (!rawValue) return "";
+  const withoutProvider = rawValue.replace(/^google:/i, "");
+  const matched = withoutProvider.match(
+    /^[a-z]{2,3}-[A-Z]{2}-Chirp3-HD-([A-Za-z]+)$/,
+  );
+  return matched?.[1] || withoutProvider;
+};
+
+const extractHdLanguage = (value?: string) => {
+  const rawValue = value?.trim().replace(/^google:/i, "");
+  return (
+    rawValue?.match(/^([a-z]{2,3}-[A-Z]{2})-Chirp3-HD-[A-Za-z]+$/)?.[1] ||
+    ""
+  );
+};
+
+const getHdVoiceDefaultGender = (value?: string): VoiceGender => {
+  const voiceName = extractHdVoiceName(value);
+  return HD_VOICE_GENDER[voiceName] || "female";
+};
+
+const normalizeHdLanguageValue = (
+  languageValue?: string,
+  voiceValue?: string,
+) => {
+  if (languageValue && getHdVoices(languageValue).length > 0) {
+    return languageValue;
+  }
+  const languageFromVoice = extractHdLanguage(voiceValue);
+  if (languageFromVoice && getHdVoices(languageFromVoice).length > 0) {
+    return languageFromVoice;
+  }
+  return "en-IN";
+};
+
+const normalizeHdVoiceForLanguageAndGender = (
+  voiceValue: string | undefined,
+  languageValue: string,
+  genderValue: VoiceGender,
+) => {
+  const voiceName = extractHdVoiceName(voiceValue);
+  const voices = getHdVoices(languageValue, genderValue);
+  if (voices.some((option) => option.value === voiceName)) {
+    return voiceName;
+  }
+  return voices[0]?.value || getHdVoices(languageValue)[0]?.value || "Puck";
+};
+
+const buildGoogleHdVoice = (voiceName: string, languageValue: string) =>
+  `google:${languageValue}-Chirp3-HD-${extractHdVoiceName(voiceName) || "Puck"}`;
 
 const antigravityLanguages = vertexLanguageLabels.filter(
   (group) =>
@@ -786,8 +845,21 @@ export default function CallingCampaignsPage() {
   const previewVoiceMutation = useMutation({
     mutationFn: () =>
       api.settings.previewGeminiVoice({
-        voice,
-        language,
+        voice:
+          voiceQuality === "hd"
+            ? buildGoogleHdVoice(
+                normalizeHdVoiceForLanguageAndGender(
+                  voice,
+                  normalizeHdLanguageValue(language, voice),
+                  voiceGender,
+                ),
+                normalizeHdLanguageValue(language, voice),
+              )
+            : voice,
+        language:
+          voiceQuality === "hd"
+            ? normalizeHdLanguageValue(language, voice)
+            : language,
         text: voicePreviewText,
       }),
     onSuccess: (res) => {
@@ -842,25 +914,26 @@ export default function CallingCampaignsPage() {
       const generated = generationJob.result;
       handledGenerationJobIdRef.current = generationJobId;
       window.setTimeout(() => {
-        const nextLanguage = normalizeCampaignLanguage(
-          generated.voice,
+        const nextLanguage = normalizeHdLanguageValue(
           generated.language,
+          generated.voice,
+        );
+        const nextGender = getHdVoiceDefaultGender(generated.voice);
+        const nextVoice = normalizeHdVoiceForLanguageAndGender(
+          generated.voice,
+          nextLanguage,
+          nextGender,
         );
         setName((current) => generated.name || current);
         setObjective(generated.objective || "");
         setPrompt(generated.prompt || aiCampaignPrompt);
-        const nextGender = getVoiceDefaultGender(
-          normalizeVoiceValue(generated.voice),
-        );
+        setVoiceQuality("hd");
         setVoiceGender(nextGender);
-        setVoice(
-          normalizeVoiceForLanguageAndGender(
-            generated.voice,
-            nextLanguage,
-            nextGender,
-          ),
-        );
+        setVoice(nextVoice);
         setLanguage(nextLanguage);
+        setVoicePreviewText(
+          LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+        );
         setVoicePreviewUrl("");
         setGenerationJobId(null);
         showAlert(
@@ -982,20 +1055,15 @@ export default function CallingCampaignsPage() {
   };
 
   const handleLanguageChange = (languageName: string) => {
-    const newPreviewText = LANGUAGE_PREVIEW_TEXTS[languageName] || LANGUAGE_PREVIEW_TEXTS["en-IN"];
+    const newPreviewText =
+      LANGUAGE_PREVIEW_TEXTS[languageName] || LANGUAGE_PREVIEW_TEXTS["en-IN"];
     if (voiceQuality === "hd") {
       setLanguage(languageName);
       setVoicePreviewUrl("");
       setVoicePreviewText(newPreviewText);
-      const nextVoices = getHdVoices(languageName, voiceGender);
-      const differentVoice = nextVoices.find((v) => v.value !== voice);
-      if (differentVoice) {
-        setVoice(differentVoice.value);
-      } else if (nextVoices.length > 0) {
-        setVoice(nextVoices[0].value);
-      } else {
-        setVoice("");
-      }
+      setVoice(
+        normalizeHdVoiceForLanguageAndGender(voice, languageName, voiceGender),
+      );
       return;
     }
     const nextVoices = getVoicesForLanguageAndGender(languageName, voiceGender);
@@ -1009,9 +1077,31 @@ export default function CallingCampaignsPage() {
 
   const handleQualityChange = (mode: "generic" | "hd") => {
     setVoiceQuality(mode);
-    setVoice("");
-    setLanguage("");
     setVoicePreviewUrl("");
+    if (mode === "hd") {
+      const nextLanguage = normalizeHdLanguageValue(language, voice);
+      const nextGender = getHdVoiceDefaultGender(voice);
+      setLanguage(nextLanguage);
+      setVoiceGender(nextGender);
+      setVoice(
+        normalizeHdVoiceForLanguageAndGender(voice, nextLanguage, nextGender),
+      );
+      setVoicePreviewText(
+        LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+      );
+      return;
+    }
+    const nextVoice = normalizeVoiceValue(voice);
+    const nextLanguage = normalizeCampaignLanguage(nextVoice, language);
+    const nextGender = getVoiceDefaultGender(nextVoice);
+    setLanguage(nextLanguage);
+    setVoiceGender(nextGender);
+    setVoice(
+      normalizeVoiceForLanguageAndGender(nextVoice, nextLanguage, nextGender),
+    );
+    setVoicePreviewText(
+      LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+    );
   };
 
   const handleVoiceGenderChange = (gender: VoiceGender) => {
@@ -1029,6 +1119,29 @@ export default function CallingCampaignsPage() {
     if (!nextVoices.some((option) => option.value === voice)) {
       setVoice(nextVoices[0]?.value || "Kore");
     }
+    setVoicePreviewUrl("");
+  };
+
+  const handleAiBotSelect = (bot: AiCallingBot, isSelected: boolean) => {
+    if (isSelected) {
+      setAiCallingBotId(null);
+      return;
+    }
+
+    setAiCallingBotId(bot.id);
+    if (!bot.voice && !bot.language) return;
+
+    const nextLanguage = normalizeHdLanguageValue(bot.language, bot.voice);
+    const nextGender = getHdVoiceDefaultGender(bot.voice);
+    setVoiceQuality("hd");
+    setLanguage(nextLanguage);
+    setVoiceGender(nextGender);
+    setVoice(
+      normalizeHdVoiceForLanguageAndGender(bot.voice, nextLanguage, nextGender),
+    );
+    setVoicePreviewText(
+      LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+    );
     setVoicePreviewUrl("");
   };
 
@@ -1149,25 +1262,33 @@ export default function CallingCampaignsPage() {
       setName(details.name || "");
       setObjective(details.objective || "");
       setPrompt(details.prompt || "");
-      setVoiceQuality(details.voiceQuality || "generic");
-      const nextVoice = normalizeVoiceValue(details.voice);
-      const nextLanguage = normalizeCampaignLanguage(
-        nextVoice,
-        details.language,
-      );
-      const nextGender = getVoiceDefaultGender(nextVoice);
+      const nextVoiceQuality = details.voiceQuality || "generic";
+      setVoiceQuality(nextVoiceQuality);
+      const nextLanguage =
+        nextVoiceQuality === "hd"
+          ? normalizeHdLanguageValue(details.language, details.voice)
+          : normalizeCampaignLanguage(details.voice, details.language);
+      const nextGender =
+        nextVoiceQuality === "hd"
+          ? getHdVoiceDefaultGender(details.voice)
+          : getVoiceDefaultGender(normalizeVoiceValue(details.voice));
       setVoiceGender(nextGender);
       setVoice(
-        details.voiceQuality === "hd"
-          ? details.voice
+        nextVoiceQuality === "hd"
+          ? normalizeHdVoiceForLanguageAndGender(
+              details.voice,
+              nextLanguage,
+              nextGender,
+            )
           : normalizeVoiceForLanguageAndGender(
-              nextVoice,
+              details.voice,
               nextLanguage,
               nextGender,
             ),
       );
-      setLanguage(
-        details.voiceQuality === "hd" ? details.language : nextLanguage,
+      setLanguage(nextLanguage);
+      setVoicePreviewText(
+        LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
       );
       setAiCallingBotId(details.aiCallingBotId || null);
       setSelectedContactIds(existingContactIds);
@@ -1216,13 +1337,29 @@ export default function CallingCampaignsPage() {
       return;
     }
 
+    const payloadLanguage =
+      voiceQuality === "hd"
+        ? normalizeHdLanguageValue(language, voice)
+        : language;
+    const payloadVoice =
+      voiceQuality === "hd"
+        ? buildGoogleHdVoice(
+            normalizeHdVoiceForLanguageAndGender(
+              voice,
+              payloadLanguage,
+              voiceGender,
+            ),
+            payloadLanguage,
+          )
+        : voice;
+
     const payload = {
       name,
       objective,
       prompt,
       voiceQuality,
-      voice,
-      language,
+      voice: payloadVoice,
+      language: payloadLanguage,
       aiCallingBotId: aiCallingBotId || undefined,
       contactIds: selectedContactIds,
     };
@@ -1898,9 +2035,7 @@ export default function CallingCampaignsPage() {
                       <button
                         key={bot.id}
                         type="button"
-                        onClick={() =>
-                          setAiCallingBotId(isSelected ? null : bot.id)
-                        }
+                        onClick={() => handleAiBotSelect(bot, isSelected)}
                         className={`relative text-left rounded-xl border p-3.5 transition-all ${
                           isSelected
                             ? "border-indigo-500 bg-indigo-950/40 shadow-sm shadow-indigo-500/20"
