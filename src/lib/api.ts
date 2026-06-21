@@ -521,6 +521,16 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
+    chat: (id: string, data: { message: string; topK?: number }) =>
+      request(
+        `/ai-calling-bots/${id}/chat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ),
   },
 
   // Calling Campaigns
