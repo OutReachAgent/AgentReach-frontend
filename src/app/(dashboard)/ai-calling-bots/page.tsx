@@ -27,6 +27,7 @@ type AiCallingBot = LooseApiResponse & {
   language?: string;
   voice?: string;
   role?: string;
+  goal?: string;
   personality?: string;
   knowledge?: string;
   rules?: string;
@@ -54,6 +55,7 @@ const DEFAULT_FORM = {
   language: "en-IN",
   voice: "google:en-IN-Chirp3-HD-Puck",
   role: "calling specialist",
+  goal: "Understand customer needs and capture a clear next step.",
   personality: "warm, concise, calm, and naturally conversational",
   knowledge: "",
   rules:
@@ -159,6 +161,7 @@ export default function AiCallingBotsPage() {
       language: bot.language || "en-IN",
       voice: bot.voice || "google:en-IN-Chirp3-HD-Puck",
       role: bot.role || DEFAULT_FORM.role,
+      goal: bot.goal || DEFAULT_FORM.goal,
       personality: bot.personality || DEFAULT_FORM.personality,
       knowledge: bot.knowledge || "",
       rules: bot.rules || DEFAULT_FORM.rules,
@@ -459,6 +462,14 @@ export default function AiCallingBotsPage() {
                     />
                   </Field>
                 </div>
+                <Field label="Goal">
+                  <textarea
+                    className={`${inputClass} min-h-20`}
+                    value={form.goal}
+                    onChange={(e) => updateForm("goal", e.target.value)}
+                    placeholder="When this goal is met, the bot can close the conversation."
+                  />
+                </Field>
 
                 <Field label="Description">
                   <input

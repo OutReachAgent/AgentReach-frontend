@@ -82,6 +82,7 @@ type AiCallingBotPayload = {
   language?: string;
   voice?: string;
   role?: string;
+  goal?: string;
   personality?: string;
   knowledge?: string;
   rules?: string;
