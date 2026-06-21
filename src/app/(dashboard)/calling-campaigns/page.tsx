@@ -26,6 +26,7 @@ import {
   Edit2,
   Trash2,
   RotateCcw,
+  Square,
   Folder,
   Languages,
   Headphones,
@@ -600,6 +601,8 @@ function HDVoiceSelector({
 export default function CallingCampaignsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
+  const isCampaignActive = (status?: string) =>
+    status === "RUNNING" || status === "LAUNCHING";
 
   const { data: settings } = useQuery({
     queryKey: ["settings"],
@@ -684,7 +687,7 @@ export default function CallingCampaignsPage() {
     enabled: !!selectedCampaignId,
     refetchInterval: (query) => {
       // Fast refetch when simulation is running to show real-time call updates!
-      return query.state.data?.status === "RUNNING" ? 2000 : false;
+      return isCampaignActive(query.state.data?.status) ? 2000 : false;
     },
   });
 
@@ -775,8 +778,20 @@ export default function CallingCampaignsPage() {
   });
 
   const launchCampaignMutation = useMutation({
-    mutationFn: api.callingCampaigns.launch,
-    onSuccess: (result: LooseApiResponse) => {
+    mutationFn: ({
+      id,
+      isRelaunch,
+    }: {
+      id: string;
+      isRelaunch: boolean;
+    }) =>
+      isRelaunch
+        ? api.callingCampaigns.relaunch(id)
+        : api.callingCampaigns.launch(id),
+    onSuccess: (
+      result: LooseApiResponse,
+      variables: { id: string; isRelaunch: boolean },
+    ) => {
       queryClient.invalidateQueries({ queryKey: ["calling-campaigns"] });
       if (selectedCampaignId) {
         queryClient.invalidateQueries({
@@ -800,15 +815,43 @@ export default function CallingCampaignsPage() {
       showAlert(
         twilio
           ? `Twilio queued ${twilio.placed || 0} call(s). Failed: ${twilio.failed || 0}.`
-          : "The calling campaign has started. Twilio queue status will appear in the call logs.",
+          : variables.isRelaunch
+            ? "The calling campaign has been relaunched. Twilio queue status will appear in the call logs."
+            : "The calling campaign has started. Twilio queue status will appear in the call logs.",
         "success",
-        "Calling started",
+        variables.isRelaunch ? "Calling relaunched" : "Calling started",
+      );
+    },
+    onError: (err: Error, variables: { id: string; isRelaunch: boolean }) => {
+      showAlert(
+        err.message ||
+          (variables.isRelaunch
+            ? "We could not relaunch the calling campaign. Please try again."
+            : "We could not start the calling campaign. Please add contacts first."),
+        "error",
+      );
+    },
+  });
+
+  const stopCampaignMutation = useMutation({
+    mutationFn: api.callingCampaigns.stop,
+    onSuccess: (result: LooseApiResponse) => {
+      queryClient.invalidateQueries({ queryKey: ["calling-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["calling-campaign", selectedCampaignId],
+        });
+      }
+      const cancelledCount = Number(result?.cancelledCalls || 0);
+      showAlert(
+        `The campaign was stopped. ${cancelledCount} call(s) were cancelled.`,
+        "success",
+        "Campaign stopped",
       );
     },
     onError: (err: Error) => {
       showAlert(
-        err.message ||
-          "We could not start the calling campaign. Please add contacts first.",
+        err.message || "We could not stop this calling campaign.",
         "error",
       );
     },
@@ -1312,12 +1355,26 @@ export default function CallingCampaignsPage() {
   };
 
   const handleLaunchCampaign = (campaign: LooseApiResponse) => {
+    if (isCampaignActive(campaign.status)) return;
+    const isRelaunch = campaign.status !== "DRAFT";
     console.debug("[AI Calling] Launch requested", {
       campaignId: campaign.id,
       status: campaign.status,
       contactCount: campaign.contactCount,
+      isRelaunch,
     });
-    launchCampaignMutation.mutate(campaign.id);
+    launchCampaignMutation.mutate({ id: campaign.id, isRelaunch });
+  };
+
+  const handleStopCampaign = (campaign: LooseApiResponse) => {
+    if (!isCampaignActive(campaign.status)) return;
+    if (
+      confirm(
+        "Stop this campaign now? Pending and queued calls will be cancelled.",
+      )
+    ) {
+      stopCampaignMutation.mutate(campaign.id);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1485,10 +1542,13 @@ export default function CallingCampaignsPage() {
             campaigns.map((camp: LooseApiResponse) => {
               const statusColors: Record<string, string> = {
                 DRAFT: "bg-zinc-850 text-zinc-400 border-zinc-800",
+                LAUNCHING:
+                  "bg-amber-500/10 text-amber-300 border-amber-500/15",
                 RUNNING:
                   "bg-indigo-500/10 text-indigo-400 border-indigo-500/10",
                 COMPLETED:
                   "bg-emerald-500/10 text-emerald-400 border-emerald-500/10",
+                STOPPED: "bg-zinc-800 text-zinc-300 border-zinc-700",
                 FAILED: "bg-rose-500/10 text-rose-400 border-rose-500/10",
               };
 
@@ -1547,7 +1607,15 @@ export default function CallingCampaignsPage() {
                       <MessageSquare className="h-3.5 w-3.5" />
                       View Calls
                     </button>
-                    {camp.status !== "RUNNING" && (
+                    {isCampaignActive(camp.status) ? (
+                      <button
+                        onClick={() => handleStopCampaign(camp)}
+                        className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold"
+                      >
+                        <Square className="h-3.5 w-3.5" />
+                        Stop
+                      </button>
+                    ) : (
                       <button
                         onClick={() => handleLaunchCampaign(camp)}
                         className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
@@ -1598,46 +1666,55 @@ export default function CallingCampaignsPage() {
                     Objective: {campaignDetails.objective || "No objective set"}
                   </p>
                 </div>
-                {campaignDetails.status !== "RUNNING" && (
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {isCampaignActive(campaignDetails.status) ? (
                     <button
-                      onClick={() => startEditCampaign(campaignDetails)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-300 hover:text-white"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" /> Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAddSelectedContactIds([]);
-                        setAddContactSearch("");
-                        setAddContactsDirectoryId("all");
-                        setIsAddContactsOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-300 hover:text-white"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add Contacts
-                    </button>
-                    <button
-                      onClick={() => handleLaunchCampaign(campaignDetails)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
-                    >
-                      {campaignDetails.status === "DRAFT" ? (
-                        <Play className="h-3.5 w-3.5" />
-                      ) : (
-                        <RotateCcw className="h-3.5 w-3.5" />
-                      )}
-                      {campaignDetails.status === "DRAFT"
-                        ? "Launch Pending Calls"
-                        : "Relaunch Campaign"}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCampaign(campaignDetails.id)}
+                      onClick={() => handleStopCampaign(campaignDetails)}
                       className="flex items-center gap-1.5 px-4 py-2 bg-rose-950/20 border border-rose-500/15 rounded-xl text-xs font-bold text-rose-300 hover:text-rose-200"
                     >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                      <Square className="h-3.5 w-3.5" /> Stop Campaign
                     </button>
-                  </div>
-                )}
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => startEditCampaign(campaignDetails)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-300 hover:text-white"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAddSelectedContactIds([]);
+                          setAddContactSearch("");
+                          setAddContactsDirectoryId("all");
+                          setIsAddContactsOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-300 hover:text-white"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Contacts
+                      </button>
+                      <button
+                        onClick={() => handleLaunchCampaign(campaignDetails)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
+                      >
+                        {campaignDetails.status === "DRAFT" ? (
+                          <Play className="h-3.5 w-3.5" />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        )}
+                        {campaignDetails.status === "DRAFT"
+                          ? "Launch Pending Calls"
+                          : "Relaunch Campaign"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCampaign(campaignDetails.id)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-rose-950/20 border border-rose-500/15 rounded-xl text-xs font-bold text-rose-300 hover:text-rose-200"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Calls List */}

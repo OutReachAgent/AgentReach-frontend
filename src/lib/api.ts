@@ -140,6 +140,8 @@ function toFriendlyApiError(message: unknown, status: number) {
     return "Everyone in this campaign has already been sent. Use Launch Again to send it again.";
   if (lower.includes("no pending calls"))
     return "Please add contacts before launching this calling campaign.";
+  if (lower.includes("not running or queued"))
+    return "This calling campaign is not currently running or in queue.";
   if (lower.includes("no contacts with phone numbers"))
     return "Add at least one contact with a phone number before launching this calling campaign.";
   if (lower.includes("no contacts"))
@@ -572,6 +574,10 @@ export const api = {
       request(`/calling-campaigns/${id}`, { method: "DELETE" }),
     launch: (id: string) =>
       request(`/calling-campaigns/${id}/launch`, { method: "POST" }),
+    relaunch: (id: string) =>
+      request(`/calling-campaigns/${id}/relaunch`, { method: "POST" }),
+    stop: (id: string) =>
+      request(`/calling-campaigns/${id}/stop`, { method: "POST" }),
   },
 
   // History
