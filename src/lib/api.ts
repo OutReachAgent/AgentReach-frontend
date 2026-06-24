@@ -79,11 +79,16 @@ type TemplatePayload = {
 type AiCallingBotPayload = {
   name?: string;
   description?: string;
+  personality?: string;
+  botObjective?: string;
+  botGoal?: string;
+  botFlow?: string;
+  knowledgeBaseText?: string;
+  contextOutsideKnowledgeBase?: boolean;
   language?: string;
   voice?: string;
   role?: string;
   goal?: string;
-  personality?: string;
   knowledge?: string;
   rules?: string;
   objectionHandling?: string;
@@ -91,20 +96,8 @@ type AiCallingBotPayload = {
   ragEnabled?: boolean;
   metadata?: Record<string, unknown>;
 };
-type AiCallingBotTrainPayload = {
-  content: string;
-  sourceName?: string;
-  replace?: boolean;
-  chunkSize?: number;
-  chunkOverlap?: number;
-  metadata?: Record<string, unknown>;
-};
-type AiCallingBotPdfTrainPayload = {
-  file: File;
-  sourceName?: string;
-  replace?: boolean;
-  chunkSize?: number;
-  chunkOverlap?: number;
+type AiCallingBotCreatePayload = AiCallingBotPayload & {
+  knowledgeBasePdf?: File | null;
 };
 
 type HistoryParams = Record<string, string | undefined>;
@@ -472,12 +465,38 @@ export const api = {
     list: () => request("/ai-calling-bots"),
     voices: () => request("/ai-calling-bots/voices/google"),
     get: (id: string) => request(`/ai-calling-bots/${id}`),
-    create: (data: AiCallingBotPayload) =>
-      request("/ai-calling-bots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }),
+    create: (data: AiCallingBotCreatePayload) => {
+      const formData = new FormData();
+      if (data.name) formData.append("name", data.name);
+      if (data.description) formData.append("description", data.description);
+      if (data.personality) formData.append("personality", data.personality);
+      if (data.botObjective) formData.append("botObjective", data.botObjective);
+      if (data.botGoal) formData.append("botGoal", data.botGoal);
+      if (data.botFlow) formData.append("botFlow", data.botFlow);
+      if (data.knowledgeBaseText) {
+        formData.append("knowledgeBaseText", data.knowledgeBaseText);
+      }
+      if (typeof data.contextOutsideKnowledgeBase === "boolean") {
+        formData.append(
+          "contextOutsideKnowledgeBase",
+          String(data.contextOutsideKnowledgeBase),
+        );
+      }
+      if (typeof data.ragEnabled === "boolean") {
+        formData.append("ragEnabled", String(data.ragEnabled));
+      }
+      if (data.knowledgeBasePdf) {
+        formData.append("knowledgeBasePdf", data.knowledgeBasePdf);
+      }
+      return request(
+        "/ai-calling-bots",
+        {
+          method: "POST",
+          body: formData,
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      );
+    },
     update: (id: string, data: AiCallingBotPayload) =>
       request(`/ai-calling-bots/${id}`, {
         method: "PATCH",
@@ -486,38 +505,6 @@ export const api = {
       }),
     delete: (id: string) =>
       request(`/ai-calling-bots/${id}`, { method: "DELETE" }),
-    train: (id: string, data: AiCallingBotTrainPayload) =>
-      request(
-        `/ai-calling-bots/${id}/train`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        },
-        AI_REQUEST_TIMEOUT_MS,
-      ),
-    trainPdf: (id: string, data: AiCallingBotPdfTrainPayload) => {
-      const formData = new FormData();
-      formData.append("file", data.file);
-      if (data.sourceName) formData.append("sourceName", data.sourceName);
-      if (typeof data.replace === "boolean") {
-        formData.append("replace", String(data.replace));
-      }
-      if (typeof data.chunkSize === "number") {
-        formData.append("chunkSize", String(data.chunkSize));
-      }
-      if (typeof data.chunkOverlap === "number") {
-        formData.append("chunkOverlap", String(data.chunkOverlap));
-      }
-      return request(
-        `/ai-calling-bots/${id}/train-pdf`,
-        {
-          method: "POST",
-          body: formData,
-        },
-        AI_REQUEST_TIMEOUT_MS,
-      );
-    },
     search: (id: string, data: { query: string; topK?: number }) =>
       request(`/ai-calling-bots/${id}/search`, {
         method: "POST",

@@ -1,12 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
   CheckCircle2,
   Database,
-  FileText,
   Loader2,
   Plus,
   RefreshCw,
@@ -24,20 +23,20 @@ type AiCallingBot = LooseApiResponse & {
   id: string;
   name?: string;
   description?: string;
-  language?: string;
-  voice?: string;
+  personality?: string;
+  botObjective?: string;
+  botGoal?: string;
+  botFlow?: string;
+  knowledgeBaseText?: string;
+  contextOutsideKnowledgeBase?: boolean;
   role?: string;
   goal?: string;
-  personality?: string;
   knowledge?: string;
   rules?: string;
-  objectionHandling?: string;
-  greeting?: string;
   ragEnabled?: boolean;
   status?: string;
   trainingChunkCount?: number;
   lastTrainedAt?: string;
-  createdAt?: string;
 };
 
 type SearchResult = {
@@ -47,31 +46,19 @@ type SearchResult = {
   metadata?: Record<string, unknown>;
 };
 
-type WorkspaceMode = "create" | "train" | "search";
+type WorkspaceMode = "create" | "search";
 
 const DEFAULT_FORM = {
   name: "",
   description: "",
-  language: "en-IN",
-  voice: "google:en-IN-Chirp3-HD-Puck",
-  role: "calling specialist",
-  goal: "Understand customer needs and capture a clear next step.",
   personality: "warm, concise, calm, and naturally conversational",
-  knowledge: "",
-  rules:
-    "Ask permission before continuing. Keep the call brief. Do not overpromise.",
-  objectionHandling:
-    "If the contact is busy, ask for a better callback time. If they are unsure, offer to send details.",
-  greeting:
-    "Hi {{firstName}}, this is {{botName}}. I know this is a quick call, so I will be brief.",
+  botObjective: "",
+  botGoal: "Understand customer needs and capture a clear next step.",
+  botFlow:
+    "Greet briefly, understand intent, answer clearly, and move to one next step.",
+  knowledgeBaseText: "",
+  contextOutsideKnowledgeBase: false,
   ragEnabled: true,
-};
-
-const TRAINING_DEFAULTS = {
-  sourceName: "manual-training",
-  replace: true,
-  chunkSize: 900,
-  chunkOverlap: 120,
 };
 
 const inputClass =
@@ -92,9 +79,6 @@ const formatDate = (value?: string) => {
   });
 };
 
-const toNumberOrUndefined = (value: number) =>
-  Number.isFinite(value) ? value : undefined;
-
 export default function AiCallingBotsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
@@ -108,10 +92,7 @@ export default function AiCallingBotsPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [editingBotId, setEditingBotId] = useState<string | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [trainingText, setTrainingText] = useState("");
-  const [trainingOptions, setTrainingOptions] = useState(TRAINING_DEFAULTS);
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfSourceName, setPdfSourceName] = useState("");
+  const [knowledgeBasePdf, setKnowledgeBasePdf] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
 
@@ -144,12 +125,13 @@ export default function AiCallingBotsPage() {
 
   const resetForm = () => {
     setForm(DEFAULT_FORM);
+    setKnowledgeBasePdf(null);
     setEditingBotId(null);
   };
 
   const selectBot = (bot: AiCallingBot) => {
     setSelectedBotId(bot.id);
-    setMode("train");
+    setMode("search");
   };
 
   const startEdit = (bot: AiCallingBot) => {
@@ -158,30 +140,31 @@ export default function AiCallingBotsPage() {
     setForm({
       name: bot.name || "",
       description: bot.description || "",
-      language: bot.language || "en-IN",
-      voice: bot.voice || "google:en-IN-Chirp3-HD-Puck",
-      role: bot.role || DEFAULT_FORM.role,
-      goal: bot.goal || DEFAULT_FORM.goal,
       personality: bot.personality || DEFAULT_FORM.personality,
-      knowledge: bot.knowledge || "",
-      rules: bot.rules || DEFAULT_FORM.rules,
-      objectionHandling:
-        bot.objectionHandling || DEFAULT_FORM.objectionHandling,
-      greeting: bot.greeting || DEFAULT_FORM.greeting,
+      botObjective: bot.botObjective || "",
+      botGoal: bot.botGoal || bot.goal || DEFAULT_FORM.botGoal,
+      botFlow: bot.botFlow || bot.rules || DEFAULT_FORM.botFlow,
+      knowledgeBaseText: bot.knowledgeBaseText || bot.knowledge || "",
+      contextOutsideKnowledgeBase: bot.contextOutsideKnowledgeBase === true,
       ragEnabled: bot.ragEnabled !== false,
     });
+    setKnowledgeBasePdf(null);
     setMode("create");
   };
 
   const createBotMutation = useMutation({
-    mutationFn: () => api.aiCallingBots.create(form),
+    mutationFn: () =>
+      api.aiCallingBots.create({
+        ...form,
+        knowledgeBasePdf,
+      }),
     onSuccess: (bot: LooseApiResponse) => {
       queryClient.invalidateQueries({ queryKey: ["ai-calling-bots"] });
       setSelectedBotId(bot.id || null);
       resetForm();
-      setMode("train");
+      setMode("search");
       showAlert(
-        "The AI calling bot is ready for training.",
+        "Bot created and knowledge base embedded successfully.",
         "success",
         "Bot created",
       );
@@ -190,7 +173,10 @@ export default function AiCallingBotsPage() {
   });
 
   const updateBotMutation = useMutation({
-    mutationFn: () => api.aiCallingBots.update(editingBotId!, form),
+    mutationFn: () =>
+      api.aiCallingBots.update(editingBotId!, {
+        ...form,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ai-calling-bots"] });
       showAlert(
@@ -219,54 +205,11 @@ export default function AiCallingBotsPage() {
     onError: (error: Error) => showAlert(error.message, "error"),
   });
 
-  const trainTextMutation = useMutation({
-    mutationFn: () =>
-      api.aiCallingBots.train(selectedBot!.id, {
-        content: trainingText,
-        sourceName: trainingOptions.sourceName,
-        replace: trainingOptions.replace,
-        chunkSize: toNumberOrUndefined(trainingOptions.chunkSize),
-        chunkOverlap: toNumberOrUndefined(trainingOptions.chunkOverlap),
-      }),
-    onSuccess: (result: LooseApiResponse) => {
-      queryClient.invalidateQueries({ queryKey: ["ai-calling-bots"] });
-      setTrainingText("");
-      showAlert(
-        `Added ${result.chunksAdded || 0} chunk(s). Total chunks: ${result.totalChunks || 0}.`,
-        "success",
-        "Bot trained",
-      );
-    },
-    onError: (error: Error) => showAlert(error.message, "error"),
-  });
-
-  const trainPdfMutation = useMutation({
-    mutationFn: () =>
-      api.aiCallingBots.trainPdf(selectedBot!.id, {
-        file: pdfFile!,
-        sourceName: pdfSourceName || pdfFile?.name,
-        replace: trainingOptions.replace,
-        chunkSize: toNumberOrUndefined(trainingOptions.chunkSize),
-        chunkOverlap: toNumberOrUndefined(trainingOptions.chunkOverlap),
-      }),
-    onSuccess: (result: LooseApiResponse) => {
-      queryClient.invalidateQueries({ queryKey: ["ai-calling-bots"] });
-      setPdfFile(null);
-      setPdfSourceName("");
-      showAlert(
-        `Read ${result.characters || 0} characters from ${result.fileName || "PDF"}.`,
-        "success",
-        "PDF trained",
-      );
-    },
-    onError: (error: Error) => showAlert(error.message, "error"),
-  });
-
   const searchMutation = useMutation({
     mutationFn: () =>
       api.aiCallingBots.search(selectedBot!.id, {
         query: searchQuery,
-        topK: 4,
+        topK: 5,
       }),
     onSuccess: (result: SearchResult[]) => setSearchResults(result || []),
     onError: (error: Error) => showAlert(error.message, "error"),
@@ -278,23 +221,29 @@ export default function AiCallingBotsPage() {
       showAlert("Bot name is required.", "error");
       return;
     }
-    if (editingBotId) updateBotMutation.mutate();
-    else createBotMutation.mutate();
-  };
-
-  const submitTextTraining = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedBot) return showAlert("Select a bot first.", "error");
-    if (!trainingText.trim())
-      return showAlert("Training text is required.", "error");
-    trainTextMutation.mutate();
-  };
-
-  const submitPdfTraining = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedBot) return showAlert("Select a bot first.", "error");
-    if (!pdfFile) return showAlert("Choose a PDF file first.", "error");
-    trainPdfMutation.mutate();
+    if (
+      !form.knowledgeBaseText.trim() &&
+      !knowledgeBasePdf &&
+      !editingBotId
+    ) {
+      showAlert(
+        "Provide Knowledge Base Text or upload a PDF for embedding.",
+        "error",
+      );
+      return;
+    }
+    if (editingBotId) {
+      if (knowledgeBasePdf) {
+        showAlert(
+          "PDF upload is only applied during Create & Train. Save this edit without PDF.",
+          "error",
+        );
+        return;
+      }
+      updateBotMutation.mutate();
+      return;
+    }
+    createBotMutation.mutate();
   };
 
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
@@ -323,8 +272,8 @@ export default function AiCallingBotsPage() {
             AI Calling Bots
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Build reusable calling agents, train their RAG knowledge, and test
-            retrieval before campaigns use them.
+            Create bots and embed knowledge during bot creation, then validate
+            retrieval using search.
           </p>
         </div>
         <button
@@ -351,9 +300,7 @@ export default function AiCallingBotsPage() {
           <div className="flex items-center justify-between border-b border-zinc-850 px-5 py-4">
             <div>
               <p className="text-sm font-bold text-white">Bot Library</p>
-              <p className="text-xs text-zinc-500">
-                Reusable AI calling profiles
-              </p>
+              <p className="text-xs text-zinc-500">Reusable AI calling profiles</p>
             </div>
             <RefreshCw className="h-4 w-4 text-zinc-500" />
           </div>
@@ -384,14 +331,9 @@ export default function AiCallingBotsPage() {
                           {bot.name}
                         </p>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-500">
-                          {bot.description ||
-                            bot.role ||
-                            "AI calling specialist"}
+                          {bot.description || "AI calling specialist"}
                         </p>
                       </div>
-                      <span className="rounded-full border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] font-bold uppercase text-zinc-400">
-                        {bot.language || "en-IN"}
-                      </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-zinc-500">
                       <span>{Number(bot.trainingChunkCount || 0)} chunks</span>
@@ -416,8 +358,8 @@ export default function AiCallingBotsPage() {
               </p>
               <p className="text-xs text-zinc-500">
                 {mode === "create"
-                  ? "Configure voice, persona, and guardrails."
-                  : "Train and inspect bot knowledge."}
+                  ? "Configure bot identity and knowledge base."
+                  : "Search embedded knowledge chunks."}
               </p>
             </div>
             <div className="flex w-full gap-2 rounded-xl border border-zinc-850 bg-zinc-950/80 p-1 lg:w-auto">
@@ -426,12 +368,6 @@ export default function AiCallingBotsPage() {
                 icon={Settings2}
                 label="Profile"
                 onClick={() => setMode("create")}
-              />
-              <ModeButton
-                active={mode === "train"}
-                icon={Upload}
-                label="Train"
-                onClick={() => setMode("train")}
               />
               <ModeButton
                 active={mode === "search"}
@@ -446,7 +382,7 @@ export default function AiCallingBotsPage() {
             {mode === "create" ? (
               <form onSubmit={submitBot} className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Bot Name">
+                  <Field label="Name">
                     <input
                       className={inputClass}
                       value={form.name}
@@ -454,31 +390,15 @@ export default function AiCallingBotsPage() {
                       placeholder="Reach Agent"
                     />
                   </Field>
-                  <Field label="Role">
+                  <Field label="Description">
                     <input
                       className={inputClass}
-                      value={form.role}
-                      onChange={(e) => updateForm("role", e.target.value)}
+                      value={form.description}
+                      onChange={(e) => updateForm("description", e.target.value)}
+                      placeholder="Outbound sales qualification bot"
                     />
                   </Field>
                 </div>
-                <Field label="Goal">
-                  <textarea
-                    className={`${inputClass} min-h-20`}
-                    value={form.goal}
-                    onChange={(e) => updateForm("goal", e.target.value)}
-                    placeholder="When this goal is met, the bot can close the conversation."
-                  />
-                </Field>
-
-                <Field label="Description">
-                  <input
-                    className={inputClass}
-                    value={form.description}
-                    onChange={(e) => updateForm("description", e.target.value)}
-                    placeholder="Outbound sales qualification bot"
-                  />
-                </Field>
                 <Field label="Personality">
                   <textarea
                     className={`${inputClass} min-h-20`}
@@ -486,46 +406,55 @@ export default function AiCallingBotsPage() {
                     onChange={(e) => updateForm("personality", e.target.value)}
                   />
                 </Field>
-                <Field label="Base Knowledge">
+                <Field label="Bot Objective">
                   <textarea
-                    className={`${inputClass} min-h-28`}
-                    value={form.knowledge}
-                    onChange={(e) => updateForm("knowledge", e.target.value)}
+                    className={`${inputClass} min-h-20`}
+                    value={form.botObjective}
+                    onChange={(e) => updateForm("botObjective", e.target.value)}
                   />
                 </Field>
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <Field label="Rules">
-                    <textarea
-                      className={`${inputClass} min-h-28`}
-                      value={form.rules}
-                      onChange={(e) => updateForm("rules", e.target.value)}
-                    />
-                  </Field>
-                  <Field label="Objection Handling">
-                    <textarea
-                      className={`${inputClass} min-h-28`}
-                      value={form.objectionHandling}
-                      onChange={(e) =>
-                        updateForm("objectionHandling", e.target.value)
-                      }
-                    />
-                  </Field>
-                </div>
-                <Field label="Greeting">
+                <Field label="Bot Goal">
+                  <textarea
+                    className={`${inputClass} min-h-20`}
+                    value={form.botGoal}
+                    onChange={(e) => updateForm("botGoal", e.target.value)}
+                  />
+                </Field>
+                <Field label="Bot Flow">
+                  <textarea
+                    className={`${inputClass} min-h-24`}
+                    value={form.botFlow}
+                    onChange={(e) => updateForm("botFlow", e.target.value)}
+                  />
+                </Field>
+                <Field label="Knowledge Base Text">
+                  <textarea
+                    className={`${inputClass} min-h-40`}
+                    value={form.knowledgeBaseText}
+                    onChange={(e) =>
+                      updateForm("knowledgeBaseText", e.target.value)
+                    }
+                    placeholder="Paste KB content to chunk and embed."
+                  />
+                </Field>
+                <Field label="Knowledge Base PDF">
                   <input
-                    className={inputClass}
-                    value={form.greeting}
-                    onChange={(e) => updateForm("greeting", e.target.value)}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(e) => setKnowledgeBasePdf(e.target.files?.[0] || null)}
+                    className="w-full rounded-xl border border-dashed border-zinc-700 bg-zinc-950 px-3 py-4 text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-bold file:text-zinc-200"
                   />
                 </Field>
                 <label className="flex items-center gap-3 rounded-xl border border-zinc-850 bg-zinc-950 px-3 py-3 text-sm text-zinc-300">
                   <input
                     type="checkbox"
-                    checked={form.ragEnabled}
-                    onChange={(e) => updateForm("ragEnabled", e.target.checked)}
+                    checked={form.contextOutsideKnowledgeBase}
+                    onChange={(e) =>
+                      updateForm("contextOutsideKnowledgeBase", e.target.checked)
+                    }
                     className="h-4 w-4 accent-indigo-500"
                   />
-                  RAG knowledge enabled
+                  Context outside knowledge base
                 </label>
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -535,13 +464,14 @@ export default function AiCallingBotsPage() {
                     }
                     className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 disabled:opacity-60"
                   >
-                    {createBotMutation.isPending ||
-                    updateBotMutation.isPending ? (
+                    {createBotMutation.isPending || updateBotMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                    ) : editingBotId ? (
                       <Save className="h-4 w-4" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
                     )}
-                    {editingBotId ? "Save Changes" : "Create Bot"}
+                    {editingBotId ? "Save Changes" : "Create & Train Bot"}
                   </button>
                   {editingBotId && (
                     <button
@@ -554,110 +484,6 @@ export default function AiCallingBotsPage() {
                   )}
                 </div>
               </form>
-            ) : mode === "train" ? (
-              <div className="space-y-5">
-                <SelectedBotHeader
-                  bot={selectedBot}
-                  onEdit={() => selectedBot && startEdit(selectedBot)}
-                  onDelete={() =>
-                    selectedBot && deleteBotMutation.mutate(selectedBot.id)
-                  }
-                  deleting={deleteBotMutation.isPending}
-                />
-                <TrainingOptions
-                  options={trainingOptions}
-                  setOptions={setTrainingOptions}
-                />
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <form
-                    onSubmit={submitTextTraining}
-                    className="rounded-2xl border border-zinc-850 bg-zinc-950/50 p-4"
-                  >
-                    <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
-                      <FileText className="h-4 w-4 text-indigo-400" /> Text
-                      Training
-                    </div>
-                    <Field label="Source Name">
-                      <input
-                        className={inputClass}
-                        value={trainingOptions.sourceName}
-                        onChange={(e) =>
-                          setTrainingOptions((current) => ({
-                            ...current,
-                            sourceName: e.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="Training Content">
-                      <textarea
-                        className={`${inputClass} mt-3 min-h-56`}
-                        value={trainingText}
-                        onChange={(e) => setTrainingText(e.target.value)}
-                      />
-                    </Field>
-                    <button
-                      type="submit"
-                      disabled={!selectedBot || trainTextMutation.isPending}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
-                    >
-                      {trainTextMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Database className="h-4 w-4" />
-                      )}
-                      Train Text
-                    </button>
-                  </form>
-
-                  <form
-                    onSubmit={submitPdfTraining}
-                    className="rounded-2xl border border-zinc-850 bg-zinc-950/50 p-4"
-                  >
-                    <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
-                      <Upload className="h-4 w-4 text-indigo-400" /> PDF
-                      Training
-                    </div>
-                    <Field label="PDF File">
-                      <input
-                        type="file"
-                        accept="application/pdf,.pdf"
-                        onChange={(e) =>
-                          setPdfFile(e.target.files?.[0] || null)
-                        }
-                        className="w-full rounded-xl border border-dashed border-zinc-700 bg-zinc-950 px-3 py-6 text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-bold file:text-zinc-200"
-                      />
-                    </Field>
-                    <Field label="Source Name">
-                      <input
-                        className={`${inputClass} mt-3`}
-                        value={pdfSourceName}
-                        onChange={(e) => setPdfSourceName(e.target.value)}
-                        placeholder={pdfFile?.name || "Uses PDF filename"}
-                      />
-                    </Field>
-                    <div className="mt-4 rounded-xl border border-zinc-850 bg-zinc-900/40 p-3 text-xs text-zinc-500">
-                      {pdfFile
-                        ? `${pdfFile.name} · ${(pdfFile.size / 1024 / 1024).toFixed(2)} MB`
-                        : "PDFs up to 8 MB are parsed in memory."}
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={
-                        !selectedBot || !pdfFile || trainPdfMutation.isPending
-                      }
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-500 disabled:opacity-60"
-                    >
-                      {trainPdfMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      Train PDF
-                    </button>
-                  </form>
-                </div>
-              </div>
             ) : (
               <div className="space-y-5">
                 <SelectedBotHeader
@@ -724,14 +550,12 @@ export default function AiCallingBotsPage() {
   );
 }
 
-
-
 function Field({
   label,
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block">
@@ -816,12 +640,9 @@ function SelectedBotHeader({
             </span>
           </div>
           <p className="mt-1 text-sm text-zinc-500">
-            {bot.description || bot.role || "AI calling specialist"}
+            {bot.description || "AI calling specialist"}
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-zinc-500">
-            <span className="rounded-lg border border-zinc-850 px-2 py-1">
-              {bot.language || "en-IN"}
-            </span>
             <span className="rounded-lg border border-zinc-850 px-2 py-1">
               {Number(bot.trainingChunkCount || 0)} chunks
             </span>
@@ -853,60 +674,6 @@ function SelectedBotHeader({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function TrainingOptions({
-  options,
-  setOptions,
-}: {
-  options: typeof TRAINING_DEFAULTS;
-  setOptions: React.Dispatch<React.SetStateAction<typeof TRAINING_DEFAULTS>>;
-}) {
-  return (
-    <div className="grid gap-3 rounded-2xl border border-zinc-850 bg-zinc-950/50 p-4 sm:grid-cols-3">
-      <label className="flex items-center gap-3 rounded-xl border border-zinc-850 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300">
-        <input
-          type="checkbox"
-          checked={options.replace}
-          onChange={(e) =>
-            setOptions((current) => ({ ...current, replace: e.target.checked }))
-          }
-          className="h-4 w-4 accent-indigo-500"
-        />
-        Replace existing knowledge
-      </label>
-      <Field label="Chunk Size">
-        <input
-          type="number"
-          min={300}
-          max={1600}
-          className={inputClass}
-          value={options.chunkSize}
-          onChange={(e) =>
-            setOptions((current) => ({
-              ...current,
-              chunkSize: Number(e.target.value),
-            }))
-          }
-        />
-      </Field>
-      <Field label="Overlap">
-        <input
-          type="number"
-          min={0}
-          max={400}
-          className={inputClass}
-          value={options.chunkOverlap}
-          onChange={(e) =>
-            setOptions((current) => ({
-              ...current,
-              chunkOverlap: Number(e.target.value),
-            }))
-          }
-        />
-      </Field>
     </div>
   );
 }
