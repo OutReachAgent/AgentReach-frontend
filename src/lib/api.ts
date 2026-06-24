@@ -49,6 +49,20 @@ type CampaignPayload = {
   cc?: string[]; // CC email addresses
   bcc?: string[]; // BCC email addresses
 };
+type CallingCampaignPayload = {
+  [key: string]: unknown;
+  name?: string;
+  description?: string;
+  objective?: string;
+  prompt?: string;
+  voiceQuality?: string;
+  voice?: string;
+  language?: string;
+  selectedVoice?: string;
+  selectedLanguage?: string;
+  aiCallingBotId?: string;
+  contactIds?: string[];
+};
 
 type DirectoryPayload = {
   name?: string;
@@ -528,7 +542,7 @@ export const api = {
     dashboard: () => request("/calling-campaigns/dashboard"),
     list: () => request("/calling-campaigns"),
     get: (id: string) => request(`/calling-campaigns/${id}`),
-    create: (data: CampaignPayload) =>
+    create: (data: CallingCampaignPayload) =>
       request("/calling-campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -552,7 +566,7 @@ export const api = {
       }),
     generationStatus: (id: string) =>
       request(`/calling-campaigns/generate-jobs/${id}`),
-    update: (id: string, data: CampaignPayload) =>
+    update: (id: string, data: CallingCampaignPayload) =>
       request(`/calling-campaigns/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

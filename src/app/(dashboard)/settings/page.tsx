@@ -587,7 +587,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
             <div className="flex items-center gap-2">
               <Key className="h-5 w-5 text-purple-400" />
-              <h3 className="text-base font-bold text-white">Google Service Account Configuration</h3>
+              <h3 className="text-base font-bold text-white">Google AI / Vertex Credentials</h3>
             </div>
             <div className="flex items-center gap-4">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -610,17 +610,17 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                Google Service Account JSON
+                Google JSON Credentials
               </label>
               <textarea
                 value={googleServiceAccountJson}
                 onChange={(e) => setGoogleServiceAccountJson(e.target.value)}
-                placeholder="Paste full service-account JSON"
+                placeholder='Paste Google service-account JSON, or JSON with {"geminiApiKey":"..."}'
                 rows={8}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50 font-mono"
               />
               <p className="mt-2 text-[11px] text-zinc-500">
-                Used for Google voice preview and HD AI calling TTS. The backend stores this encrypted and returns it masked.
+                Used for Vertex AI, Gemini Live voice calling, embeddings, Google voice preview, and HD AI calling TTS. Add a service-account JSON for Vertex/TTS and include geminiApiKey for Gemini Live. The backend stores this encrypted and returns it masked.
               </p>
             </div>
           </div>

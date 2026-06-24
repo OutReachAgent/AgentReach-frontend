@@ -1417,6 +1417,8 @@ export default function CallingCampaignsPage() {
       voiceQuality,
       voice: payloadVoice,
       language: payloadLanguage,
+      selectedVoice: payloadVoice,
+      selectedLanguage: payloadLanguage,
       aiCallingBotId: aiCallingBotId || undefined,
       contactIds: selectedContactIds,
     };
