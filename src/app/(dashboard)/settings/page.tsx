@@ -165,8 +165,8 @@ export default function SettingsPage() {
   const [twilioAccountSid, setTwilioAccountSid] = useState("");
   const [twilioAuthToken, setTwilioAuthToken] = useState("");
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState("");
-  const [googleServiceAccountJson, setGoogleServiceAccountJson] = useState("");
-  
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+
   const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
 
@@ -204,8 +204,8 @@ export default function SettingsPage() {
         setTwilioAccountSid(settings.twilioAccountSid || "");
         setTwilioAuthToken(settings.twilioAuthToken || "");
         setTwilioPhoneNumber(settings.twilioPhoneNumber || "");
-        setGoogleServiceAccountJson((prev) => {
-          const incoming = settings.googleServiceAccountJson || "";
+        setGeminiApiKey((prev) => {
+          const incoming = settings.geminiApiKey || "";
           if (
             incoming === MASKED_CREDENTIAL &&
             prev &&
@@ -298,38 +298,44 @@ export default function SettingsPage() {
         );
       } else {
         showAlert(
-          res.error || "We could not verify your Twilio integration. Please check details.",
+          res.error ||
+            "We could not verify your Twilio integration. Please check details.",
           "error",
         );
       }
     },
     onError: (err: Error) => {
-      showAlert(err.message || "We could not test your Twilio settings. Please try again.", "error");
+      showAlert(
+        err.message ||
+          "We could not test your Twilio settings. Please try again.",
+        "error",
+      );
     },
   });
 
   const testGeminiMutation = useMutation({
-    mutationFn: () =>
-      api.settings.testGemini({
-        googleServiceAccountJson,
-      }),
+    mutationFn: () => api.settings.testGemini({ geminiApiKey }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       if (res.success) {
         showAlert(
-          res.message || "Your Google service account is working.",
+          res.message || "Your Gemini API key is working.",
           "success",
-          "Google credentials verified",
+          "Gemini key verified",
         );
       } else {
         showAlert(
-          res.error || "We could not verify your Google service account JSON.",
+          res.error || "We could not verify your Gemini API key.",
           "error",
         );
       }
     },
     onError: (err: Error) => {
-      showAlert(err.message || "We could not test your Google credentials. Please try again.", "error");
+      showAlert(
+        err.message ||
+          "We could not test your Gemini API key. Please try again.",
+        "error",
+      );
     },
   });
 
@@ -342,10 +348,10 @@ export default function SettingsPage() {
       awsSenderEmail: CAMPAIGN_SENDER_EMAIL,
       openRouterApiKey,
       openRouterModel,
+      geminiApiKey,
       twilioAccountSid,
       twilioAuthToken,
       twilioPhoneNumber,
-      googleServiceAccountJson,
     });
   };
 
@@ -506,21 +512,26 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
             <div className="flex items-center gap-2">
               <Server className="h-5 w-5 text-indigo-400" />
-              <h3 className="text-base font-bold text-white">Twilio Telephony Configuration</h3>
+              <h3 className="text-base font-bold text-white">
+                Twilio Telephony Configuration
+              </h3>
             </div>
             <div className="flex items-center gap-4">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                settings?.twilioStatus === 'CONNECTED'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
-                  : settings?.twilioStatus === 'FAILED'
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
-                  : 'bg-zinc-850 text-zinc-400 border-zinc-800'
-              }`}>
-                {settings?.twilioStatus || 'DISCONNECTED'}
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  settings?.twilioStatus === "CONNECTED"
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
+                    : settings?.twilioStatus === "FAILED"
+                      ? "bg-rose-500/10 text-rose-400 border-rose-500/10"
+                      : "bg-zinc-850 text-zinc-400 border-zinc-800"
+                }`}
+              >
+                {settings?.twilioStatus || "DISCONNECTED"}
               </span>
               {settings?.twilioLastVerified && (
                 <span className="text-[10px] text-zinc-500">
-                  Verified: {new Date(settings.twilioLastVerified).toLocaleString()}
+                  Verified:{" "}
+                  {new Date(settings.twilioLastVerified).toLocaleString()}
                 </span>
               )}
             </div>
@@ -582,26 +593,29 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Google Credentials Panel */}
+        {/* Gemini API Key Panel */}
         <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
             <div className="flex items-center gap-2">
               <Key className="h-5 w-5 text-purple-400" />
-              <h3 className="text-base font-bold text-white">Google AI / Vertex Credentials</h3>
+              <h3 className="text-base font-bold text-white">Gemini API Key</h3>
             </div>
             <div className="flex items-center gap-4">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                settings?.geminiStatus === 'CONNECTED'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
-                  : settings?.geminiStatus === 'FAILED'
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
-                    : 'bg-zinc-850 text-zinc-400 border-zinc-800'
-              }`}>
-                {settings?.geminiStatus || 'DISCONNECTED'}
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  settings?.geminiStatus === "CONNECTED"
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
+                    : settings?.geminiStatus === "FAILED"
+                      ? "bg-rose-500/10 text-rose-400 border-rose-500/10"
+                      : "bg-zinc-850 text-zinc-400 border-zinc-800"
+                }`}
+              >
+                {settings?.geminiStatus || "DISCONNECTED"}
               </span>
               {settings?.geminiLastVerified && (
                 <span className="text-[10px] text-zinc-500">
-                  Verified: {new Date(settings.geminiLastVerified).toLocaleString()}
+                  Verified:{" "}
+                  {new Date(settings.geminiLastVerified).toLocaleString()}
                 </span>
               )}
             </div>
@@ -609,18 +623,20 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                Google JSON Credentials
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Gemini API Key
               </label>
-              <textarea
-                value={googleServiceAccountJson}
-                onChange={(e) => setGoogleServiceAccountJson(e.target.value)}
-                placeholder='Paste Google service-account JSON, or JSON with {"geminiApiKey":"..."}'
-                rows={8}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50 font-mono"
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="AIza..."
+                autoComplete="off"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
               />
               <p className="mt-2 text-[11px] text-zinc-500">
-                Used for Vertex AI, Gemini Live voice calling, embeddings, Google voice preview, and HD AI calling TTS. Add a service-account JSON for Vertex/TTS and include geminiApiKey for Gemini Live. The backend stores this encrypted and returns it masked.
+                Saved encrypted and used for Gemini Live calling, bot chat,
+                embeddings, and AI calling campaign generation.
               </p>
             </div>
           </div>
@@ -637,7 +653,7 @@ export default function SettingsPage() {
               ) : (
                 <Key className="h-3.5 w-3.5" />
               )}
-              Test Google Credentials
+              Test Gemini Key
             </button>
           </div>
         </div>

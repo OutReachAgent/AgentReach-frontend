@@ -221,11 +221,7 @@ export default function AiCallingBotsPage() {
       showAlert("Bot name is required.", "error");
       return;
     }
-    if (
-      !form.knowledgeBaseText.trim() &&
-      !knowledgeBasePdf &&
-      !editingBotId
-    ) {
+    if (!form.knowledgeBaseText.trim() && !knowledgeBasePdf && !editingBotId) {
       showAlert(
         "Provide Knowledge Base Text or upload a PDF for embedding.",
         "error",
@@ -254,11 +250,11 @@ export default function AiCallingBotsPage() {
     searchMutation.mutate();
   };
 
-  if (settings && !settings.googleServiceAccountJson) {
+  if (settings && settings.geminiStatus !== "CONNECTED") {
     return (
       <MissingCredentials
-        title="Google Credentials Required"
-        description="To create and train AI calling bots, you need to configure your Google service account JSON in settings."
+        title="Gemini Key Required"
+        description="To create and train AI calling bots, add and verify your Gemini API key in Settings."
       />
     );
   }
@@ -300,7 +296,9 @@ export default function AiCallingBotsPage() {
           <div className="flex items-center justify-between border-b border-zinc-850 px-5 py-4">
             <div>
               <p className="text-sm font-bold text-white">Bot Library</p>
-              <p className="text-xs text-zinc-500">Reusable AI calling profiles</p>
+              <p className="text-xs text-zinc-500">
+                Reusable AI calling profiles
+              </p>
             </div>
             <RefreshCw className="h-4 w-4 text-zinc-500" />
           </div>
@@ -394,7 +392,9 @@ export default function AiCallingBotsPage() {
                     <input
                       className={inputClass}
                       value={form.description}
-                      onChange={(e) => updateForm("description", e.target.value)}
+                      onChange={(e) =>
+                        updateForm("description", e.target.value)
+                      }
                       placeholder="Outbound sales qualification bot"
                     />
                   </Field>
@@ -441,7 +441,9 @@ export default function AiCallingBotsPage() {
                   <input
                     type="file"
                     accept="application/pdf,.pdf"
-                    onChange={(e) => setKnowledgeBasePdf(e.target.files?.[0] || null)}
+                    onChange={(e) =>
+                      setKnowledgeBasePdf(e.target.files?.[0] || null)
+                    }
                     className="w-full rounded-xl border border-dashed border-zinc-700 bg-zinc-950 px-3 py-4 text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-3 file:py-2 file:text-xs file:font-bold file:text-zinc-200"
                   />
                 </Field>
@@ -450,7 +452,10 @@ export default function AiCallingBotsPage() {
                     type="checkbox"
                     checked={form.contextOutsideKnowledgeBase}
                     onChange={(e) =>
-                      updateForm("contextOutsideKnowledgeBase", e.target.checked)
+                      updateForm(
+                        "contextOutsideKnowledgeBase",
+                        e.target.checked,
+                      )
                     }
                     className="h-4 w-4 accent-indigo-500"
                   />
@@ -464,7 +469,8 @@ export default function AiCallingBotsPage() {
                     }
                     className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500 disabled:opacity-60"
                   >
-                    {createBotMutation.isPending || updateBotMutation.isPending ? (
+                    {createBotMutation.isPending ||
+                    updateBotMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : editingBotId ? (
                       <Save className="h-4 w-4" />
@@ -550,13 +556,7 @@ export default function AiCallingBotsPage() {
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
       <span className={labelClass}>{label}</span>

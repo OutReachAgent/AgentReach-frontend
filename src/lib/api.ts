@@ -24,16 +24,17 @@ type SettingsUpdate = {
   awsRegion?: string;
   openRouterApiKey?: string;
   openRouterModel?: string;
+  geminiApiKey?: string;
   awsSenderEmail?: string;
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioPhoneNumber?: string;
-  googleServiceAccountJson?: string;
   twilioStatus?: string;
   geminiStatus?: string;
 };
-type GoogleCredentialsTestPayload = {
-  googleServiceAccountJson?: string;
+
+type GeminiKeyTestPayload = {
+  geminiApiKey?: string;
 };
 
 type GeminiVoicePreviewPayload = {
@@ -301,7 +302,7 @@ export const api = {
     testOpenRouter: () =>
       request("/settings/test-openrouter", { method: "POST" }),
     testTwilio: () => request("/settings/test-twilio", { method: "POST" }),
-    testGemini: (data?: GoogleCredentialsTestPayload) =>
+    testGemini: (data?: GeminiKeyTestPayload) =>
       request("/settings/test-gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

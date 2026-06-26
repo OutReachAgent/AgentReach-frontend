@@ -409,8 +409,7 @@ const extractHdVoiceName = (value?: string) => {
 const extractHdLanguage = (value?: string) => {
   const rawValue = value?.trim().replace(/^google:/i, "");
   return (
-    rawValue?.match(/^([a-z]{2,3}-[A-Z]{2})-Chirp3-HD-[A-Za-z]+$/)?.[1] ||
-    ""
+    rawValue?.match(/^([a-z]{2,3}-[A-Z]{2})-Chirp3-HD-[A-Za-z]+$/)?.[1] || ""
   );
 };
 
@@ -577,7 +576,8 @@ function HDVoiceSelector({
                       onClick={(e) => togglePlay(e, opt.value)}
                       className="ml-2 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                     >
-                      {previewingVoice === `google:${language}-Chirp3-HD-${opt.value}` ? (
+                      {previewingVoice ===
+                      `google:${language}-Chirp3-HD-${opt.value}` ? (
                         <Pause className="h-3.5 w-3.5" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -778,13 +778,7 @@ export default function CallingCampaignsPage() {
   });
 
   const launchCampaignMutation = useMutation({
-    mutationFn: ({
-      id,
-      isRelaunch,
-    }: {
-      id: string;
-      isRelaunch: boolean;
-    }) =>
+    mutationFn: ({ id, isRelaunch }: { id: string; isRelaunch: boolean }) =>
       isRelaunch
         ? api.callingCampaigns.relaunch(id)
         : api.callingCampaigns.launch(id),
@@ -912,7 +906,7 @@ export default function CallingCampaignsPage() {
     onError: (err: Error) => {
       showAlert(
         err.message ||
-          "We could not generate a voice preview. Please check your Google credential settings.",
+          "We could not generate a voice preview. Please check your Gemini API key settings.",
         "error",
       );
     },
@@ -975,7 +969,8 @@ export default function CallingCampaignsPage() {
         setVoice(nextVoice);
         setLanguage(nextLanguage);
         setVoicePreviewText(
-          LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+          LANGUAGE_PREVIEW_TEXTS[nextLanguage] ||
+            LANGUAGE_PREVIEW_TEXTS["en-IN"],
         );
         setVoicePreviewUrl("");
         setGenerationJobId(null);
@@ -1544,8 +1539,7 @@ export default function CallingCampaignsPage() {
             campaigns.map((camp: LooseApiResponse) => {
               const statusColors: Record<string, string> = {
                 DRAFT: "bg-zinc-850 text-zinc-400 border-zinc-800",
-                LAUNCHING:
-                  "bg-amber-500/10 text-amber-300 border-amber-500/15",
+                LAUNCHING: "bg-amber-500/10 text-amber-300 border-amber-500/15",
                 RUNNING:
                   "bg-indigo-500/10 text-indigo-400 border-indigo-500/10",
                 COMPLETED:
