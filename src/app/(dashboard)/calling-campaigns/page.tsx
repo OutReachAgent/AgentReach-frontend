@@ -29,7 +29,6 @@ import {
   Square,
   Folder,
   Languages,
-  Headphones,
   Bot,
   Sparkles,
 } from "lucide-react";
@@ -85,276 +84,6 @@ type CallingCampaignGenerationJob = {
 
 type VoiceGender = "female" | "male";
 
-const VOICE_OPTIONS: {
-  value: string;
-  label: string;
-  language: string;
-  gender: VoiceGender;
-}[] = [
-  {
-    value: "Zephyr",
-    label: "Zephyr - Bright",
-    language: "en",
-    gender: "female",
-  },
-  { value: "Puck", label: "Puck - Upbeat", language: "en", gender: "male" },
-  {
-    value: "Charon",
-    label: "Charon - Informative",
-    language: "en",
-    gender: "male",
-  },
-  { value: "Kore", label: "Kore - Firm", language: "en-IN", gender: "female" },
-  {
-    value: "Fenrir",
-    label: "Fenrir - Excitable",
-    language: "en",
-    gender: "male",
-  },
-  { value: "Leda", label: "Leda - Youthful", language: "en", gender: "female" },
-  { value: "Orus", label: "Orus - Firm", language: "en-IN", gender: "male" },
-  { value: "Aoede", label: "Aoede - Breezy", language: "en", gender: "female" },
-  {
-    value: "Callirrhoe",
-    label: "Callirrhoe - Easy-going",
-    language: "en",
-    gender: "female",
-  },
-  {
-    value: "Autonoe",
-    label: "Autonoe - Bright",
-    language: "en-IN",
-    gender: "female",
-  },
-  {
-    value: "Enceladus",
-    label: "Enceladus - Breathy",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Iapetus",
-    label: "Iapetus - Clear",
-    language: "en-IN",
-    gender: "male",
-  },
-  {
-    value: "Umbriel",
-    label: "Umbriel - Easy-going",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Algieba",
-    label: "Algieba - Smooth",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Despina",
-    label: "Despina - Smooth",
-    language: "en-IN",
-    gender: "female",
-  },
-  {
-    value: "Erinome",
-    label: "Erinome - Clear",
-    language: "en",
-    gender: "female",
-  },
-  {
-    value: "Algenib",
-    label: "Algenib - Gravelly",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Rasalgethi",
-    label: "Rasalgethi - Informative",
-    language: "en-IN",
-    gender: "male",
-  },
-  {
-    value: "Laomedeia",
-    label: "Laomedeia - Upbeat",
-    language: "en",
-    gender: "female",
-  },
-  {
-    value: "Achernar",
-    label: "Achernar - Soft",
-    language: "en-IN",
-    gender: "female",
-  },
-  { value: "Alnilam", label: "Alnilam - Firm", language: "en", gender: "male" },
-  { value: "Schedar", label: "Schedar - Even", language: "en", gender: "male" },
-  {
-    value: "Gacrux",
-    label: "Gacrux - Mature",
-    language: "en-IN",
-    gender: "female",
-  },
-  {
-    value: "Pulcherrima",
-    label: "Pulcherrima - Forward",
-    language: "en",
-    gender: "female",
-  },
-  {
-    value: "Achird",
-    label: "Achird - Friendly",
-    language: "en-IN",
-    gender: "male",
-  },
-  {
-    value: "Zubenelgenubi",
-    label: "Zubenelgenubi - Casual",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Vindemiatrix",
-    label: "Vindemiatrix - Gentle",
-    language: "en-IN",
-    gender: "female",
-  },
-  {
-    value: "Sadachbia",
-    label: "Sadachbia - Lively",
-    language: "en",
-    gender: "female",
-  },
-  {
-    value: "Sadaltager",
-    label: "Sadaltager - Knowledgeable",
-    language: "en",
-    gender: "male",
-  },
-  {
-    value: "Sulafat",
-    label: "Sulafat - Warm",
-    language: "en-IN",
-    gender: "female",
-  },
-  {
-    value: "Aditi_hi",
-    label: "Aditi - Standard (Hindi)",
-    language: "hi",
-    gender: "female",
-  },
-  {
-    value: "Kajal_hi",
-    label: "Kajal - Natural (Hindi)",
-    language: "hi",
-    gender: "female",
-  },
-  {
-    value: "Madhav_hi",
-    label: "Madhav - Clear (Hindi)",
-    language: "hi",
-    gender: "male",
-  },
-];
-
-const LANGUAGE_OPTIONS = [
-  { value: "en", label: "English" },
-  { value: "en-IN", label: "English (India)" },
-  { value: "cmn", label: "Chinese, Mandarin" },
-  { value: "hi", label: "Hindi" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "ar", label: "Arabic" },
-  { value: "bn", label: "Bangla" },
-  { value: "pt", label: "Portuguese" },
-  { value: "ru", label: "Russian" },
-  { value: "id", label: "Indonesian" },
-  { value: "ur", label: "Urdu" },
-  { value: "de", label: "German" },
-  { value: "ja", label: "Japanese" },
-  { value: "pa", label: "Punjabi" },
-  { value: "mr", label: "Marathi" },
-  { value: "te", label: "Telugu" },
-  { value: "tr", label: "Turkish" },
-  { value: "ta", label: "Tamil" },
-  { value: "vi", label: "Vietnamese" },
-  { value: "ko", label: "Korean" },
-  { value: "it", label: "Italian" },
-  { value: "fil", label: "Filipino" },
-  { value: "gu", label: "Gujarati" },
-  { value: "fa", label: "Persian" },
-  { value: "pl", label: "Polish" },
-  { value: "uk", label: "Ukrainian" },
-  { value: "nl", label: "Dutch" },
-  { value: "ms", label: "Malay" },
-  { value: "ro", label: "Romanian" },
-  { value: "el", label: "Greek" },
-  { value: "hu", label: "Hungarian" },
-  { value: "he", label: "Hebrew" },
-  { value: "th", label: "Thai" },
-  { value: "sv", label: "Swedish" },
-  { value: "cs", label: "Czech" },
-  { value: "da", label: "Danish" },
-  { value: "fi", label: "Finnish" },
-  { value: "nb", label: "Norwegian, Bokmal" },
-  { value: "sr", label: "Serbian" },
-  { value: "sk", label: "Slovak" },
-  { value: "bg", label: "Bulgarian" },
-  { value: "hr", label: "Croatian" },
-  { value: "sl", label: "Slovenian" },
-  { value: "sw", label: "Swahili" },
-  { value: "kn", label: "Kannada" },
-  { value: "ml", label: "Malayalam" },
-  { value: "ne", label: "Nepali" },
-  { value: "my", label: "Burmese" },
-  { value: "si", label: "Sinhala" },
-  { value: "af", label: "Afrikaans" },
-];
-
-const normalizeVoiceValue = (value?: string) =>
-  VOICE_OPTIONS.some((option) => option.value === value)
-    ? value || "Kore"
-    : "Kore";
-
-const normalizeLanguageValue = (value?: string) => {
-  if (!value) return "en";
-  if (value === "English") return "en";
-  if (value === "Indian English") return "en-IN";
-  if (value === "Hindi") return "hi";
-  if (value === "Marathi") return "mr";
-  return LANGUAGE_OPTIONS.some((option) => option.value === value)
-    ? value
-    : "en";
-};
-
-const getVoiceLabel = (value: string) =>
-  VOICE_OPTIONS.find((option) => option.value === value)?.label || value;
-
-const getLanguageLabel = (value: string) =>
-  LANGUAGE_OPTIONS.find((option) => option.value === value)?.label || value;
-
-const getVoiceDefaultLanguage = (value: string) =>
-  VOICE_OPTIONS.find((option) => option.value === value)?.language || "en";
-
-const getVoiceDefaultGender = (value: string): VoiceGender =>
-  VOICE_OPTIONS.find((option) => option.value === value)?.gender || "female";
-
-const getVoicesForLanguage = (value: string) =>
-  VOICE_OPTIONS.filter((option) => option.language === value);
-
-const getVoicesForLanguageAndGender = (
-  languageValue: string,
-  genderValue: VoiceGender,
-) =>
-  VOICE_OPTIONS.filter(
-    (option) =>
-      option.language === languageValue && option.gender === genderValue,
-  );
-
-const VOICE_LANGUAGE_OPTIONS = LANGUAGE_OPTIONS.filter((languageOption) =>
-  VOICE_OPTIONS.some(
-    (voiceOption) => voiceOption.language === languageOption.value,
-  ),
-);
 
 const LANGUAGE_PREVIEW_TEXTS: Record<string, string> = {
   "en-IN": "Hello, this is a quick ReachConvert voice preview.",
@@ -369,32 +98,6 @@ const LANGUAGE_PREVIEW_TEXTS: Record<string, string> = {
   "pa-IN": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ, ਇਹ ਇੱਕ ਤੇਜ਼ ਰੀਚਕਨਵਰਟ ਵੌਇਸ ਪ੍ਰੀਵਿਊ ਹੈ।",
 };
 
-const normalizeCampaignLanguage = (
-  voiceValue?: string,
-  languageValue?: string,
-) => {
-  const normalizedLanguage = languageValue
-    ? normalizeLanguageValue(languageValue)
-    : "";
-  return getVoicesForLanguage(normalizedLanguage).length
-    ? normalizedLanguage
-    : getVoiceDefaultLanguage(normalizeVoiceValue(voiceValue));
-};
-
-const normalizeVoiceForLanguageAndGender = (
-  voiceValue: string | undefined,
-  languageValue: string,
-  genderValue: VoiceGender,
-) => {
-  const normalizedVoice = normalizeVoiceValue(voiceValue);
-  const languageVoices = getVoicesForLanguageAndGender(
-    languageValue,
-    genderValue,
-  );
-  return languageVoices.some((option) => option.value === normalizedVoice)
-    ? normalizedVoice
-    : languageVoices[0]?.value || normalizedVoice;
-};
 
 const extractHdVoiceName = (value?: string) => {
   const rawValue = value?.trim();
@@ -452,6 +155,14 @@ const antigravityLanguages = vertexLanguageLabels.filter(
   (group) =>
     group.label === "Indian Languages" || group.label === "European Languages",
 );
+
+const getLanguageLabel = (value: string) => {
+  for (const group of antigravityLanguages) {
+    const opt = group.options.find((o) => o.value === value);
+    if (opt) return opt.label;
+  }
+  return value;
+};
 
 function HDVoiceSelector({
   value,
@@ -633,11 +344,9 @@ export default function CallingCampaignsPage() {
   const [aiCampaignTone, setAiCampaignTone] = useState(
     "Warm, natural, concise, and helpful",
   );
-  const [voiceQuality, setVoiceQuality] = useState<"generic" | "hd">("generic");
-  const [voice, setVoice] = useState("Kore");
+  const [voice, setVoice] = useState("Puck");
   const [language, setLanguage] = useState("en-IN");
-  const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
-  const [voicePreviewUrl, setVoicePreviewUrl] = useState("");
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
   const [voicePreviewText, setVoicePreviewText] = useState(
     "Hello, this is a quick ReachConvert voice preview.",
   );
@@ -880,27 +589,18 @@ export default function CallingCampaignsPage() {
   });
 
   const previewVoiceMutation = useMutation({
-    mutationFn: () =>
-      api.settings.previewGeminiVoice({
-        voice:
-          voiceQuality === "hd"
-            ? buildGoogleHdVoice(
-                normalizeHdVoiceForLanguageAndGender(
-                  voice,
-                  normalizeHdLanguageValue(language, voice),
-                  voiceGender,
-                ),
-                normalizeHdLanguageValue(language, voice),
-              )
-            : voice,
-        language:
-          voiceQuality === "hd"
-            ? normalizeHdLanguageValue(language, voice)
-            : language,
+    mutationFn: () => {
+      const hdLanguage = normalizeHdLanguageValue(language, voice);
+      return api.settings.previewGeminiVoice({
+        voice: buildGoogleHdVoice(
+          normalizeHdVoiceForLanguageAndGender(voice, hdLanguage, voiceGender),
+          hdLanguage,
+        ),
+        language: hdLanguage,
         text: voicePreviewText,
-      }),
-    onSuccess: (res) => {
-      setVoicePreviewUrl(res.audioDataUrl || "");
+      });
+    },
+    onSuccess: () => {
       showAlert("Voice preview is ready.", "success", "Preview ready");
     },
     onError: (err: Error) => {
@@ -964,7 +664,6 @@ export default function CallingCampaignsPage() {
         setName((current) => generated.name || current);
         setObjective(generated.objective || "");
         setPrompt(generated.prompt || aiCampaignPrompt);
-        setVoiceQuality("hd");
         setVoiceGender(nextGender);
         setVoice(nextVoice);
         setLanguage(nextLanguage);
@@ -972,7 +671,6 @@ export default function CallingCampaignsPage() {
           LANGUAGE_PREVIEW_TEXTS[nextLanguage] ||
             LANGUAGE_PREVIEW_TEXTS["en-IN"],
         );
-        setVoicePreviewUrl("");
         setGenerationJobId(null);
         showAlert(
           "AI calling campaign draft generated.",
@@ -1001,11 +699,9 @@ export default function CallingCampaignsPage() {
     setPrompt("");
     setAiCampaignPrompt("");
     setAiCampaignTone("Warm, natural, concise, and helpful");
-    setVoiceQuality("generic");
-    setVoice("Kore");
+    setVoice("Puck");
     setLanguage("en-IN");
-    setVoiceGender("female");
-    setVoicePreviewUrl("");
+    setVoiceGender("male");
     setVoicePreviewText("Hello, this is a quick ReachConvert voice preview.");
     setAiCallingBotId(null);
     setSelectedContactIds([]);
@@ -1089,75 +785,24 @@ export default function CallingCampaignsPage() {
 
   const handleVoiceChange = (voiceName: string) => {
     setVoice(voiceName);
-    setVoicePreviewUrl("");
   };
 
   const handleLanguageChange = (languageName: string) => {
-    const newPreviewText =
-      LANGUAGE_PREVIEW_TEXTS[languageName] || LANGUAGE_PREVIEW_TEXTS["en-IN"];
-    if (voiceQuality === "hd") {
-      setLanguage(languageName);
-      setVoicePreviewUrl("");
-      setVoicePreviewText(newPreviewText);
-      setVoice(
-        normalizeHdVoiceForLanguageAndGender(voice, languageName, voiceGender),
-      );
-      return;
-    }
-    const nextVoices = getVoicesForLanguageAndGender(languageName, voiceGender);
     setLanguage(languageName);
-    setVoicePreviewText(newPreviewText);
-    if (!nextVoices.some((option) => option.value === voice)) {
-      setVoice(nextVoices[0]?.value || "Kore");
-    }
-    setVoicePreviewUrl("");
-  };
-
-  const handleQualityChange = (mode: "generic" | "hd") => {
-    setVoiceQuality(mode);
-    setVoicePreviewUrl("");
-    if (mode === "hd") {
-      const nextLanguage = normalizeHdLanguageValue(language, voice);
-      const nextGender = getHdVoiceDefaultGender(voice);
-      setLanguage(nextLanguage);
-      setVoiceGender(nextGender);
-      setVoice(
-        normalizeHdVoiceForLanguageAndGender(voice, nextLanguage, nextGender),
-      );
-      setVoicePreviewText(
-        LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
-      );
-      return;
-    }
-    const nextVoice = normalizeVoiceValue(voice);
-    const nextLanguage = normalizeCampaignLanguage(nextVoice, language);
-    const nextGender = getVoiceDefaultGender(nextVoice);
-    setLanguage(nextLanguage);
-    setVoiceGender(nextGender);
-    setVoice(
-      normalizeVoiceForLanguageAndGender(nextVoice, nextLanguage, nextGender),
-    );
     setVoicePreviewText(
-      LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+      LANGUAGE_PREVIEW_TEXTS[languageName] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
+    );
+    setVoice(
+      normalizeHdVoiceForLanguageAndGender(voice, languageName, voiceGender),
     );
   };
 
   const handleVoiceGenderChange = (gender: VoiceGender) => {
-    if (voiceQuality === "hd") {
-      setVoiceGender(gender);
-      const nextVoices = getHdVoices(language, gender);
-      if (!nextVoices.some((v) => v.value === voice)) {
-        setVoice(nextVoices[0]?.value || "");
-      }
-      setVoicePreviewUrl("");
-      return;
-    }
-    const nextVoices = getVoicesForLanguageAndGender(language, gender);
     setVoiceGender(gender);
-    if (!nextVoices.some((option) => option.value === voice)) {
-      setVoice(nextVoices[0]?.value || "Kore");
+    const nextVoices = getHdVoices(language, gender);
+    if (!nextVoices.some((v) => v.value === voice)) {
+      setVoice(nextVoices[0]?.value || "");
     }
-    setVoicePreviewUrl("");
   };
 
   const handleAiBotSelect = (bot: AiCallingBot, isSelected: boolean) => {
@@ -1171,7 +816,6 @@ export default function CallingCampaignsPage() {
 
     const nextLanguage = normalizeHdLanguageValue(bot.language, bot.voice);
     const nextGender = getHdVoiceDefaultGender(bot.voice);
-    setVoiceQuality("hd");
     setLanguage(nextLanguage);
     setVoiceGender(nextGender);
     setVoice(
@@ -1180,17 +824,12 @@ export default function CallingCampaignsPage() {
     setVoicePreviewText(
       LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
     );
-    setVoicePreviewUrl("");
   };
 
   const isGeneratingCampaign =
     generateCallingCampaignMutation.isPending ||
     generationJob?.status === "PENDING" ||
     generationJob?.status === "PROCESSING";
-  const filteredVoiceOptions = getVoicesForLanguageAndGender(
-    language,
-    voiceGender,
-  );
 
   const handleCreateDirectoryChange = (directoryId: DirectoryFilter) => {
     setSelectedContactDirectoryId(directoryId);
@@ -1300,29 +939,18 @@ export default function CallingCampaignsPage() {
       setName(details.name || "");
       setObjective(details.objective || "");
       setPrompt(details.prompt || "");
-      const nextVoiceQuality = details.voiceQuality || "generic";
-      setVoiceQuality(nextVoiceQuality);
-      const nextLanguage =
-        nextVoiceQuality === "hd"
-          ? normalizeHdLanguageValue(details.language, details.voice)
-          : normalizeCampaignLanguage(details.voice, details.language);
-      const nextGender =
-        nextVoiceQuality === "hd"
-          ? getHdVoiceDefaultGender(details.voice)
-          : getVoiceDefaultGender(normalizeVoiceValue(details.voice));
+      const nextLanguage = normalizeHdLanguageValue(
+        details.language,
+        details.voice,
+      );
+      const nextGender = getHdVoiceDefaultGender(details.voice);
       setVoiceGender(nextGender);
       setVoice(
-        nextVoiceQuality === "hd"
-          ? normalizeHdVoiceForLanguageAndGender(
-              details.voice,
-              nextLanguage,
-              nextGender,
-            )
-          : normalizeVoiceForLanguageAndGender(
-              details.voice,
-              nextLanguage,
-              nextGender,
-            ),
+        normalizeHdVoiceForLanguageAndGender(
+          details.voice,
+          nextLanguage,
+          nextGender,
+        ),
       );
       setLanguage(nextLanguage);
       setVoicePreviewText(
@@ -1389,27 +1017,17 @@ export default function CallingCampaignsPage() {
       return;
     }
 
-    const payloadLanguage =
-      voiceQuality === "hd"
-        ? normalizeHdLanguageValue(language, voice)
-        : language;
-    const payloadVoice =
-      voiceQuality === "hd"
-        ? buildGoogleHdVoice(
-            normalizeHdVoiceForLanguageAndGender(
-              voice,
-              payloadLanguage,
-              voiceGender,
-            ),
-            payloadLanguage,
-          )
-        : voice;
+    const payloadLanguage = normalizeHdLanguageValue(language, voice);
+    const payloadVoice = buildGoogleHdVoice(
+      normalizeHdVoiceForLanguageAndGender(voice, payloadLanguage, voiceGender),
+      payloadLanguage,
+    );
 
     const payload = {
       name,
       objective,
       prompt,
-      voiceQuality,
+      voiceQuality: "hd",
       voice: payloadVoice,
       language: payloadLanguage,
       selectedVoice: payloadVoice,
@@ -2156,31 +1774,6 @@ export default function CallingCampaignsPage() {
                 3. Voice & Language Configuration
               </h4>
 
-              <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 w-full max-w-[240px]">
-                <button
-                  type="button"
-                  onClick={() => handleQualityChange("generic")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${
-                    voiceQuality === "generic"
-                      ? "bg-indigo-600 text-white"
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-                  }`}
-                >
-                  Generic
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQualityChange("hd")}
-                  className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${
-                    voiceQuality === "hd"
-                      ? "bg-indigo-600 text-white"
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-                  }`}
-                >
-                  HD Voices
-                </button>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-400 mb-2">
@@ -2196,21 +1789,15 @@ export default function CallingCampaignsPage() {
                       <option value="" disabled>
                         Select Language
                       </option>
-                      {voiceQuality === "generic"
-                        ? VOICE_LANGUAGE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
+                      {antigravityLanguages.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.options.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
                             </option>
-                          ))
-                        : antigravityLanguages.map((group) => (
-                            <optgroup key={group.label} label={group.label}>
-                              {group.options.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </optgroup>
                           ))}
+                        </optgroup>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2242,88 +1829,17 @@ export default function CallingCampaignsPage() {
                     Voice Model
                   </label>
                   <div className="relative">
-                    {voiceQuality === "generic" ? (
-                      <>
-                        <Headphones className="absolute left-3 top-3 h-3.5 w-3.5 text-zinc-500" />
-                        <select
-                          value={
-                            filteredVoiceOptions.some(
-                              (option) => option.value === voice,
-                            )
-                              ? voice
-                              : filteredVoiceOptions[0]?.value || voice
-                          }
-                          onChange={(e) => handleVoiceChange(e.target.value)}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                        >
-                          <option value="" disabled>
-                            Select Voice
-                          </option>
-                          {filteredVoiceOptions.map((option) => (
-                            <option
-                              key={`${option.value}-${option.language}`}
-                              value={option.value}
-                            >
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </>
-                    ) : (
-                      <HDVoiceSelector
-                        value={voice}
-                        onChange={handleVoiceChange}
-                        language={language}
-                        gender={voiceGender}
-                        previewText={voicePreviewText}
-                      />
-                    )}
+                    <HDVoiceSelector
+                      value={voice}
+                      onChange={handleVoiceChange}
+                      language={language}
+                      gender={voiceGender}
+                      previewText={voicePreviewText}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Voice Preview Subcard */}
-              {voiceQuality === "generic" && (
-                <div className="rounded-xl border border-zinc-850 bg-zinc-950/80 p-3 space-y-3">
-                  <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                    TTS Script Preview
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
-                    <input
-                      type="text"
-                      value={voicePreviewText}
-                      onChange={(e) => {
-                        setVoicePreviewText(e.target.value);
-                        setVoicePreviewUrl("");
-                      }}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
-                    <button
-                      type="button"
-                      disabled={
-                        previewVoiceMutation.isPending ||
-                        !voicePreviewText.trim()
-                      }
-                      onClick={() => previewVoiceMutation.mutate()}
-                      className="flex h-9 items-center justify-center gap-2 px-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold text-zinc-100 disabled:opacity-50 transition-colors"
-                    >
-                      <Volume2 className="h-3.5 w-3.5 text-zinc-400" />
-                      {previewVoiceMutation.isPending
-                        ? "Generating..."
-                        : "Preview Voice"}
-                    </button>
-                  </div>
-                  {voicePreviewUrl && (
-                    <div className="pt-2 border-t border-zinc-850/50">
-                      <audio
-                        controls
-                        src={voicePreviewUrl}
-                        className="h-8 w-full"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* SECTION 4: Target Audience */}
