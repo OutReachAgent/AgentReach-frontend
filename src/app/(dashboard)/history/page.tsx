@@ -14,6 +14,21 @@ import {
   Clock,
 } from 'lucide-react';
 
+const getDialedNetworkRange = (phoneNumber?: string) => {
+  const digits = String(phoneNumber || '').replace(/\D/g, '');
+  if (!digits) return 'Unknown';
+  if (digits.startsWith('91') && digits.length >= 12) {
+    return `+91 ${digits.slice(2, 7)}****`;
+  }
+  if (digits.startsWith('1') && digits.length >= 11) {
+    return `+1 ${digits.slice(1, 4)}-${digits.slice(4, 7)}***`;
+  }
+  const prefixLength = Math.min(Math.max(digits.length - 4, 4), 7);
+  return `+${digits.slice(0, prefixLength)}${'*'.repeat(
+    Math.max(0, digits.length - prefixLength),
+  )}`;
+};
+
 export default function HistoryPage() {
   const [tab, setTab] = useState<'emails' | 'calls'>('emails');
 
@@ -285,6 +300,7 @@ export default function HistoryPage() {
                 <tr>
                   <th className="px-6 py-4 font-semibold">Recipient</th>
                   <th className="px-6 py-4 font-semibold">Phone</th>
+                  <th className="px-6 py-4 font-semibold">Network Range</th>
                   <th className="px-6 py-4 font-semibold">Campaign</th>
                   <th className="px-6 py-4 font-semibold">Duration</th>
                   <th className="px-6 py-4 font-semibold">Outcome</th>
@@ -295,7 +311,7 @@ export default function HistoryPage() {
                 {isCallsLoading ? (
                   [1, 2, 3].map((n) => (
                     <tr key={n} className="animate-pulse">
-                      <td colSpan={6} className="h-12 bg-zinc-900/50"></td>
+                      <td colSpan={7} className="h-12 bg-zinc-900/50"></td>
                     </tr>
                   ))
                 ) : callHistory.length > 0 ? (
@@ -317,6 +333,10 @@ export default function HistoryPage() {
                           {contactName}
                         </td>
                         <td className="px-6 py-4 text-zinc-400">{item.contact?.phoneNumber || 'N/A'}</td>
+                        <td className="px-6 py-4 text-zinc-400">
+                          {item.dialedNetworkRange ||
+                            getDialedNetworkRange(item.contact?.phoneNumber)}
+                        </td>
                         <td className="px-6 py-4 text-zinc-400">{item.campaign?.name || 'N/A'}</td>
                         <td className="px-6 py-4 text-zinc-400 flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-zinc-500" /> {item.duration}s
@@ -334,7 +354,7 @@ export default function HistoryPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                       No matching call logs found.
                     </td>
                   </tr>

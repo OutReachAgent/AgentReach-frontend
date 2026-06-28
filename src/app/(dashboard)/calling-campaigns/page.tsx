@@ -181,6 +181,21 @@ const getLanguageLabel = (value: string) => {
   return value;
 };
 
+const getDialedNetworkRange = (phoneNumber?: string) => {
+  const digits = String(phoneNumber || "").replace(/\D/g, "");
+  if (!digits) return "Unknown";
+  if (digits.startsWith("91") && digits.length >= 12) {
+    return `+91 ${digits.slice(2, 7)}****`;
+  }
+  if (digits.startsWith("1") && digits.length >= 11) {
+    return `+1 ${digits.slice(1, 4)}-${digits.slice(4, 7)}***`;
+  }
+  const prefixLength = Math.min(Math.max(digits.length - 4, 4), 7);
+  return `+${digits.slice(0, prefixLength)}${"*".repeat(
+    Math.max(0, digits.length - prefixLength),
+  )}`;
+};
+
 const TRANSCRIPT_COPY: Record<
   string,
   { assistant: string; contact: string; empty: string }
@@ -1253,7 +1268,8 @@ export default function CallingCampaignsPage() {
     return call.scripts
       .map((script: LooseApiResponse) => {
         const role = script.role === "assistant" ? "AI" : "User";
-        return script.content ? `${role}: ${script.content}` : "";
+        const content = script.content || script.text || script.message;
+        return content ? `${role}: ${content}` : "";
       })
       .filter(Boolean)
       .join("\n");
@@ -1637,6 +1653,9 @@ export default function CallingCampaignsPage() {
                       const isExpanded = expandedCallId === call.id;
                       const isPlaying = playingCallId === call.id;
                       const contact = call.contact || {};
+                      const dialedNetworkRange =
+                        call.dialedNetworkRange ||
+                        getDialedNetworkRange(contact.phoneNumber);
                       const collectedDataFields = getCollectedDataFields(call);
 
                       const outcomeColors: Record<string, string> = {
@@ -1677,6 +1696,9 @@ export default function CallingCampaignsPage() {
                                 <p className="text-xs text-zinc-500">
                                   {contact.email || "No email"} •{" "}
                                   {contact.phoneNumber || "No phone"}
+                                </p>
+                                <p className="mt-0.5 text-[10px] font-semibold text-zinc-600">
+                                  Network range: {dialedNetworkRange}
                                 </p>
                               </div>
                             </div>
@@ -1802,6 +1824,9 @@ export default function CallingCampaignsPage() {
                                         campaignDetails.language ||
                                         "en-IN",
                                     )}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-zinc-500">
+                                    Network range: {dialedNetworkRange}
                                   </p>
                                 </div>
                                 <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-3">
