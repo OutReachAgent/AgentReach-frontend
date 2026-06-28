@@ -84,6 +84,8 @@ type CallingCampaignGenerationJob = {
 
 type VoiceGender = "female" | "male";
 
+const DEFAULT_GEMINI_LIVE_MODEL =
+  "gemini-2.5-flash-native-audio-preview-12-2025";
 
 const LANGUAGE_PREVIEW_TEXTS: Record<string, string> = {
   "en-IN": "Hello, this is a quick ReachConvert voice preview.",
@@ -330,7 +332,7 @@ export default function CallingCampaignsPage() {
     null,
   );
 
-  // Audio Player Simulation
+  // Recording preview playback
   const [playingCallId, setPlayingCallId] = useState<string | null>(null);
 
   // Expanded Transcript Collapsible
@@ -349,6 +351,11 @@ export default function CallingCampaignsPage() {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
   const [voicePreviewText, setVoicePreviewText] = useState(
     "Hello, this is a quick ReachConvert voice preview.",
+  );
+  const [aiSpeaksFirst, setAiSpeaksFirst] = useState(true);
+  const [preventInterruption, setPreventInterruption] = useState(false);
+  const [realtimeModel, setRealtimeModel] = useState(
+    DEFAULT_GEMINI_LIVE_MODEL,
   );
   const [aiCallingBotId, setAiCallingBotId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
@@ -395,7 +402,7 @@ export default function CallingCampaignsPage() {
       selectedCampaignId ? api.callingCampaigns.get(selectedCampaignId) : null,
     enabled: !!selectedCampaignId,
     refetchInterval: (query) => {
-      // Fast refetch when simulation is running to show real-time call updates!
+      // Fast refetch while live calls are running to show real-time updates.
       return isCampaignActive(query.state.data?.status) ? 2000 : false;
     },
   });
@@ -703,6 +710,9 @@ export default function CallingCampaignsPage() {
     setLanguage("en-IN");
     setVoiceGender("male");
     setVoicePreviewText("Hello, this is a quick ReachConvert voice preview.");
+    setAiSpeaksFirst(true);
+    setPreventInterruption(false);
+    setRealtimeModel(DEFAULT_GEMINI_LIVE_MODEL);
     setAiCallingBotId(null);
     setSelectedContactIds([]);
     setContactSearch("");
@@ -956,6 +966,9 @@ export default function CallingCampaignsPage() {
       setVoicePreviewText(
         LANGUAGE_PREVIEW_TEXTS[nextLanguage] || LANGUAGE_PREVIEW_TEXTS["en-IN"],
       );
+      setAiSpeaksFirst(details.aiSpeaksFirst ?? true);
+      setPreventInterruption(details.preventInterruption ?? false);
+      setRealtimeModel(details.realtimeModel || DEFAULT_GEMINI_LIVE_MODEL);
       setAiCallingBotId(details.aiCallingBotId || null);
       setSelectedContactIds(existingContactIds);
       setContactSearch("");
@@ -1033,6 +1046,12 @@ export default function CallingCampaignsPage() {
       selectedVoice: payloadVoice,
       selectedLanguage: payloadLanguage,
       aiCallingBotId: aiCallingBotId || undefined,
+      aiSpeaksFirst,
+      preventInterruption,
+      realtimeModel: realtimeModel || DEFAULT_GEMINI_LIVE_MODEL,
+      maxTokens: 4000,
+      threshold: 0,
+      tools: ["end_call", "fetch_context"],
       contactIds: selectedContactIds,
     };
 
@@ -1107,6 +1126,15 @@ export default function CallingCampaignsPage() {
     );
   }
 
+  if (settings && settings.geminiStatus !== "CONNECTED") {
+    return (
+      <MissingCredentials
+        title="Gemini Live Key Required"
+        description="To create and launch AI calling campaigns, add and verify your Gemini API key for Gemini Live in settings."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1117,8 +1145,8 @@ export default function CallingCampaignsPage() {
             AI calling Campaigns
           </h2>
           <p className="text-sm text-zinc-400 mt-1">
-            Configure automated calling schedules with voice simulation agents
-            and detailed transcript logs.
+            Configure automated calling schedules with Gemini Live agents and
+            detailed transcript logs.
           </p>
         </div>
         {activeTab === "list" && (
@@ -1440,7 +1468,7 @@ export default function CallingCampaignsPage() {
                             </div>
                           </div>
 
-                          {/* Recording waves simulation */}
+                          {/* Recording preview waves */}
                           {isPlaying && (
                             <div className="px-6 py-4 bg-zinc-950/40 border-t border-zinc-850 flex items-center gap-4">
                               <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
@@ -1561,7 +1589,7 @@ export default function CallingCampaignsPage() {
                 ) : (
                   <div className="py-12 text-center text-zinc-500 border border-zinc-850 bg-zinc-900/10 rounded-2xl">
                     No dialed call history recorded. Start the Dialer to
-                    simulate voice conversations.
+                    stream Gemini Live conversations.
                   </div>
                 )}
               </div>
@@ -1837,6 +1865,42 @@ export default function CallingCampaignsPage() {
                       previewText={voicePreviewText}
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 border-t border-zinc-850 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                    Gemini Live Model
+                  </label>
+                  <input
+                    type="text"
+                    value={realtimeModel}
+                    onChange={(e) => setRealtimeModel(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="flex min-h-10 items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs font-semibold text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={aiSpeaksFirst}
+                      onChange={(e) => setAiSpeaksFirst(e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 accent-indigo-500"
+                    />
+                    AI opens the call
+                  </label>
+                  <label className="flex min-h-10 items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs font-semibold text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={preventInterruption}
+                      onChange={(e) =>
+                        setPreventInterruption(e.target.checked)
+                      }
+                      className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 accent-indigo-500"
+                    />
+                    Prevent interruption
+                  </label>
                 </div>
               </div>
 

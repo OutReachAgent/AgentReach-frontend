@@ -63,6 +63,12 @@ type CallingCampaignPayload = {
   selectedLanguage?: string;
   aiCallingBotId?: string;
   contactIds?: string[];
+  aiSpeaksFirst?: boolean;
+  preventInterruption?: boolean;
+  realtimeModel?: string;
+  maxTokens?: number;
+  threshold?: number;
+  tools?: string[];
 };
 
 type DirectoryPayload = {

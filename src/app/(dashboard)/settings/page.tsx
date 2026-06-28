@@ -319,13 +319,13 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
       if (res.success) {
         showAlert(
-          res.message || "Your Gemini API key is working.",
+          res.message || "Your Gemini Live API key is working.",
           "success",
           "Gemini Live key verified",
         );
       } else {
         showAlert(
-          res.error || "We could not verify your Gemini API key.",
+          res.error || "We could not verify your Gemini Live API key.",
           "error",
         );
       }
@@ -333,7 +333,7 @@ export default function SettingsPage() {
     onError: (err: Error) => {
       showAlert(
         err.message ||
-          "We could not test your Gemini API key. Please try again.",
+          "We could not test your Gemini Live API key. Please try again.",
         "error",
       );
     },
