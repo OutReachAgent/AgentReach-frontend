@@ -5,8 +5,8 @@ import { api } from "@/lib/api";
 import type { LooseApiResponse } from "@/lib/api";
 import {
   HD_VOICE_GENDER,
+  geminiLanguageLabels,
   getHdVoices,
-  vertexLanguageLabels,
 } from "@/lib/utils";
 import { useOutreachStore } from "@/store/useOutreachStore";
 import { useEffect, useRef, useState, useMemo } from "react";
@@ -151,7 +151,7 @@ const normalizeHdVoiceForLanguageAndGender = (
 const buildGoogleHdVoice = (voiceName: string, languageValue: string) =>
   `google:${languageValue}-Chirp3-HD-${extractHdVoiceName(voiceName) || "Puck"}`;
 
-const antigravityLanguages = vertexLanguageLabels.filter(
+const antigravityLanguages = geminiLanguageLabels.filter(
   (group) =>
     group.label === "Indian Languages" || group.label === "European Languages",
 );

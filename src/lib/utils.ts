@@ -89,7 +89,7 @@ export const ALL_HD_VOICES: HdVoiceEntry[] = [
 
 /**
  * Per-language subsets of Chirp3-HD voices.
- * Keys are the BCP-47 codes used in the vertexLanguageLabels options.
+ * Keys are the BCP-47 codes used in the geminiLanguageLabels options.
  * "all" means all ALL_HD_VOICES are available for that language.
  * List is based on Google's Chirp3-HD language availability matrix.
  */
@@ -372,7 +372,7 @@ export function getHdVoices(
  * Language picker groups for HD mode.
  * Values are BCP-47 codes matching the keys in HD_VOICES_BY_LANGUAGE.
  */
-export const vertexLanguageLabels = [
+export const geminiLanguageLabels = [
   {
     label: "Indian Languages",
     options: [
@@ -404,7 +404,7 @@ export const vertexLanguageLabels = [
 ];
 
 /** @deprecated use getHdVoices() instead */
-export const vertexAIVoiceLabels = [
+export const geminiVoiceLabels = [
   {
     label: "All Voices",
     options: ALL_HD_VOICES.map((v) => ({ label: v.label, value: v.value })),

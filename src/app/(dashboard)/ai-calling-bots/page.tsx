@@ -253,8 +253,8 @@ export default function AiCallingBotsPage() {
   if (settings && settings.geminiStatus !== "CONNECTED") {
     return (
       <MissingCredentials
-        title="Gemini Key Required"
-        description="To create and train AI calling bots, add and verify your Gemini API key in Settings."
+        title="Gemini Live Key Required"
+        description="To create and train AI calling bots, add and verify your Gemini API key for Gemini Live in Settings."
       />
     );
   }

@@ -321,7 +321,7 @@ export default function SettingsPage() {
         showAlert(
           res.message || "Your Gemini API key is working.",
           "success",
-          "Gemini key verified",
+          "Gemini Live key verified",
         );
       } else {
         showAlert(
@@ -593,12 +593,14 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Gemini API Key Panel */}
+        {/* Gemini Live API Key Panel */}
         <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/60">
             <div className="flex items-center gap-2">
               <Key className="h-5 w-5 text-purple-400" />
-              <h3 className="text-base font-bold text-white">Gemini API Key</h3>
+              <h3 className="text-base font-bold text-white">
+                Gemini Live API Key
+              </h3>
             </div>
             <div className="flex items-center gap-4">
               <span
@@ -635,8 +637,8 @@ export default function SettingsPage() {
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
               />
               <p className="mt-2 text-[11px] text-zinc-500">
-                Saved encrypted and used for Gemini Live calling, bot chat,
-                embeddings, and AI calling campaign generation.
+                Saved encrypted and used for Gemini Live campaign calls, bot
+                chat, voice previews, and AI calling campaign generation.
               </p>
             </div>
           </div>
@@ -653,7 +655,7 @@ export default function SettingsPage() {
               ) : (
                 <Key className="h-3.5 w-3.5" />
               )}
-              Test Gemini Key
+              Test Gemini Live Key
             </button>
           </div>
         </div>
