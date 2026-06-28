@@ -176,6 +176,14 @@ async function request<T = LooseApiResponse>(
   return requestWithAuth<T>(path, init, timeoutMs, true);
 }
 
+async function requestBlob(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+) {
+  return requestBlobWithAuth(path, init, timeoutMs, true);
+}
+
 async function requestWithAuth<T = LooseApiResponse>(
   path: string,
   init?: RequestInit,
@@ -207,6 +215,61 @@ async function requestWithAuth<T = LooseApiResponse>(
     }
 
     return handleResponse<T>(response);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("This is taking longer than expected. Please try again.");
+    }
+
+    if (error instanceof TypeError) {
+      throw new Error(
+        "We could not reach the app server. Please try again in a moment.",
+      );
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function requestBlobWithAuth(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  allowRefresh = true,
+): Promise<Blob> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const headers = new Headers(init?.headers);
+    const accessToken = getAccessToken();
+
+    if (accessToken && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    const response = await fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal,
+    });
+
+    if (response.status === 401 && allowRefresh && path !== "/auth/refresh") {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        return requestBlobWithAuth(path, init, timeoutMs, false);
+      }
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch((): ApiPayload => ({}));
+      throw new Error(
+        toFriendlyApiError(errorData.message || response.statusText, response.status),
+      );
+    }
+
+    return response.blob();
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error("This is taking longer than expected. Please try again.");
@@ -588,6 +651,12 @@ export const api = {
       request(`/calling-campaigns/${id}/relaunch`, { method: "POST" }),
     stop: (id: string) =>
       request(`/calling-campaigns/${id}/stop`, { method: "POST" }),
+    recordingAudio: (callId: string) =>
+      requestBlob(
+        `/calling-campaigns/recordings/${callId}/audio`,
+        undefined,
+        20000,
+      ),
   },
 
   // History

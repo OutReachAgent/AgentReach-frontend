@@ -31,6 +31,7 @@ import {
   Languages,
   Bot,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { MissingCredentials } from "@/components/MissingCredentials";
 
@@ -178,6 +179,124 @@ const getLanguageLabel = (value: string) => {
     if (opt) return opt.label;
   }
   return value;
+};
+
+const TRANSCRIPT_COPY: Record<
+  string,
+  { assistant: string; contact: string; empty: string }
+> = {
+  en: {
+    assistant: "AI Agent",
+    contact: "Contact",
+    empty: "No conversational transcript recorded.",
+  },
+  hi: {
+    assistant: "एआई एजेंट",
+    contact: "संपर्क",
+    empty: "बातचीत की ट्रांसक्रिप्ट रिकॉर्ड नहीं हुई.",
+  },
+  bn: {
+    assistant: "এআই এজেন্ট",
+    contact: "যোগাযোগ",
+    empty: "কথোপকথনের ট্রান্সক্রিপ্ট রেকর্ড হয়নি.",
+  },
+  gu: {
+    assistant: "AI એજન્ટ",
+    contact: "સંપર્ક",
+    empty: "વાતચીતની ટ્રાન્સક્રિપ્ટ રેકોર્ડ થઈ નથી.",
+  },
+  mr: {
+    assistant: "एआय एजंट",
+    contact: "संपर्क",
+    empty: "संभाषणाची ट्रान्सक्रिप्ट रेकॉर्ड झाली नाही.",
+  },
+  ta: {
+    assistant: "AI முகவர்",
+    contact: "தொடர்பு",
+    empty: "உரையாடல் பதிவு கிடைக்கவில்லை.",
+  },
+  te: {
+    assistant: "AI ఏజెంట్",
+    contact: "కాంటాక్ట్",
+    empty: "సంభాషణ ట్రాన్స్‌క్రిప్ట్ రికార్డ్ కాలేదు.",
+  },
+  kn: {
+    assistant: "AI ಏಜೆಂಟ್",
+    contact: "ಸಂಪರ್ಕ",
+    empty: "ಸಂಭಾಷಣೆಯ ಟ್ರಾನ್ಸ್‌ಕ್ರಿಪ್ಟ್ ದಾಖಲಾಗಿಲ್ಲ.",
+  },
+  ml: {
+    assistant: "AI ഏജന്റ്",
+    contact: "കോണ്ടാക്റ്റ്",
+    empty: "സംഭാഷണ ട്രാൻസ്‌ക്രിപ്റ്റ് രേഖപ്പെടുത്തിയിട്ടില്ല.",
+  },
+  pa: {
+    assistant: "AI ਏਜੰਟ",
+    contact: "ਸੰਪਰਕ",
+    empty: "ਗੱਲਬਾਤ ਦੀ ਟ੍ਰਾਂਸਕ੍ਰਿਪਟ ਰਿਕਾਰਡ ਨਹੀਂ ਹੋਈ.",
+  },
+};
+
+const getTranscriptCopy = (languageCode?: string) => {
+  const prefix = String(languageCode || "en-IN").split("-")[0].toLowerCase();
+  return TRANSCRIPT_COPY[prefix] || TRANSCRIPT_COPY.en;
+};
+
+const parseTranscriptLine = (line: string) => {
+  const match = line.match(
+    /^\s*(AI Agent|Agent|Assistant|AI|User|Customer|Contact)\s*:\s*(.*)$/i,
+  );
+  if (!match) return { role: "contact", text: line.trim() };
+  const speaker = match[1].toLowerCase();
+  return {
+    role:
+      speaker === "ai" ||
+      speaker === "agent" ||
+      speaker === "assistant" ||
+      speaker === "ai agent"
+        ? "assistant"
+        : "contact",
+    text: match[2].trim(),
+  };
+};
+
+const DATA_FIELD_LABELS: Record<string, string> = {
+  opportunityStatus: "Opportunity",
+  interviewDate: "Interview Date",
+  interviewTime: "Interview Time",
+  location: "Location",
+  meetingLink: "Meeting Link",
+  contactPerson: "Contact Person",
+  email: "Email",
+  phone: "Phone",
+  role: "Role",
+  resumeRequested: "Resume Requested",
+  callbackRequested: "Callback Requested",
+};
+
+const DATA_FIELD_ORDER = [
+  "opportunityStatus",
+  "role",
+  "interviewDate",
+  "interviewTime",
+  "location",
+  "meetingLink",
+  "contactPerson",
+  "email",
+  "phone",
+  "resumeRequested",
+  "callbackRequested",
+];
+
+const formatCollectedDataValue = (key: string, value: unknown) => {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (key === "opportunityStatus") {
+    const normalized = String(value || "").replace(/_/g, " ");
+    return normalized
+      ? normalized.charAt(0).toUpperCase() + normalized.slice(1)
+      : "";
+  }
+  return String(value || "").trim();
 };
 
 function HDVoiceSelector({
@@ -348,6 +467,14 @@ export default function CallingCampaignsPage() {
 
   // Recording preview playback
   const [playingCallId, setPlayingCallId] = useState<string | null>(null);
+  const [recordingLoadingId, setRecordingLoadingId] = useState<string | null>(
+    null,
+  );
+  const [activeRecordingUrl, setActiveRecordingUrl] = useState<string | null>(
+    null,
+  );
+  const callAudioRef = useRef<HTMLAudioElement | null>(null);
+  const recordingObjectUrlsRef = useRef<Record<string, string>>({});
 
   // Expanded Transcript Collapsible
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
@@ -386,6 +513,25 @@ export default function CallingCampaignsPage() {
   const [addSelectedContactIds, setAddSelectedContactIds] = useState<string[]>(
     [],
   );
+
+  useEffect(() => {
+    return () => {
+      callAudioRef.current?.pause();
+      Object.values(recordingObjectUrlsRef.current).forEach((url) =>
+        URL.revokeObjectURL(url),
+      );
+      recordingObjectUrlsRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeRecordingUrl || !playingCallId || !callAudioRef.current) return;
+    callAudioRef.current.play().catch(() => {
+      showAlert("We could not play this call recording.", "error");
+      setPlayingCallId(null);
+      setActiveRecordingUrl(null);
+    });
+  }, [activeRecordingUrl, playingCallId, showAlert]);
 
   // Fetch campaigns list
   const { data: campaigns = [], isLoading: isListLoading } = useQuery({
@@ -1030,6 +1176,108 @@ export default function CallingCampaignsPage() {
     }
   };
 
+  const getCallRecordingObjectUrl = async (call: LooseApiResponse) => {
+    if (!call.recordingUrl) {
+      throw new Error("Recording is not available yet.");
+    }
+    const cachedUrl = recordingObjectUrlsRef.current[call.id];
+    if (cachedUrl) return cachedUrl;
+    const blob = await api.callingCampaigns.recordingAudio(call.id);
+    const url = URL.createObjectURL(blob);
+    recordingObjectUrlsRef.current[call.id] = url;
+    return url;
+  };
+
+  const buildRecordingFileName = (call: LooseApiResponse) => {
+    const contact = call.contact || {};
+    const nameParts = [
+      contact.firstName,
+      contact.lastName,
+      call.campaign?.name || campaignDetails?.name,
+    ]
+      .filter(Boolean)
+      .join("-")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    return `${nameParts || "agentreach-call"}-${call.id}.mp3`;
+  };
+
+  const handleToggleCallRecording = async (call: LooseApiResponse) => {
+    if (playingCallId === call.id) {
+      callAudioRef.current?.pause();
+      setPlayingCallId(null);
+      setActiveRecordingUrl(null);
+      return;
+    }
+
+    try {
+      setRecordingLoadingId(call.id);
+      callAudioRef.current?.pause();
+      const url = await getCallRecordingObjectUrl(call);
+      setActiveRecordingUrl(url);
+      setPlayingCallId(call.id);
+    } catch (err) {
+      showAlert(
+        err instanceof Error ? err.message : "Recording is not available yet.",
+        "error",
+      );
+    } finally {
+      setRecordingLoadingId(null);
+    }
+  };
+
+  const handleDownloadCallRecording = async (call: LooseApiResponse) => {
+    try {
+      setRecordingLoadingId(call.id);
+      const url = await getCallRecordingObjectUrl(call);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = buildRecordingFileName(call);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      showAlert(
+        err instanceof Error ? err.message : "Recording is not available yet.",
+        "error",
+      );
+    } finally {
+      setRecordingLoadingId(null);
+    }
+  };
+
+  const getCallTranscriptText = (call: LooseApiResponse) => {
+    if (call.transcript) return call.transcript;
+    if (!Array.isArray(call.scripts)) return "";
+    return call.scripts
+      .map((script: LooseApiResponse) => {
+        const role = script.role === "assistant" ? "AI" : "User";
+        return script.content ? `${role}: ${script.content}` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  };
+
+  const getCollectedDataFields = (call: LooseApiResponse) => {
+    const data = call.collectedData || call.analysis?.collectedData || {};
+    const orderedKeys = [
+      ...DATA_FIELD_ORDER,
+      ...Object.keys(data).filter((key) => !DATA_FIELD_ORDER.includes(key)),
+    ];
+    return orderedKeys
+      .map((key) => ({
+        key,
+        label:
+          DATA_FIELD_LABELS[key] ||
+          key
+            .replace(/([A-Z])/g, " $1")
+            .replace(/^./, (char) => char.toUpperCase()),
+        value: formatCollectedDataValue(key, data[key]),
+      }))
+      .filter((item) => item.value && item.value !== "No");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -1087,24 +1335,24 @@ export default function CallingCampaignsPage() {
   };
 
   // Convert transcript text into readable structured conversation bubbles
-  const renderTranscriptBubbles = (transcriptText: string) => {
+  const renderTranscriptBubbles = (
+    transcriptText: string,
+    languageCode?: string,
+  ) => {
+    const copy = getTranscriptCopy(languageCode);
     if (!transcriptText)
       return (
         <p className="text-xs text-zinc-500 italic">
-          No conversational transcript recorded.
+          {copy.empty}
         </p>
       );
 
-    // Expected format: "Agent: Hello... Customer: Hi..."
     const lines = transcriptText.split("\n").filter((l) => l.trim());
     return (
       <div className="space-y-3 pt-2">
         {lines.map((line, idx) => {
-          const isAgent =
-            line.startsWith("AI Agent:") || line.startsWith("Agent:");
-          const cleanText = line
-            .replace(/^(AI Agent:|Agent:|Customer:)/, "")
-            .trim();
+          const parsed = parseTranscriptLine(line);
+          const isAgent = parsed.role === "assistant";
 
           return (
             <div
@@ -1119,9 +1367,9 @@ export default function CallingCampaignsPage() {
                 }`}
               >
                 <span className="block text-[9px] font-bold text-zinc-500 uppercase mb-1">
-                  {isAgent ? "AI Agent" : "Contact"}
+                  {isAgent ? copy.assistant : copy.contact}
                 </span>
-                {cleanText}
+                {parsed.text}
               </div>
             </div>
           );
@@ -1389,6 +1637,7 @@ export default function CallingCampaignsPage() {
                       const isExpanded = expandedCallId === call.id;
                       const isPlaying = playingCallId === call.id;
                       const contact = call.contact || {};
+                      const collectedDataFields = getCollectedDataFields(call);
 
                       const outcomeColors: Record<string, string> = {
                         PENDING: "bg-zinc-850 text-zinc-400",
@@ -1445,27 +1694,48 @@ export default function CallingCampaignsPage() {
                               </div>
 
                               <div className="flex items-center gap-2">
-                                {/* Play/Pause Recording */}
-                                {call.outcome === "ANSWERED" && (
-                                  <button
-                                    onClick={() =>
-                                      setPlayingCallId(
-                                        isPlaying ? null : call.id,
-                                      )
-                                    }
-                                    className={`p-1.5 rounded-xl border transition-all ${
-                                      isPlaying
-                                        ? "bg-indigo-600 border-indigo-600 text-white animate-pulse"
-                                        : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-white"
-                                    }`}
-                                  >
-                                    {isPlaying ? (
-                                      <Pause className="h-4.5 w-4.5" />
-                                    ) : (
-                                      <Volume2 className="h-4.5 w-4.5" />
-                                    )}
-                                  </button>
-                                )}
+                                {call.recordingUrl ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={recordingLoadingId === call.id}
+                                      onClick={() =>
+                                        void handleToggleCallRecording(call)
+                                      }
+                                      className={`p-1.5 rounded-xl border transition-all disabled:cursor-wait disabled:opacity-60 ${
+                                        isPlaying
+                                          ? "bg-indigo-600 border-indigo-600 text-white"
+                                          : "bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-white"
+                                      }`}
+                                      title={
+                                        isPlaying
+                                          ? "Pause recording"
+                                          : "Play recording"
+                                      }
+                                    >
+                                      {isPlaying ? (
+                                        <Pause className="h-4.5 w-4.5" />
+                                      ) : (
+                                        <Volume2 className="h-4.5 w-4.5" />
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={recordingLoadingId === call.id}
+                                      onClick={() =>
+                                        void handleDownloadCallRecording(call)
+                                      }
+                                      className="p-1.5 rounded-xl border border-zinc-850 bg-zinc-950 text-zinc-400 transition-all hover:text-white disabled:cursor-wait disabled:opacity-60"
+                                      title="Download recording"
+                                    >
+                                      <Download className="h-4.5 w-4.5" />
+                                    </button>
+                                  </>
+                                ) : call.outcome === "ANSWERED" ? (
+                                  <span className="rounded-full border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] font-semibold text-zinc-500">
+                                    Recording pending
+                                  </span>
+                                ) : null}
 
                                 {/* Collapsible Toggle */}
                                 <button
@@ -1486,25 +1756,22 @@ export default function CallingCampaignsPage() {
                             </div>
                           </div>
 
-                          {/* Recording preview waves */}
+                          {/* Recording playback */}
                           {isPlaying && (
-                            <div className="px-6 py-4 bg-zinc-950/40 border-t border-zinc-850 flex items-center gap-4">
+                            <div className="px-6 py-4 bg-zinc-950/40 border-t border-zinc-850 flex flex-col gap-3 sm:flex-row sm:items-center">
                               <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">
                                 Recording
                               </span>
-                              <div className="flex-1 flex items-end gap-0.5 h-6">
-                                {[...Array(36)].map((_, i) => {
-                                  // Random wave heights
-                                  const h = Math.floor(Math.random() * 16) + 4;
-                                  return (
-                                    <div
-                                      key={i}
-                                      className="flex-1 bg-indigo-500 rounded-full transition-all duration-300"
-                                      style={{ height: `${h}px` }}
-                                    />
-                                  );
-                                })}
-                              </div>
+                              <audio
+                                ref={callAudioRef}
+                                src={activeRecordingUrl || undefined}
+                                controls
+                                className="h-9 w-full min-w-0 flex-1"
+                                onEnded={() => {
+                                  setPlayingCallId(null);
+                                  setActiveRecordingUrl(null);
+                                }}
+                              />
                             </div>
                           )}
 
@@ -1594,10 +1861,50 @@ export default function CallingCampaignsPage() {
                                   ))}
                                 </div>
                               )}
+                              <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 p-4">
+                                <div className="mb-3 flex items-center gap-2">
+                                  <CheckSquare className="h-3.5 w-3.5 text-emerald-400" />
+                                  <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                    Data Collected
+                                  </h5>
+                                </div>
+                                {collectedDataFields.length > 0 ? (
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    {collectedDataFields.map((item) => (
+                                      <div
+                                        key={item.key}
+                                        className="rounded-lg border border-zinc-850 bg-zinc-950 px-3 py-2"
+                                      >
+                                        <span className="block text-[9px] font-bold uppercase tracking-wider text-zinc-500">
+                                          {item.label}
+                                        </span>
+                                        <p className="mt-1 break-words text-xs font-semibold text-zinc-200">
+                                          {item.value}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs italic text-zinc-500">
+                                    No interview details or follow-up fields
+                                    were captured yet.
+                                  </p>
+                                )}
+                              </div>
                               <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                                Conversational Transcript
+                                Conversational Transcript ·{" "}
+                                {getLanguageLabel(
+                                  call.selectedLanguage ||
+                                    campaignDetails.language ||
+                                    "en-IN",
+                                )}
                               </h5>
-                              {renderTranscriptBubbles(call.transcript)}
+                              {renderTranscriptBubbles(
+                                getCallTranscriptText(call),
+                                call.selectedLanguage ||
+                                  campaignDetails.language ||
+                                  "en-IN",
+                              )}
                             </div>
                           )}
                         </div>
@@ -1884,6 +2191,18 @@ export default function CallingCampaignsPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-850 bg-zinc-950/70 px-3 py-2 text-[11px] text-zinc-500">
+                Live call output uses{" "}
+                <span className="font-semibold text-zinc-300">
+                  {getLanguageLabel(language)}
+                </span>{" "}
+                instructions with Gemini Live voice{" "}
+                <span className="font-semibold text-zinc-300">
+                  {extractHdVoiceName(voice) || "Puck"}
+                </span>
+                .
               </div>
 
               <div className="grid grid-cols-1 gap-4 border-t border-zinc-850 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
