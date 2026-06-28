@@ -68,6 +68,7 @@ type CallingCampaignPayload = {
   realtimeModel?: string;
   maxTokens?: number;
   threshold?: number;
+  responseSpeed?: "fast" | "balanced" | "conservative";
   tools?: string[];
 };
 

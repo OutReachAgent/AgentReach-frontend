@@ -83,9 +83,19 @@ type CallingCampaignGenerationJob = {
 };
 
 type VoiceGender = "female" | "male";
+type ResponseSpeed = "fast" | "balanced" | "conservative";
 
 const DEFAULT_GEMINI_LIVE_MODEL =
   "gemini-2.5-flash-native-audio-preview-12-2025";
+
+const RESPONSE_SPEED_OPTIONS: Array<{
+  value: ResponseSpeed;
+  label: string;
+}> = [
+  { value: "fast", label: "Fast" },
+  { value: "balanced", label: "Balanced" },
+  { value: "conservative", label: "Careful" },
+];
 
 const LANGUAGE_PREVIEW_TEXTS: Record<string, string> = {
   "en-IN": "Hello, this is a quick ReachConvert voice preview.",
@@ -109,6 +119,10 @@ const extractHdVoiceName = (value?: string) => {
     /^[a-z]{2,3}-[A-Z]{2}-Chirp3-HD-([A-Za-z]+)$/,
   );
   return matched?.[1] || withoutProvider;
+};
+
+const normalizeResponseSpeed = (value: unknown): ResponseSpeed => {
+  return value === "balanced" || value === "conservative" ? value : "fast";
 };
 
 const extractHdLanguage = (value?: string) => {
@@ -357,6 +371,7 @@ export default function CallingCampaignsPage() {
   const [realtimeModel, setRealtimeModel] = useState(
     DEFAULT_GEMINI_LIVE_MODEL,
   );
+  const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed>("fast");
   const [aiCallingBotId, setAiCallingBotId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [contactSearch, setContactSearch] = useState("");
@@ -713,6 +728,7 @@ export default function CallingCampaignsPage() {
     setAiSpeaksFirst(true);
     setPreventInterruption(false);
     setRealtimeModel(DEFAULT_GEMINI_LIVE_MODEL);
+    setResponseSpeed("fast");
     setAiCallingBotId(null);
     setSelectedContactIds([]);
     setContactSearch("");
@@ -969,6 +985,7 @@ export default function CallingCampaignsPage() {
       setAiSpeaksFirst(details.aiSpeaksFirst ?? true);
       setPreventInterruption(details.preventInterruption ?? false);
       setRealtimeModel(details.realtimeModel || DEFAULT_GEMINI_LIVE_MODEL);
+      setResponseSpeed(normalizeResponseSpeed(details.responseSpeed));
       setAiCallingBotId(details.aiCallingBotId || null);
       setSelectedContactIds(existingContactIds);
       setContactSearch("");
@@ -1051,6 +1068,7 @@ export default function CallingCampaignsPage() {
       realtimeModel: realtimeModel || DEFAULT_GEMINI_LIVE_MODEL,
       maxTokens: 4000,
       threshold: 0,
+      responseSpeed,
       tools: ["end_call", "fetch_context"],
       contactIds: selectedContactIds,
     };
@@ -1869,16 +1887,43 @@ export default function CallingCampaignsPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 border-t border-zinc-850 pt-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-2">
-                    Gemini Live Model
-                  </label>
-                  <input
-                    type="text"
-                    value={realtimeModel}
-                    onChange={(e) => setRealtimeModel(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                      Gemini Live Model
+                    </label>
+                    <input
+                      type="text"
+                      value={realtimeModel}
+                      onChange={(e) => setRealtimeModel(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                      Response Speed
+                    </label>
+                    <div
+                      role="group"
+                      aria-label="Response speed"
+                      className="grid grid-cols-3 rounded-xl border border-zinc-800 bg-zinc-950 p-1"
+                    >
+                      {RESPONSE_SPEED_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setResponseSpeed(option.value)}
+                          className={`min-h-9 rounded-lg px-2 text-xs font-semibold transition-colors ${
+                            responseSpeed === option.value
+                              ? "bg-indigo-600 text-white"
+                              : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="flex min-h-10 items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-xs font-semibold text-zinc-300">
