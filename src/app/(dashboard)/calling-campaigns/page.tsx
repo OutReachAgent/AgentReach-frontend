@@ -170,7 +170,9 @@ const buildGoogleHdVoice = (voiceName: string, languageValue: string) =>
 
 const antigravityLanguages = geminiLanguageLabels.filter(
   (group) =>
-    group.label === "Indian Languages" || group.label === "European Languages",
+    group.label === "Indian Languages" ||
+    group.label === "European Languages" ||
+    group.label === "Asian Languages",
 );
 
 const getLanguageLabel = (value: string) => {

@@ -347,6 +347,17 @@ export const HD_VOICES_BY_LANGUAGE: Record<string, string[] | "all"> = {
     "Iapetus",
     "Algieba",
   ],
+  // European languages — broad voice support
+  "nl-NL": "all",
+  "pl-PL": "all",
+  "ru-RU": "all",
+  "tr-TR": "all",
+  "el-GR": "all",
+  "cs-CZ": "all",
+  "hu-HU": "all",
+  "ro-RO": "all",
+  "sv-SE": "all",
+  "zh-CN": "all",
 };
 
 /** Returns filtered HdVoiceEntry[] for a given language + optional gender filter */
@@ -388,7 +399,7 @@ export const geminiLanguageLabels = [
     ],
   },
   {
-    label: "European / Global",
+    label: "European Languages",
     options: [
       { label: "English (US)", value: "en-US" },
       { label: "English (UK)", value: "en-GB" },
@@ -399,6 +410,21 @@ export const geminiLanguageLabels = [
       { label: "German (Germany)", value: "de-DE" },
       { label: "Italian (Italy)", value: "it-IT" },
       { label: "Portuguese (Brazil)", value: "pt-BR" },
+      { label: "Dutch (Netherlands)", value: "nl-NL" },
+      { label: "Polish (Poland)", value: "pl-PL" },
+      { label: "Russian (Russia)", value: "ru-RU" },
+      { label: "Turkish (Turkey)", value: "tr-TR" },
+      { label: "Greek (Greece)", value: "el-GR" },
+      { label: "Czech (Czech Republic)", value: "cs-CZ" },
+      { label: "Hungarian (Hungary)", value: "hu-HU" },
+      { label: "Romanian (Romania)", value: "ro-RO" },
+      { label: "Swedish (Sweden)", value: "sv-SE" },
+    ],
+  },
+  {
+    label: "Asian Languages",
+    options: [
+      { label: "Mandarin Chinese (Mainland)", value: "zh-CN" },
     ],
   },
 ];
