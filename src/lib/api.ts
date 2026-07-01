@@ -545,6 +545,68 @@ export const api = {
       request(`/email-campaigns/${id}/launch`, { method: "POST" }),
   },
 
+  // Signal-based outreach
+  signals: {
+    types: () => request("/signals/types"),
+    feed: (type?: string) =>
+      request(`/signals${type ? `?type=${encodeURIComponent(type)}` : ""}`),
+    stats: () => request("/signals/stats"),
+    reviewQueue: () => request("/signals/review-queue"),
+    review: (matchId: string, action: "approve" | "reject", note?: string) =>
+      request(`/signals/review/${matchId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note }),
+      }),
+    createManual: (data: {
+      title: string;
+      summary?: string;
+      url?: string;
+      companyName?: string;
+      companyDomain?: string;
+      contactEmail?: string;
+      type?: string;
+    }) =>
+      request("/signals/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    poll: () => request("/signals/poll", { method: "POST" }),
+    playbooks: {
+      list: () => request("/signals/playbooks"),
+      create: (data: ApiPayload) =>
+        request("/signals/playbooks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, data: ApiPayload) =>
+        request(`/signals/playbooks/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }),
+      toggle: (id: string) =>
+        request(`/signals/playbooks/${id}/toggle`, { method: "POST" }),
+      delete: (id: string) =>
+        request(`/signals/playbooks/${id}`, { method: "DELETE" }),
+    },
+    watches: {
+      list: () => request("/signals/watches"),
+      create: (data: { companyName: string; domain: string }) =>
+        request("/signals/watches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }),
+      toggle: (id: string) =>
+        request(`/signals/watches/${id}/toggle`, { method: "POST" }),
+      delete: (id: string) =>
+        request(`/signals/watches/${id}`, { method: "DELETE" }),
+    },
+  },
+
   // AI Calling Bots
   aiCallingBots: {
     list: () => request("/ai-calling-bots"),

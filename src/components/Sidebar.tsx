@@ -17,6 +17,7 @@ import {
   LogOut,
   Moon,
   Sun,
+  Radar,
 } from "lucide-react";
 import {
   applyTheme,
@@ -45,6 +46,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Signals", href: "/signals", icon: Radar },
     { name: "Contacts", href: "/contacts", icon: Users },
     { name: "Email Campaigns", href: "/email-campaigns", icon: Mail },
     { name: "AI Calling", href: "/calling-campaigns", icon: PhoneCall },
