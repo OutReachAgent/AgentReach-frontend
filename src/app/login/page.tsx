@@ -225,7 +225,7 @@ export default function LoginPage() {
                   Sign In <ArrowRight className="h-4 w-4" />
                 </button>
                 <div className="text-center text-sm text-zinc-500 pt-2">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <button
                     type="button"
                     onClick={() => { setMode('register'); setMessage(''); }}
