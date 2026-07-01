@@ -9,6 +9,7 @@ import {
   getHdVoices,
 } from "@/lib/utils";
 import { useOutreachStore } from "@/store/useOutreachStore";
+import { LoaderOverlay } from "@/components/Loader";
 import { useEffect, useRef, useState, useMemo } from "react";
 import {
   PhoneCall,
@@ -1421,6 +1422,15 @@ export default function CallingCampaignsPage() {
 
   return (
     <div className="space-y-6">
+      <LoaderOverlay
+        show={launchCampaignMutation.isPending}
+        label={
+          launchCampaignMutation.variables?.isRelaunch
+            ? "Relaunching campaign"
+            : "Starting AI dialer"
+        }
+        sublabel="Queuing calls with your Gemini Live voice agent via Twilio…"
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-zinc-900">
         <div>

@@ -11,6 +11,7 @@ import {
   ThemeMode,
 } from '@/lib/localAuth';
 import { useOutreachStore } from '@/store/useOutreachStore';
+import { PageLoader } from '@/components/Loader';
 import { Check, Mail, Moon, Palette, Save, Sun, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -65,7 +66,7 @@ export default function ProfilePage() {
   };
 
   if (!profile) {
-    return <div className="text-sm text-zinc-500">Loading profile...</div>;
+    return <PageLoader label="Loading profile" sublabel="Fetching your workspace identity" />;
   }
 
   return (

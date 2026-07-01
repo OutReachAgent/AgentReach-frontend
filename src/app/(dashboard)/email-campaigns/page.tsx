@@ -24,6 +24,7 @@ import {
   Folder,
 } from "lucide-react";
 import { MissingCredentials } from "@/components/MissingCredentials";
+import { LoaderOverlay } from "@/components/Loader";
 
 type TemplateFormat = "HTML" | "TEXT";
 type TemplateBuilderMode = "AI" | "MANUAL";
@@ -1130,6 +1131,11 @@ export default function EmailCampaignsPage() {
 
   return (
     <div className="space-y-">
+      <LoaderOverlay
+        show={launchCampaignMutation.isPending}
+        label="Launching campaign"
+        sublabel="Personalizing and dispatching your emails via SES…"
+      />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-zinc-900">
         <div>
