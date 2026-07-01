@@ -27,11 +27,13 @@ import {
   signOut,
 } from "@/lib/localAuth";
 import { api } from "@/lib/api";
+import { LoaderOverlay } from "@/components/Loader";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<LocalUserProfile | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const refreshUser = () => setUser(getStoredUser());
@@ -70,6 +72,7 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
+    setLoggingOut(true);
     api.auth.logout().finally(() => {
       signOut();
       router.replace("/login");
@@ -78,6 +81,11 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-zinc-800 bg-zinc-950 flex flex-col justify-between h-screen sticky top-0">
+      <LoaderOverlay
+        show={loggingOut}
+        label="Signing out"
+        sublabel="Ending your session securely…"
+      />
       <div className="flex flex-col flex-1 py-6">
         {/* Brand logo */}
         <div className="flex items-center gap-3 px-6 pb-6 border-b border-zinc-850">

@@ -2,11 +2,19 @@
 
 import { api } from '@/lib/api';
 import { applyTheme, getStoredUser, saveAuthSession } from '@/lib/localAuth';
+import { LoaderOverlay } from '@/components/Loader';
 import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, Zap, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type AuthMode = 'login' | 'reset' | 'register';
+type PendingAction = 'login' | 'register' | 'reset' | null;
+
+const PENDING_COPY: Record<Exclude<PendingAction, null>, { label: string; sublabel: string }> = {
+  login: { label: 'Signing you in', sublabel: 'Authenticating your workspace…' },
+  register: { label: 'Creating your account', sublabel: 'Setting up your ReachConvert workspace…' },
+  reset: { label: 'Resetting password', sublabel: 'Securing your account…' },
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,6 +28,7 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   useEffect(() => {
     applyTheme(storedUser.theme, storedUser.accentColor);
@@ -27,6 +36,7 @@ export default function LoginPage() {
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();
+    setPendingAction('login');
     api.auth.login({ email, password })
       .then((session) => {
         saveAuthSession(session);
@@ -34,6 +44,7 @@ export default function LoginPage() {
         router.replace('/dashboard');
       })
       .catch((error: Error) => {
+        setPendingAction(null);
         setMessage(error.message || 'Invalid email or password.');
       });
   };
@@ -48,6 +59,7 @@ export default function LoginPage() {
       setMessage('Please enter your name.');
       return;
     }
+    setPendingAction('register');
     api.auth.register({ name, email, password })
       .then((session) => {
         saveAuthSession(session);
@@ -55,6 +67,7 @@ export default function LoginPage() {
         router.replace('/dashboard');
       })
       .catch((error: Error) => {
+        setPendingAction(null);
         setMessage(error.message || 'Could not register.');
       });
   };
@@ -86,6 +99,7 @@ export default function LoginPage() {
       return;
     }
 
+    setPendingAction('reset');
     api.auth.resetPassword({ email: resetEmail, newPassword })
       .then(() => {
         setPassword(newPassword);
@@ -97,6 +111,9 @@ export default function LoginPage() {
       })
       .catch((error: Error) => {
         setMessage(error.message || 'Could not reset password.');
+      })
+      .finally(() => {
+        setPendingAction(null);
       });
   };
 
@@ -117,6 +134,11 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <LoaderOverlay
+        show={pendingAction !== null}
+        label={pendingAction ? PENDING_COPY[pendingAction].label : ''}
+        sublabel={pendingAction ? PENDING_COPY[pendingAction].sublabel : undefined}
+      />
       <div className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 lg:grid-cols-[1fr_440px]">
         <section className="hidden flex-col justify-between px-8 py-10 lg:flex">
           <div className="flex items-center gap-3">
@@ -197,7 +219,8 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110"
+                  disabled={pendingAction !== null}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Sign In <ArrowRight className="h-4 w-4" />
                 </button>
@@ -256,7 +279,8 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110"
+                  disabled={pendingAction !== null}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Create Account <ArrowRight className="h-4 w-4" />
                 </button>
@@ -330,7 +354,8 @@ export default function LoginPage() {
                     </div>
                     <button
                       type="submit"
-                      className="w-full rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400"
+                      disabled={pendingAction !== null}
+                      className="w-full rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Save New Password
                     </button>
