@@ -158,6 +158,12 @@ function Navbar() {
 
         <div className="hidden items-center gap-2 md:flex">
           <Link
+            href="/documentation"
+            className="rounded-xl px-4 py-2 text-sm font-semibold text-zinc-300 transition-colors hover:text-white"
+          >
+            Docs
+          </Link>
+          <Link
             href="/login"
             className="rounded-xl px-4 py-2 text-sm font-semibold text-zinc-300 transition-colors hover:text-white"
           >

@@ -1,0 +1,29 @@
+import {
+  Rocket,
+  LayoutDashboard,
+  Radar,
+  Users,
+  Mail,
+  Phone,
+  Bot,
+  MessageSquareText,
+  History,
+  Settings,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react';
+import type { DocIcon } from '@/lib/docs';
+
+export const DOC_ICON_MAP: Record<DocIcon, LucideIcon> = {
+  rocket: Rocket,
+  'layout-dashboard': LayoutDashboard,
+  radar: Radar,
+  users: Users,
+  mail: Mail,
+  phone: Phone,
+  bot: Bot,
+  message: MessageSquareText,
+  history: History,
+  settings: Settings,
+  user: UserRound,
+};

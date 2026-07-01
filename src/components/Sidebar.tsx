@@ -18,6 +18,7 @@ import {
   Moon,
   Sun,
   Radar,
+  BookOpen,
 } from "lucide-react";
 import {
   applyTheme,
@@ -154,7 +155,14 @@ export default function Sidebar() {
               </p>
             </div>
           </Link>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href="/documentation"
+            className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 transition-colors hover:text-indigo-300"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Documentation
+          </Link>
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={toggleTheme}
