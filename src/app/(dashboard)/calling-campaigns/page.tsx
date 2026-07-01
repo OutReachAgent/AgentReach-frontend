@@ -87,7 +87,7 @@ type VoiceGender = "female" | "male";
 type ResponseSpeed = "fast" | "balanced" | "conservative";
 
 const DEFAULT_GEMINI_LIVE_MODEL =
-  "gemini-2.5-flash-native-audio-preview-12-2025";
+  "gemini-3.1-flash-native-audio-preview-12-2025";
 
 const RESPONSE_SPEED_OPTIONS: Array<{
   value: ResponseSpeed;
