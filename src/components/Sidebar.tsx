@@ -12,7 +12,6 @@ import {
   MessageSquareText,
   History,
   Settings,
-  Zap,
   UserRound,
   LogOut,
   Moon,
@@ -30,8 +29,42 @@ import {
 } from "@/lib/localAuth";
 import { api } from "@/lib/api";
 import { LoaderOverlay } from "@/components/Loader";
+import { Brand } from "@/components/fx";
 
-export default function Sidebar() {
+const NAV_SECTIONS = [
+  {
+    label: "Command",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Signals", href: "/signals", icon: Radar },
+    ],
+  },
+  {
+    label: "Outreach",
+    items: [
+      { name: "Contacts", href: "/contacts", icon: Users },
+      { name: "Email Campaigns", href: "/email-campaigns", icon: Mail },
+      { name: "AI Calling", href: "/calling-campaigns", icon: PhoneCall },
+      { name: "AI Bots", href: "/ai-calling-bots", icon: Bot },
+      { name: "AI Chat", href: "/bot-chat", icon: MessageSquareText },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { name: "History", href: "/history", icon: History },
+      { name: "Settings", href: "/settings", icon: Settings },
+      { name: "Profile", href: "/profile", icon: UserRound },
+    ],
+  },
+];
+
+interface SidebarProps {
+  /** Called after any navigation — lets the mobile drawer close itself. */
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<LocalUserProfile | null>(null);
@@ -44,19 +77,6 @@ export default function Sidebar() {
     return () =>
       window.removeEventListener("reachconvert:user-updated", refreshUser);
   }, []);
-
-  const menuItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Signals", href: "/signals", icon: Radar },
-    { name: "Contacts", href: "/contacts", icon: Users },
-    { name: "Email Campaigns", href: "/email-campaigns", icon: Mail },
-    { name: "AI Calling", href: "/calling-campaigns", icon: PhoneCall },
-    { name: "AI Bots", href: "/ai-calling-bots", icon: Bot },
-    { name: "AI Chat", href: "/bot-chat", icon: MessageSquareText },
-    { name: "History", href: "/history", icon: History },
-    { name: "Settings", href: "/settings", icon: Settings },
-    { name: "Profile", href: "/profile", icon: UserRound },
-  ];
 
   const toggleTheme = () => {
     const currentUser = getStoredUser();
@@ -82,112 +102,128 @@ export default function Sidebar() {
     });
   };
 
+  const isLightTheme = user ? getThemeFamily(user.theme) === "light" : false;
+
   return (
-    <aside className="w-64 border-r border-zinc-800 bg-zinc-950 flex flex-col justify-between h-screen sticky top-0">
+    <div className="flex h-full flex-col justify-between">
       <LoaderOverlay
         show={loggingOut}
         label="Signing out"
         sublabel="Ending your session securely…"
       />
-      <div className="flex flex-col flex-1 py-6">
-        {/* Brand logo */}
-        <div className="flex items-center gap-3 px-6 pb-6 border-b border-zinc-850">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Zap className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              ReachConvert
-            </h1>
-            <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest -mt-0.5">
-              AI Outreach Suite
-            </p>
-          </div>
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Brand */}
+        <div className="border-b border-zinc-850 px-5 py-5">
+          <Link href="/dashboard" onClick={onNavigate} className="block">
+            <Brand />
+          </Link>
         </div>
 
-        {/* Navigation links */}
-        <nav className="flex-1 px-4 space-y-1.5 mt-8">
-          {menuItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            const Icon = item.icon;
+        {/* Navigation */}
+        <nav className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-6">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.label}>
+              <p className="sig-label mb-2 px-3 text-zinc-600">
+                {section.label}
+              </p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
+                  const Icon = item.icon;
 
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
-                  isActive
-                    ? "bg-zinc-900 text-white shadow-inner border border-zinc-800"
-                    : "text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-200"
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-indigo-500 rounded-r-full" />
-                )}
-                <Icon
-                  className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
-                    isActive
-                      ? "text-indigo-400"
-                      : "text-zinc-500 group-hover:text-zinc-400"
-                  }`}
-                />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={onNavigate}
+                      className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-indigo-500/10 text-indigo-300"
+                          : "text-zinc-500 hover:bg-zinc-900/60 hover:text-zinc-200"
+                      }`}
+                    >
+                      <span
+                        className={`absolute left-0 top-1/2 h-0 w-[2.5px] -translate-y-1/2 rounded-r-full bg-indigo-400 transition-all duration-300 ${
+                          isActive ? "h-5" : "group-hover:h-2.5"
+                        }`}
+                      />
+                      <Icon
+                        className={`h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110 ${
+                          isActive
+                            ? "text-indigo-400"
+                            : "text-zinc-600 group-hover:text-zinc-400"
+                        }`}
+                      />
+                      <span className="truncate">{item.name}</span>
+                      {isActive && (
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_var(--a-400)]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </div>
 
-      {/* Footer / Info */}
-      <div className="p-4 border-t border-zinc-900 bg-zinc-950/50">
-        <div className="rounded-xl bg-zinc-900/60 border border-zinc-850/60 p-3">
-          <Link href="/profile" className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-300">
-              {user?.initials || "OA"}
+      {/* Footer */}
+      <div className="border-t border-zinc-850 p-3">
+        <div className="sig-card p-3">
+          <Link
+            href="/profile"
+            onClick={onNavigate}
+            className="group flex items-center gap-3"
+          >
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-indigo-500/50 bg-indigo-500/10 font-mono text-[11px] font-bold text-indigo-300">
+              {user?.initials || "··"}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-zinc-200">
-                {user?.name || "Oswin Alex"}
+              <p className="truncate text-xs font-semibold text-zinc-200 transition-colors group-hover:text-white">
+                {user?.name || "Operator"}
               </p>
-              <p className="truncate text-[10px] text-zinc-500">
-                {user?.email || "oswinalex1@gmail.com"}
+              <p className="truncate font-mono text-[10px] text-zinc-600">
+                {user?.email || "—"}
               </p>
             </div>
           </Link>
+
           <Link
             href="/documentation"
-            className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 transition-colors hover:text-indigo-300"
+            onClick={onNavigate}
+            className="sig-label mt-3 flex items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-2 text-zinc-500 transition-colors hover:border-indigo-500/40 hover:text-indigo-300"
           >
             <BookOpen className="h-3.5 w-3.5" />
-            Documentation
+            Docs
           </Link>
+
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={toggleTheme}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-zinc-200"
+              className="sig-label flex items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-2 text-zinc-500 transition-colors hover:text-zinc-200"
             >
-              {user && getThemeFamily(user.theme) === "light" ? (
+              {isLightTheme ? (
                 <Moon className="h-3.5 w-3.5" />
               ) : (
                 <Sun className="h-3.5 w-3.5" />
               )}
-              {user && getThemeFamily(user.theme) === "light"
-                ? "Dark"
-                : "Light"}
+              {isLightTheme ? "Dark" : "Light"}
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-2 text-[10px] font-bold text-zinc-400 hover:text-rose-300"
+              className="sig-label flex items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950/60 px-2 py-2 text-zinc-500 transition-colors hover:border-rose-500/40 hover:text-rose-300"
             >
               <LogOut className="h-3.5 w-3.5" />
-              Logout
+              Exit
             </button>
           </div>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }

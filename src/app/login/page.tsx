@@ -3,7 +3,8 @@
 import { api } from '@/lib/api';
 import { applyTheme, getStoredUser, saveAuthSession } from '@/lib/localAuth';
 import { LoaderOverlay } from '@/components/Loader';
-import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, Zap, User } from 'lucide-react';
+import { Brand } from '@/components/fx';
+import { ArrowLeft, ArrowRight, KeyRound, Mail, RefreshCw, User, Radio, ShieldCheck, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -15,6 +16,12 @@ const PENDING_COPY: Record<Exclude<PendingAction, null>, { label: string; sublab
   register: { label: 'Creating your account', sublabel: 'Setting up your ReachConvert workspace…' },
   reset: { label: 'Resetting password', sublabel: 'Securing your account…' },
 };
+
+const SHOWCASE_POINTS = [
+  { icon: Radio, text: 'Autonomous AI calling agents that dial, qualify, and book' },
+  { icon: BarChart3, text: 'Live campaign telemetry across email and voice' },
+  { icon: ShieldCheck, text: 'Your contacts, templates, and history — one secure workspace' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,73 +139,102 @@ export default function LoginPage() {
     setMessage('');
   };
 
+  const inputShell =
+    'flex items-center gap-2.5 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3.5 transition-colors focus-within:border-indigo-500/50';
+  const inputField = 'w-full bg-transparent py-3 text-sm text-zinc-200 outline-none';
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
+    <main className="relative min-h-screen overflow-hidden text-zinc-100">
       <LoaderOverlay
         show={pendingAction !== null}
         label={pendingAction ? PENDING_COPY[pendingAction].label : ''}
         sublabel={pendingAction ? PENDING_COPY[pendingAction].sublabel : undefined}
       />
-      <div className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 lg:grid-cols-[1fr_440px]">
+
+      {/* Ambient background */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="bg-grid mask-fade-top absolute inset-0" />
+        <div
+          className="animate-blob absolute -left-32 top-16 h-96 w-96 rounded-full blur-3xl"
+          style={{ background: 'color-mix(in oklab, var(--a-500) 12%, transparent)' }}
+        />
+        <div
+          className="animate-blob animation-delay-2000 absolute -right-20 bottom-0 h-96 w-96 rounded-full blur-3xl"
+          style={{ background: 'color-mix(in oklab, var(--a2-500) 10%, transparent)' }}
+        />
+      </div>
+
+      <div className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 lg:grid-cols-[1fr_460px]">
+        {/* Showcase panel */}
         <section className="hidden flex-col justify-between px-8 py-10 lg:flex">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/20">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-white">ReachConvert</h1>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">AI Outreach Suite</p>
-            </div>
-          </div>
+          <Brand />
 
           <div className="max-w-2xl py-16">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-indigo-400">Secure workspace</p>
-            <h2 className="mt-5 text-5xl font-extrabold tracking-tight text-white">
-              Sign in to manage outreach campaigns.
+            <p className="sig-label text-indigo-400">[ SECURE WORKSPACE ]</p>
+            <h2 className="sig-display mt-5 text-5xl font-extrabold leading-[1.05] text-white">
+              Sign in to run outreach that{' '}
+              <span className="sig-glow bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                answers back
+              </span>
+              .
             </h2>
-            <p className="mt-5 max-w-xl text-sm leading-6 text-zinc-400">
-              Access contacts, email campaigns, calling workflows, analytics, settings, and your editable user profile.
-            </p>
+
+            <ul className="mt-10 space-y-4">
+              {SHOWCASE_POINTS.map((point) => {
+                const Icon = point.icon;
+                return (
+                  <li key={point.text} className="flex items-center gap-3 text-sm text-zinc-400">
+                    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    {point.text}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Beacon */}
+            <div className="mt-14 flex items-center gap-5">
+              <div className="sig-beacon flex h-12 w-12 items-center justify-center">
+                <span className="h-2.5 w-2.5 rounded-full bg-indigo-400 shadow-[0_0_14px_var(--a-400)]" />
+              </div>
+              <p className="sig-label text-zinc-600">
+                SIGNAL ACTIVE · CAMPAIGNS SYNCED IN REAL TIME
+              </p>
+            </div>
           </div>
 
-          <p className="text-xs text-zinc-600"></p>
+          <p className="sig-label text-zinc-700">REACHCONVERT // AI OUTREACH SUITE</p>
         </section>
 
+        {/* Auth panel */}
         <section className="flex items-center px-5 py-8 sm:px-6 lg:py-10">
-          <div className="w-full rounded-2xl border border-zinc-850 bg-zinc-900/70 p-6 shadow-2xl sm:p-8">
+          <div className="sig-card sig-ticks sig-ticks-on w-full rounded-2xl p-6 sm:p-8">
             <div className="mb-8 lg:hidden">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/20">
-                  <Zap className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold tracking-tight text-white">ReachConvert</h1>
-                  <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-500">AI Outreach Suite</p>
-                </div>
-              </div>
+              <Brand />
             </div>
 
             {mode === 'login' ? (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-extrabold tracking-tight text-white">Welcome back</h2>
+                  <h2 className="sig-display text-2xl font-extrabold text-white">Welcome back</h2>
                   <p className="text-sm text-zinc-500">Sign in with your ReachConvert account.</p>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Email</label>
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                    <Mail className="h-4 w-4 text-zinc-500" />
+                  <label className="sig-label mb-2 block text-zinc-500">Email</label>
+                  <div className={inputShell}>
+                    <Mail className="h-4 w-4 flex-none text-zinc-600" />
                     <input
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                      className={inputField}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">Password</label>
+                    <label className="sig-label block text-zinc-500">Password</label>
                     <button
                       type="button"
                       onClick={openReset}
@@ -207,24 +243,26 @@ export default function LoginPage() {
                       Forgot password?
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                    <KeyRound className="h-4 w-4 text-zinc-500" />
+                  <div className={inputShell}>
+                    <KeyRound className="h-4 w-4 flex-none text-zinc-600" />
                     <input
                       type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                      className={inputField}
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={pendingAction !== null}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Sign In <ArrowRight className="h-4 w-4" />
-                </button>
-                <div className="text-center text-sm text-zinc-500 pt-2">
+                <span className="sig-btn-wrap w-full">
+                  <button
+                    type="submit"
+                    disabled={pendingAction !== null}
+                    className="sig-btn w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Sign In <ArrowRight className="h-4 w-4" />
+                  </button>
+                </span>
+                <div className="pt-2 text-center text-sm text-zinc-500">
                   Don&apos;t have an account?{' '}
                   <button
                     type="button"
@@ -238,53 +276,55 @@ export default function LoginPage() {
             ) : mode === 'register' ? (
               <form onSubmit={handleRegister} className="space-y-5">
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-extrabold tracking-tight text-white">Create an account</h2>
+                  <h2 className="sig-display text-2xl font-extrabold text-white">Create an account</h2>
                   <p className="text-sm text-zinc-500">Get started with ReachConvert today.</p>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Name</label>
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                    <User className="h-4 w-4 text-zinc-500" />
+                  <label className="sig-label mb-2 block text-zinc-500">Name</label>
+                  <div className={inputShell}>
+                    <User className="h-4 w-4 flex-none text-zinc-600" />
                     <input
                       type="text"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
-                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                      className={inputField}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Email</label>
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                    <Mail className="h-4 w-4 text-zinc-500" />
+                  <label className="sig-label mb-2 block text-zinc-500">Email</label>
+                  <div className={inputShell}>
+                    <Mail className="h-4 w-4 flex-none text-zinc-600" />
                     <input
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                      className={inputField}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Password</label>
-                  <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                    <KeyRound className="h-4 w-4 text-zinc-500" />
+                  <label className="sig-label mb-2 block text-zinc-500">Password</label>
+                  <div className={inputShell}>
+                    <KeyRound className="h-4 w-4 flex-none text-zinc-600" />
                     <input
                       type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                      className={inputField}
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={pendingAction !== null}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Create Account <ArrowRight className="h-4 w-4" />
-                </button>
-                <div className="text-center text-sm text-zinc-500 pt-2">
+                <span className="sig-btn-wrap w-full">
+                  <button
+                    type="submit"
+                    disabled={pendingAction !== null}
+                    className="sig-btn w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Create Account <ArrowRight className="h-4 w-4" />
+                  </button>
+                </span>
+                <div className="pt-2 text-center text-sm text-zinc-500">
                   Already have an account?{' '}
                   <button
                     type="button"
@@ -300,33 +340,33 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={backToLogin}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 transition-colors hover:text-zinc-300"
+                  className="sig-label flex items-center gap-1.5 text-zinc-500 transition-colors hover:text-zinc-300"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back to login
                 </button>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-extrabold tracking-tight text-white">Reset password</h2>
+                  <h2 className="sig-display text-2xl font-extrabold text-white">Reset password</h2>
                   <p className="text-sm leading-6 text-zinc-500">
                     Enter your account email first. Once verified, choose a new password.
                   </p>
                 </div>
                 <form onSubmit={handleResetRequest} className="space-y-4">
                   <div>
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Account Email</label>
-                    <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3">
-                      <Mail className="h-4 w-4 text-zinc-500" />
+                    <label className="sig-label mb-2 block text-zinc-500">Account Email</label>
+                    <div className={inputShell}>
+                      <Mail className="h-4 w-4 flex-none text-zinc-600" />
                       <input
                         type="email"
                         value={resetEmail}
                         onChange={(event) => setResetEmail(event.target.value)}
-                        className="w-full bg-transparent py-3 text-sm text-zinc-200 outline-none"
+                        className={inputField}
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-bold text-zinc-200 hover:bg-zinc-900"
+                    className="sig-btn-ghost w-full"
                   >
                     <RefreshCw className="h-4 w-4" /> Verify Email
                   </button>
@@ -335,37 +375,39 @@ export default function LoginPage() {
                 {resetVerified && (
                   <form onSubmit={handlePasswordReset} className="space-y-4 border-t border-zinc-850 pt-5">
                     <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">New Password</label>
+                      <label className="sig-label mb-2 block text-zinc-500">New Password</label>
                       <input
                         type="password"
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
-                        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+                        className="w-full rounded-lg border border-zinc-800 bg-zinc-950/70 px-3.5 py-3 text-sm text-zinc-200 outline-none transition-colors focus:border-indigo-500/50"
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">Confirm Password</label>
+                      <label className="sig-label mb-2 block text-zinc-500">Confirm Password</label>
                       <input
                         type="password"
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
-                        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+                        className="w-full rounded-lg border border-zinc-800 bg-zinc-950/70 px-3.5 py-3 text-sm text-zinc-200 outline-none transition-colors focus:border-indigo-500/50"
                       />
                     </div>
-                    <button
-                      type="submit"
-                      disabled={pendingAction !== null}
-                      className="w-full rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Save New Password
-                    </button>
+                    <span className="sig-btn-wrap w-full">
+                      <button
+                        type="submit"
+                        disabled={pendingAction !== null}
+                        className="sig-btn w-full disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Save New Password
+                      </button>
+                    </span>
                   </form>
                 )}
               </div>
             )}
 
             {message && (
-              <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs font-semibold text-zinc-300">
+              <div className="animate-in mt-5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 text-xs font-semibold text-zinc-300">
                 {message}
               </div>
             )}

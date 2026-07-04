@@ -11,23 +11,23 @@ export type ThemeMode =
 export type AccentColor = 'indigo' | 'emerald' | 'sky' | 'rose' | 'amber' | 'violet';
 
 export const THEME_OPTIONS: { id: ThemeMode; name: string; mode: 'dark' | 'light'; swatches: string[] }[] = [
-  { id: 'dark-midnight', name: 'Midnight', mode: 'dark', swatches: ['#09090b', '#18181b', '#6366f1'] },
-  { id: 'dark-slate', name: 'Slate', mode: 'dark', swatches: ['#0f172a', '#1e293b', '#38bdf8'] },
-  { id: 'dark-graphite', name: 'Graphite', mode: 'dark', swatches: ['#111111', '#2a2a2a', '#f59e0b'] },
-  { id: 'dark-violet', name: 'Violet', mode: 'dark', swatches: ['#181024', '#2e1d42', '#a855f7'] },
-  { id: 'light-cloud', name: 'Cloud', mode: 'light', swatches: ['#f8fafc', '#ffffff', '#4f46e5'] },
-  { id: 'light-paper', name: 'Paper', mode: 'light', swatches: ['#f7f3ea', '#fffaf0', '#d97706'] },
-  { id: 'light-mint', name: 'Mint', mode: 'light', swatches: ['#f0fdfa', '#ffffff', '#059669'] },
-  { id: 'light-rose', name: 'Rose', mode: 'light', swatches: ['#fff1f2', '#ffffff', '#e11d48'] },
+  { id: 'dark-midnight', name: 'Void', mode: 'dark', swatches: ['#070b09', '#121a16', '#c8f542'] },
+  { id: 'dark-slate', name: 'Deepwater', mode: 'dark', swatches: ['#05090f', '#101a2a', '#3fd0ff'] },
+  { id: 'dark-graphite', name: 'Carbon', mode: 'dark', swatches: ['#0a0a0a', '#212121', '#fcc63d'] },
+  { id: 'dark-violet', name: 'Nebula', mode: 'dark', swatches: ['#0b0713', '#1a122e', '#b79cfe'] },
+  { id: 'light-cloud', name: 'Porcelain', mode: 'light', swatches: ['#f3f5f7', '#ffffff', '#4a6309'] },
+  { id: 'light-paper', name: 'Parchment', mode: 'light', swatches: ['#f5f0e5', '#fdfaf2', '#9a6b03'] },
+  { id: 'light-mint', name: 'Greenhouse', mode: 'light', swatches: ['#edf9f3', '#ffffff', '#0b7d55'] },
+  { id: 'light-rose', name: 'Blush', mode: 'light', swatches: ['#fcf1f3', '#ffffff', '#c03d1e'] },
 ];
 
 export const ACCENT_OPTIONS: { id: AccentColor; name: string; value: string }[] = [
-  { id: 'indigo', name: 'Indigo', value: '#6366f1' },
-  { id: 'emerald', name: 'Emerald', value: '#10b981' },
-  { id: 'sky', name: 'Sky', value: '#0ea5e9' },
-  { id: 'rose', name: 'Rose', value: '#f43f5e' },
-  { id: 'amber', name: 'Amber', value: '#f59e0b' },
-  { id: 'violet', name: 'Violet', value: '#8b5cf6' },
+  { id: 'indigo', name: 'Volt', value: '#c8f542' },
+  { id: 'emerald', name: 'Mint', value: '#37e8a6' },
+  { id: 'sky', name: 'Cyan', value: '#3fd0ff' },
+  { id: 'rose', name: 'Coral', value: '#ff8a6b' },
+  { id: 'amber', name: 'Solar', value: '#fcc63d' },
+  { id: 'violet', name: 'Orchid', value: '#b79cfe' },
 ];
 
 export interface LocalUserProfile {
