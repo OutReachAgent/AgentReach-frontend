@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#070b09",
+  themeColor: "#060b0d",
 };
 
 /**
@@ -39,11 +39,11 @@ export const viewport: Viewport = {
  */
 const themeBootScript = `(function(){try{
 var themes=["dark-midnight","dark-slate","dark-graphite","dark-violet","light-cloud","light-paper","light-mint","light-rose"];
-var accents=["indigo","emerald","sky","rose","amber","violet"];
+var accents=["volt","emerald","sky","rose","amber","violet"];
 var u=JSON.parse(localStorage.getItem("reachconvert_user")||"{}")||{};
 var t=u.theme==="dark"?"dark-midnight":u.theme==="light"?"light-cloud":u.theme;
 if(themes.indexOf(t)<0)t="dark-midnight";
-var a=accents.indexOf(u.accentColor)<0?"indigo":u.accentColor;
+var a=u.accentColor==="indigo"?"sky":accents.indexOf(u.accentColor)<0?"sky":u.accentColor;
 var light=t.indexOf("light-")===0;
 var d=document;
 d.documentElement.classList.toggle("dark",!light);

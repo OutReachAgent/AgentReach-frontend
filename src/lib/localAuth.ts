@@ -8,10 +8,10 @@ export type ThemeMode =
   | 'light-mint'
   | 'light-rose';
 
-export type AccentColor = 'indigo' | 'emerald' | 'sky' | 'rose' | 'amber' | 'violet';
+export type AccentColor = 'volt' | 'emerald' | 'sky' | 'rose' | 'amber' | 'violet';
 
 export const THEME_OPTIONS: { id: ThemeMode; name: string; mode: 'dark' | 'light'; swatches: string[] }[] = [
-  { id: 'dark-midnight', name: 'Void', mode: 'dark', swatches: ['#070b09', '#121a16', '#c8f542'] },
+  { id: 'dark-midnight', name: 'Void', mode: 'dark', swatches: ['#060b0d', '#101b1f', '#3fd0ff'] },
   { id: 'dark-slate', name: 'Deepwater', mode: 'dark', swatches: ['#05090f', '#101a2a', '#3fd0ff'] },
   { id: 'dark-graphite', name: 'Carbon', mode: 'dark', swatches: ['#0a0a0a', '#212121', '#fcc63d'] },
   { id: 'dark-violet', name: 'Nebula', mode: 'dark', swatches: ['#0b0713', '#1a122e', '#b79cfe'] },
@@ -22,9 +22,9 @@ export const THEME_OPTIONS: { id: ThemeMode; name: string; mode: 'dark' | 'light
 ];
 
 export const ACCENT_OPTIONS: { id: AccentColor; name: string; value: string }[] = [
-  { id: 'indigo', name: 'Volt', value: '#c8f542' },
-  { id: 'emerald', name: 'Mint', value: '#37e8a6' },
   { id: 'sky', name: 'Cyan', value: '#3fd0ff' },
+  { id: 'volt', name: 'Volt', value: '#c8f542' },
+  { id: 'emerald', name: 'Mint', value: '#37e8a6' },
   { id: 'rose', name: 'Coral', value: '#ff8a6b' },
   { id: 'amber', name: 'Solar', value: '#fcc63d' },
   { id: 'violet', name: 'Orchid', value: '#b79cfe' },
@@ -54,7 +54,7 @@ export const DEFAULT_USER: LocalUserProfile = {
   company: '',
   phone: '',
   theme: 'dark-midnight',
-  accentColor: 'indigo',
+  accentColor: 'sky',
 };
 
 function normalizeTheme(theme?: string): ThemeMode {
@@ -64,6 +64,8 @@ function normalizeTheme(theme?: string): ThemeMode {
 }
 
 function normalizeAccent(accent?: string): AccentColor {
+  // 'indigo' was the pre-redesign default accent id; migrate it to the new default.
+  if (accent === 'indigo') return 'sky';
   return ACCENT_OPTIONS.some((option) => option.id === accent) ? (accent as AccentColor) : DEFAULT_USER.accentColor;
 }
 

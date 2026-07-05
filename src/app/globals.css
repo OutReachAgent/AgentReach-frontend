@@ -81,21 +81,21 @@
 :root {
   color-scheme: dark;
 
-  /* Default: dark-midnight ("Void") — petrol green-black */
-  --z-950: #070b09;
-  --z-900: #0c1210;
-  --z-850: #121a16;
-  --z-800: #19231e;
-  --z-700: #26342d;
-  --z-650: #3b4a42;
-  --z-600: #53645b;
-  --z-500: #708279;
-  --z-400: #92a49a;
-  --z-300: #b3c2b9;
-  --z-200: #cfdad3;
-  --z-100: #e5ece7;
-  --z-50: #f1f6f1;
-  --ink-max: #f6faf3;
+  /* Default: dark-midnight ("Void") — deep cyan-cast ink */
+  --z-950: #060b0d;
+  --z-900: #0b1316;
+  --z-850: #101b1f;
+  --z-800: #172429;
+  --z-700: #24363d;
+  --z-650: #3a4e56;
+  --z-600: #51666e;
+  --z-500: #6e848c;
+  --z-400: #90a6ad;
+  --z-300: #b1c4ca;
+  --z-200: #cedce0;
+  --z-100: #e4edf0;
+  --z-50: #f0f6f7;
+  --ink-max: #f5fafb;
 
   --background: var(--z-950);
   --foreground: var(--z-100);
@@ -111,20 +111,20 @@ body.theme-light {
 }
 
 body[data-theme="dark-midnight"] {
-  --z-950: #070b09;
-  --z-900: #0c1210;
-  --z-850: #121a16;
-  --z-800: #19231e;
-  --z-700: #26342d;
-  --z-650: #3b4a42;
-  --z-600: #53645b;
-  --z-500: #708279;
-  --z-400: #92a49a;
-  --z-300: #b3c2b9;
-  --z-200: #cfdad3;
-  --z-100: #e5ece7;
-  --z-50: #f1f6f1;
-  --ink-max: #f6faf3;
+  --z-950: #060b0d;
+  --z-900: #0b1316;
+  --z-850: #101b1f;
+  --z-800: #172429;
+  --z-700: #24363d;
+  --z-650: #3a4e56;
+  --z-600: #51666e;
+  --z-500: #6e848c;
+  --z-400: #90a6ad;
+  --z-300: #b1c4ca;
+  --z-200: #cedce0;
+  --z-100: #e4edf0;
+  --z-50: #f0f6f7;
+  --ink-max: #f5fafb;
 }
 
 body[data-theme="dark-slate"] {
@@ -253,8 +253,7 @@ body[data-theme="light-rose"] {
    ink placed on top of solid accent fills.
    ============================================================= */
 
-:root,
-body[data-accent="indigo"] {
+body[data-accent="volt"] {
   /* VOLT — electric chartreuse */
   --a-50: #f5fbe3;
   --a-300: light-dark(#57710b, #ddfc8b);
@@ -290,8 +289,9 @@ body[data-accent="emerald"] {
   --on-accent: #04130c;
 }
 
+:root,
 body[data-accent="sky"] {
-  /* CYAN */
+  /* CYAN — default */
   --a-50: #e8f9ff;
   --a-300: light-dark(#085d89, #8ce0ff);
   --a-400: light-dark(#086ea4, #3fd0ff);
