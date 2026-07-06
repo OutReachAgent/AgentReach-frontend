@@ -440,7 +440,7 @@ export const DOC_PAGES: DocPage[] = [
           { title: 'AWS SES', text: 'Powers email delivery. Add your access key, secret, region, and sender address, then Test SES.' },
           { title: 'Gemini (Live)', text: 'Powers AI calling and signal classification. Add and verify your Gemini API key.' },
           { title: 'Twilio', text: 'Places the actual phone calls. Add your account SID, auth token, and phone number.' },
-          { title: 'OpenRouter', text: 'Backs AI text generation for templates and chat; pick your preferred model.' },
+          { title: 'Gemini (Text)', text: 'The same Gemini key backs AI text generation for templates. Pick a cheap text model such as gemini-2.5-flash-lite.' },
         ],
       },
       {

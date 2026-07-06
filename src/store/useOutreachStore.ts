@@ -64,7 +64,7 @@ function makeFriendlyMessage(message: string, type: 'success' | 'error' | 'info'
     return 'Email sending is not ready yet. Please check your email settings and try again.';
   }
 
-  if (lower.includes('openrouter') || lower.includes('ai generation')) {
+  if (lower.includes('gemini') || lower.includes('ai generation')) {
     return 'AI template generation could not finish. Please check your AI settings or try again.';
   }
 

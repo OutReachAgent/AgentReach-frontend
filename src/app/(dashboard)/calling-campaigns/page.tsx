@@ -746,6 +746,43 @@ export default function CallingCampaignsPage() {
     },
   });
 
+  const [schedulingCampaignId, setSchedulingCampaignId] = useState<
+    string | null
+  >(null);
+  const [scheduleValue, setScheduleValue] = useState("");
+
+  const scheduleCampaignMutation = useMutation({
+    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
+      api.callingCampaigns.schedule(id, scheduledAt),
+    onSuccess: (result: LooseApiResponse) => {
+      queryClient.invalidateQueries({ queryKey: ["calling-campaigns"] });
+      setSchedulingCampaignId(null);
+      setScheduleValue("");
+      showAlert(
+        result?.message || "The calling campaign is scheduled.",
+        "success",
+        "Campaign scheduled",
+      );
+    },
+    onError: (err: Error) => {
+      showAlert(
+        err.message || "We could not schedule this calling campaign.",
+        "error",
+      );
+    },
+  });
+
+  const unscheduleCampaignMutation = useMutation({
+    mutationFn: api.callingCampaigns.unschedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calling-campaigns"] });
+      showAlert("Schedule cancelled.", "success");
+    },
+    onError: (err: Error) => {
+      showAlert(err.message || "Could not cancel the schedule.", "error");
+    },
+  });
+
   const addContactsMutation = useMutation({
     mutationFn: ({ id, contactIds }: { id: string; contactIds: string[] }) =>
       api.callingCampaigns.update(id, { contactIds }),
@@ -1552,19 +1589,72 @@ export default function CallingCampaignsPage() {
                         Stop
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleLaunchCampaign(camp)}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
-                      >
-                        {camp.status === "DRAFT" ? (
-                          <Play className="h-3.5 w-3.5" />
+                      <div className="flex items-center gap-3">
+                        {camp.status === "SCHEDULED" ? (
+                          <button
+                            onClick={() =>
+                              unscheduleCampaignMutation.mutate(camp.id)
+                            }
+                            className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold"
+                          >
+                            <Clock className="h-3.5 w-3.5" />
+                            {camp.scheduledAt
+                              ? `${new Date(camp.scheduledAt).toLocaleString()} — Cancel`
+                              : "Cancel schedule"}
+                          </button>
                         ) : (
-                          <RotateCcw className="h-3.5 w-3.5" />
+                          <button
+                            onClick={() =>
+                              setSchedulingCampaignId((prev) =>
+                                prev === camp.id ? null : camp.id,
+                              )
+                            }
+                            className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-semibold"
+                          >
+                            <Clock className="h-3.5 w-3.5" />
+                            Schedule
+                          </button>
                         )}
-                        {camp.status === "DRAFT" ? "Start Dialer" : "Relaunch"}
-                      </button>
+                        <button
+                          onClick={() => handleLaunchCampaign(camp)}
+                          className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+                        >
+                          {camp.status === "DRAFT" ? (
+                            <Play className="h-3.5 w-3.5" />
+                          ) : (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          )}
+                          {camp.status === "DRAFT"
+                            ? "Start Dialer"
+                            : "Relaunch"}
+                        </button>
+                      </div>
                     )}
                   </div>
+                  {schedulingCampaignId === camp.id && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-850/65 pt-3">
+                      <input
+                        type="datetime-local"
+                        value={scheduleValue}
+                        onChange={(e) => setScheduleValue(e.target.value)}
+                        className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
+                      />
+                      <button
+                        disabled={
+                          !scheduleValue || scheduleCampaignMutation.isPending
+                        }
+                        onClick={() =>
+                          scheduleCampaignMutation.mutate({
+                            id: camp.id,
+                            scheduledAt: new Date(scheduleValue).toISOString(),
+                          })
+                        }
+                        className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })

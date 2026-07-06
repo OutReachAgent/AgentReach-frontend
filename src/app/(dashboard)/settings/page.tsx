@@ -3,150 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useOutreachStore } from "@/store/useOutreachStore";
-import { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Settings,
-  Server,
-  Key,
-  Mail,
-  Check,
-  RefreshCw,
-  Search,
-  ChevronDown,
-  X,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Server, Key, Mail, Check, RefreshCw } from "lucide-react";
 
-const DEFAULT_OPENROUTER_MODEL = "nex-agi/nex-n2-pro:free";
+const DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash-lite";
 const CAMPAIGN_SENDER_EMAIL = "oswin.alex@oswinalex.site";
 const MASKED_CREDENTIAL = "••••••••••••••••";
-
-/* ------------------------------------------------------------------ */
-/*  OpenRouter model combobox (searchable dropdown)                    */
-/* ------------------------------------------------------------------ */
-function ModelCombobox({
-  models,
-  value,
-  onChange,
-  isLoading,
-}: {
-  models: string[];
-  value: string;
-  onChange: (model: string) => void;
-  isLoading: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filtered = useMemo(
-    () => models.filter((m) => m.toLowerCase().includes(search.toLowerCase())),
-    [models, search],
-  );
-
-  const handleSelect = (model: string) => {
-    onChange(model);
-    setSearch("");
-    setOpen(false);
-  };
-
-  return (
-    <div ref={containerRef} className="relative">
-      {/* Trigger / display */}
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((prev) => !prev);
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-left text-sm text-zinc-200 transition-colors hover:border-zinc-700 focus:border-indigo-500/50 focus:outline-none"
-      >
-        <span className={value ? "text-zinc-200" : "text-zinc-500"}>
-          {isLoading ? "Loading models…" : value || "Select a model"}
-        </span>
-        <ChevronDown
-          className={`h-4 w-4 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div className="absolute z-50 mt-1.5 w-full rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
-          {/* Search input */}
-          <div className="flex items-center gap-2 border-b border-zinc-800/60 px-3 py-2">
-            <Search className="h-3.5 w-3.5 text-zinc-500" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search models…"
-              className="w-full bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="text-zinc-500 hover:text-zinc-300"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Model list */}
-          <ul className="max-h-60 overflow-y-auto py-1 scrollbar-thin scrollbar-track-zinc-950 scrollbar-thumb-zinc-800">
-            {filtered.length === 0 ? (
-              <li className="px-4 py-3 text-xs text-zinc-500">
-                No models found
-              </li>
-            ) : (
-              filtered.map((model) => (
-                <li key={model}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(model)}
-                    className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-zinc-900 ${
-                      model === value
-                        ? "bg-indigo-500/10 text-indigo-400"
-                        : "text-zinc-300"
-                    }`}
-                  >
-                    {model === value && (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                    )}
-                    <span className={model === value ? "" : "pl-5"}>
-                      {model}
-                    </span>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-
-          {/* Footer count */}
-          <div className="border-t border-zinc-800/60 px-4 py-1.5 text-[11px] text-zinc-600">
-            {filtered.length} of {models.length} models
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Settings page                                                      */
@@ -158,31 +20,13 @@ export default function SettingsPage() {
   const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState("");
   const [awsRegion, setAwsRegion] = useState("us-east-1");
-  const [openRouterApiKey, setOpenRouterApiKey] = useState("");
-  const [openRouterModel, setOpenRouterModel] = useState(
-    DEFAULT_OPENROUTER_MODEL,
+  const [geminiTextModel, setGeminiTextModel] = useState(
+    DEFAULT_GEMINI_TEXT_MODEL,
   );
   const [twilioAccountSid, setTwilioAccountSid] = useState("");
   const [twilioAuthToken, setTwilioAuthToken] = useState("");
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
-
-  const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(true);
-
-  // Fetch all available models from OpenRouter's public API
-  useEffect(() => {
-    fetch("https://openrouter.ai/api/v1/models")
-      .then((res) => res.json())
-      .then((data: { data: { id: string; name: string }[] }) => {
-        const ids = (data.data ?? []).map((m) => m.id).sort();
-        setOpenRouterModels(ids.length > 0 ? ids : [DEFAULT_OPENROUTER_MODEL]);
-      })
-      .catch(() => {
-        setOpenRouterModels([DEFAULT_OPENROUTER_MODEL]);
-      })
-      .finally(() => setModelsLoading(false));
-  }, []);
 
   // Fetch saved settings
   const { data: settings, isLoading } = useQuery({
@@ -197,9 +41,8 @@ export default function SettingsPage() {
         setAwsAccessKeyId(settings.awsAccessKeyId || "");
         setAwsSecretAccessKey(settings.awsSecretAccessKey || "");
         setAwsRegion(settings.awsRegion || "us-east-1");
-        setOpenRouterApiKey(settings.openRouterApiKey || "");
-        setOpenRouterModel(
-          settings.openRouterModel || DEFAULT_OPENROUTER_MODEL,
+        setGeminiTextModel(
+          settings.geminiTextModel || DEFAULT_GEMINI_TEXT_MODEL,
         );
         setTwilioAccountSid(settings.twilioAccountSid || "");
         setTwilioAuthToken(settings.twilioAuthToken || "");
@@ -256,31 +99,6 @@ export default function SettingsPage() {
       showAlert(
         err.message ||
           "We could not test your email sending settings. Please try again.",
-        "error",
-      );
-    },
-  });
-
-  const testOpenRouterMutation = useMutation({
-    mutationFn: api.settings.testOpenRouter,
-    onSuccess: (res) => {
-      if (res.success) {
-        showAlert(
-          res.message || "Your AI connection is working.",
-          "success",
-          "AI settings verified",
-        );
-      } else {
-        showAlert(
-          res.error ||
-            "We could not verify your AI settings. Please check the API key.",
-          "error",
-        );
-      }
-    },
-    onError: (err: Error) => {
-      showAlert(
-        err.message || "We could not test your AI settings. Please try again.",
         "error",
       );
     },
@@ -346,9 +164,8 @@ export default function SettingsPage() {
       awsSecretAccessKey,
       awsRegion,
       awsSenderEmail: CAMPAIGN_SENDER_EMAIL,
-      openRouterApiKey,
-      openRouterModel,
       geminiApiKey,
+      geminiTextModel,
       twilioAccountSid,
       twilioAuthToken,
       twilioPhoneNumber,
@@ -373,8 +190,7 @@ export default function SettingsPage() {
           System Settings
         </h2>
         <p className="text-sm text-zinc-400 mt-1">
-          Configure API credentials and sender servers for AWS SES and
-          OpenRouter AI.
+          Configure API credentials for AWS SES, Twilio, and Gemini AI.
         </p>
       </div>
 
@@ -451,58 +267,6 @@ export default function SettingsPage() {
                 <Mail className="h-3.5 w-3.5" />
               )}
               Test SES Connection
-            </button>
-          </div>
-        </div>
-
-        {/* OpenRouter Panel */}
-        <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-zinc-800/60">
-            <Key className="h-5 w-5 text-purple-400" />
-            <h3 className="text-base font-bold text-white">
-              OpenRouter AI Configuration
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                OpenRouter API Key
-              </label>
-              <input
-                type="password"
-                value={openRouterApiKey}
-                onChange={(e) => setOpenRouterApiKey(e.target.value)}
-                placeholder="sk-or-v1-..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                Default LLM Model
-              </label>
-              <ModelCombobox
-                models={openRouterModels}
-                value={openRouterModel}
-                onChange={setOpenRouterModel}
-                isLoading={modelsLoading}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-start gap-3 pt-3">
-            <button
-              type="button"
-              disabled={testOpenRouterMutation.isPending}
-              onClick={() => testOpenRouterMutation.mutate()}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {testOpenRouterMutation.isPending ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Key className="h-3.5 w-3.5" />
-              )}
-              Test OpenRouter API
             </button>
           </div>
         </div>
@@ -638,7 +402,24 @@ export default function SettingsPage() {
               />
               <p className="mt-2 text-[11px] text-zinc-500">
                 Saved encrypted and used for Gemini Live campaign calls, bot
-                chat, voice previews, and AI calling campaign generation.
+                chat, voice previews, AI calling campaign generation, and AI
+                email template text generation.
+              </p>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Text Model (for email templates)
+              </label>
+              <input
+                type="text"
+                value={geminiTextModel}
+                onChange={(e) => setGeminiTextModel(e.target.value)}
+                placeholder={DEFAULT_GEMINI_TEXT_MODEL}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
+              />
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Cheap Gemini text model used to generate email templates.
+                Default: {DEFAULT_GEMINI_TEXT_MODEL}.
               </p>
             </div>
           </div>

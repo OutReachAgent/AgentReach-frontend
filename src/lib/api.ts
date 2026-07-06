@@ -22,9 +22,8 @@ type SettingsUpdate = {
   awsAccessKeyId?: string;
   awsSecretAccessKey?: string;
   awsRegion?: string;
-  openRouterApiKey?: string;
-  openRouterModel?: string;
   geminiApiKey?: string;
+  geminiTextModel?: string;
   awsSenderEmail?: string;
   twilioAccountSid?: string;
   twilioAuthToken?: string;
@@ -369,8 +368,6 @@ export const api = {
         body: JSON.stringify(data),
       }),
     testSes: () => request("/settings/test-ses", { method: "POST" }),
-    testOpenRouter: () =>
-      request("/settings/test-openrouter", { method: "POST" }),
     testTwilio: () => request("/settings/test-twilio", { method: "POST" }),
     testGemini: (data?: GeminiKeyTestPayload) =>
       request("/settings/test-gemini", {
@@ -543,6 +540,14 @@ export const api = {
       }),
     launch: (id: string) =>
       request(`/email-campaigns/${id}/launch`, { method: "POST" }),
+    schedule: (id: string, scheduledAt: string) =>
+      request(`/email-campaigns/${id}/schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt }),
+      }),
+    unschedule: (id: string) =>
+      request(`/email-campaigns/${id}/unschedule`, { method: "POST" }),
   },
 
   // Signal-based outreach
@@ -713,6 +718,14 @@ export const api = {
       request(`/calling-campaigns/${id}/relaunch`, { method: "POST" }),
     stop: (id: string) =>
       request(`/calling-campaigns/${id}/stop`, { method: "POST" }),
+    schedule: (id: string, scheduledAt: string) =>
+      request(`/calling-campaigns/${id}/schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt }),
+      }),
+    unschedule: (id: string) =>
+      request(`/calling-campaigns/${id}/unschedule`, { method: "POST" }),
     recordingAudio: (callId: string) =>
       requestBlob(
         `/calling-campaigns/recordings/${callId}/audio`,

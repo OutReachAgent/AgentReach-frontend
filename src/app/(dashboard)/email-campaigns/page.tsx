@@ -8,6 +8,7 @@ import {
   Mail,
   Plus,
   Play,
+  Clock,
   Trash2,
   X,
   Sparkles,
@@ -83,6 +84,7 @@ type EmailCampaign = {
   name: string;
   status: string;
   createdAt: string;
+  scheduledAt?: string | null;
 };
 type EmailCampaignContact = {
   id: string;
@@ -320,6 +322,63 @@ export default function EmailCampaignsPage() {
         ),
         "error",
       );
+    },
+  });
+
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleValue, setScheduleValue] = useState("");
+
+  const scheduleCampaignMutation = useMutation<
+    CampaignLaunchResult,
+    Error,
+    { id: string; scheduledAt: string }
+  >({
+    mutationFn: ({ id, scheduledAt }) =>
+      api.emailCampaigns.schedule(
+        id,
+        scheduledAt,
+      ) as Promise<CampaignLaunchResult>,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
+      setScheduleOpen(false);
+      setScheduleValue("");
+      showAlert(
+        res?.message || "Your campaign is scheduled.",
+        "success",
+        "Campaign scheduled",
+      );
+    },
+    onError: (err: unknown) => {
+      showAlert(
+        getErrorMessage(err, "We could not schedule this campaign."),
+        "error",
+      );
+    },
+  });
+
+  const unscheduleCampaignMutation = useMutation<
+    CampaignLaunchResult,
+    Error,
+    string
+  >({
+    mutationFn: (id: string) =>
+      api.emailCampaigns.unschedule(id) as Promise<CampaignLaunchResult>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
+      showAlert("Schedule cancelled.", "success");
+    },
+    onError: (err: unknown) => {
+      showAlert(getErrorMessage(err, "Could not cancel the schedule."), "error");
     },
   });
 
@@ -1300,18 +1359,70 @@ export default function EmailCampaignsPage() {
                     <PlusCircle className="h-3.5 w-3.5" /> Add Contacts
                   </button>
                   {campaignDetails.status !== "RUNNING" && (
-                    <button
-                      onClick={() => handleLaunchCampaign(campaignDetails.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
-                    >
-                      <Play className="h-3.5 w-3.5" />{" "}
-                      {campaignDetails.status === "DRAFT"
-                        ? "Launch Campaign"
-                        : "Launch Again"}
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleLaunchCampaign(campaignDetails.id)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
+                      >
+                        <Play className="h-3.5 w-3.5" />{" "}
+                        {campaignDetails.status === "DRAFT"
+                          ? "Launch Campaign"
+                          : "Launch Again"}
+                      </button>
+                      {campaignDetails.status === "SCHEDULED" ? (
+                        <button
+                          onClick={() =>
+                            unscheduleCampaignMutation.mutate(
+                              campaignDetails.id,
+                            )
+                          }
+                          className="flex items-center gap-1.5 px-3 py-2 bg-zinc-950 border border-amber-500/30 rounded-xl text-xs font-semibold text-amber-400 hover:bg-zinc-900"
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          {campaignDetails.scheduledAt
+                            ? `Scheduled ${new Date(campaignDetails.scheduledAt).toLocaleString()} — Cancel`
+                            : "Cancel schedule"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setScheduleOpen((v) => !v)}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white"
+                        >
+                          <Clock className="h-3.5 w-3.5" /> Schedule
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
+
+              {scheduleOpen && campaignDetails.status !== "RUNNING" && (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-850 bg-zinc-900/40 px-4 py-3">
+                  <label className="text-xs font-semibold text-zinc-400">
+                    Send at:
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleValue}
+                    onChange={(e) => setScheduleValue(e.target.value)}
+                    className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
+                  />
+                  <button
+                    disabled={
+                      !scheduleValue || scheduleCampaignMutation.isPending
+                    }
+                    onClick={() =>
+                      scheduleCampaignMutation.mutate({
+                        id: campaignDetails.id,
+                        scheduledAt: new Date(scheduleValue).toISOString(),
+                      })
+                    }
+                    className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-50"
+                  >
+                    Confirm schedule
+                  </button>
+                </div>
+              )}
 
               {/* Contacts Table in Campaign */}
               <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
