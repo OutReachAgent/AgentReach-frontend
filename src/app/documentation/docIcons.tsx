@@ -10,6 +10,8 @@ import {
   History,
   Settings,
   UserRound,
+  Network,
+  CalendarClock,
   type LucideIcon,
 } from 'lucide-react';
 import type { DocIcon } from '@/lib/docs';
@@ -26,4 +28,6 @@ export const DOC_ICON_MAP: Record<DocIcon, LucideIcon> = {
   history: History,
   settings: Settings,
   user: UserRound,
+  network: Network,
+  'calendar-clock': CalendarClock,
 };

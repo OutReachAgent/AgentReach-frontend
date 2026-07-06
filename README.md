@@ -10,6 +10,24 @@ over REST (`NEXT_PUBLIC_API_URL`) and ships a full in-app **Documentation portal
 
 ---
 
+## System documentation
+
+Contributor-facing docs for the full workspace live one level up in [`../docs`](../docs):
+
+- [Full architecture](../docs/ARCHITECTURE.md)
+- [Feature documentation index](../docs/FEATURES.md)
+- [Contacts](../docs/features/contacts.md)
+- [Email campaigns and templates](../docs/features/email-campaigns-and-templates.md)
+- [AI calling and realtime voice](../docs/features/ai-calling-and-realtime-voice.md)
+- [AI calling bots and RAG](../docs/features/ai-calling-bots-and-rag.md)
+- [Signals and playbooks](../docs/features/signals-and-playbooks.md)
+- [Campaign scheduler](../docs/features/scheduler.md)
+
+The in-app `/documentation` portal is product-facing help content. The markdown
+files in `../docs` are contributor-facing architecture and implementation notes.
+
+---
+
 ## Tech stack
 
 | Concern           | Choice                                                  |
@@ -75,6 +93,7 @@ src/
 | `/email-campaigns` | Build/generate templates, preview, launch, and relaunch bulk email. |
 | `/ai-calling-bots` | Create bot personas with a PDF-backed RAG knowledge base. |
 | `/calling-campaigns` | Configure and run AI voice calling campaigns with live outcomes. |
+| `/scheduler` | View and cancel future email/calling campaign launches. |
 | `/bot-chat` | Chat against a bot's knowledge base (semantic search). |
 | `/history` | Filterable email and call history, including replies. |
 | `/settings` | Connect AWS SES, OpenRouter, Twilio, and Gemini; test each connection. |

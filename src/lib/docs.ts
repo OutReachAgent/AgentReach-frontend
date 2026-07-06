@@ -5,12 +5,14 @@
  */
 
 export type DocIcon =
+  | 'network'
   | 'rocket'
   | 'layout-dashboard'
   | 'radar'
   | 'users'
   | 'mail'
   | 'phone'
+  | 'calendar-clock'
   | 'bot'
   | 'message'
   | 'history'
@@ -43,6 +45,7 @@ export interface DocPage {
 }
 
 export const DOC_CATEGORIES = [
+  'Architecture',
   'Getting started',
   'Core features',
   'AI outreach',
@@ -50,6 +53,67 @@ export const DOC_CATEGORIES = [
 ] as const;
 
 export const DOC_PAGES: DocPage[] = [
+  // ─────────────────────────────── Architecture
+  {
+    slug: 'architecture',
+    title: 'System architecture',
+    tagline: 'How the frontend, backend, database, schedulers, and providers fit together.',
+    icon: 'network',
+    category: 'Architecture',
+    intro: [
+      'ReachConvert is split into a Next.js operator workspace and a NestJS backend. The frontend owns the product experience; the backend owns authentication, provider credentials, persistence, campaign orchestration, scheduled jobs, signal ingestion, and realtime voice calls.',
+      'The regular product API is REST under /api. Live calling also uses a raw WebSocket upgrade path at /twilio/stream so Twilio can stream phone audio directly into the Gemini Live bridge.',
+    ],
+    sections: [
+      {
+        heading: 'High-level flow',
+        code: {
+          lines: [
+            'Browser operator UI',
+            '  -> Next.js App Router, TanStack Query, Zustand',
+            '  -> REST /api with Bearer access token',
+            '  -> NestJS feature modules',
+            '  -> MongoDB through Mongoose-backed MongoService delegates',
+            '',
+            'Provider side channels:',
+            '  Twilio webhooks -> /api/calling-campaigns/twilio/*',
+            '  Twilio media    -> /twilio/stream',
+            '  Backend         -> AWS SES, Gemini, OpenRouter, public signal sources',
+          ],
+        },
+      },
+      {
+        heading: 'Backend modules',
+        capabilities: [
+          { title: 'Auth & settings', text: 'JWT-like sessions, global route guarding, encrypted provider credentials, and provider test endpoints.' },
+          { title: 'Contacts & templates', text: 'Audience records, directories, custom fields, email copy, attachments, reference PDFs, and AI generation.' },
+          { title: 'Campaigns', text: 'Email sends through SES, AI calling through Twilio and Gemini Live, scheduling, relaunch, stop, and history records.' },
+          { title: 'Signals', text: 'Company watches, collectors, classification, deduplication, contact matching, playbooks, review queue, and triggered outreach attribution.' },
+        ],
+      },
+      {
+        heading: 'Data model',
+        body: [
+          'MongoDB stores users, encrypted settings, contacts, directories, templates, email campaigns, recipient rows, AI calling bots, bot embeddings, calling campaigns, call history, company watches, signals, signal matches, playbooks, and triggered outreach records.',
+          'The backend accesses those collections through a global MongoService. Its delegates expose Prisma-like methods such as findMany, findUnique, create, update, delete, and selected include hydration while keeping MongoDB as the storage engine.',
+        ],
+      },
+      {
+        heading: 'Scheduled and realtime work',
+        capabilities: [
+          { title: 'Campaign scheduler', text: 'Runs every minute and launches email/calling campaigns whose scheduledAt time is due.' },
+          { title: 'Signal scheduler', text: 'Runs every six hours and polls active company watches through source-specific collectors.' },
+          { title: 'Realtime calling', text: 'Upgrades /twilio/stream sockets, transcodes Twilio audio, opens Gemini Live sessions, handles tools, and persists call outcomes.' },
+        ],
+      },
+    ],
+    tips: [
+      'For contributor-facing implementation notes, read docs/ARCHITECTURE.md at the workspace root.',
+      'Swagger at /docs on the backend is the most accurate live API contract for the running server.',
+    ],
+    related: ['quick-start', 'settings', 'email-campaigns', 'ai-calling', 'signals'],
+  },
+
   // ─────────────────────────────── Getting started
   {
     slug: 'quick-start',
@@ -291,7 +355,49 @@ export const DOC_PAGES: DocPage[] = [
       'With test/mock AWS keys, sends are simulated (about 90% success) so you can rehearse the full flow without delivering real mail.',
       'Signal-triggered campaigns reuse this exact pipeline, so anything you learn here applies to automated outreach too.',
     ],
-    related: ['contacts', 'signals', 'dashboard', 'settings'],
+    related: ['contacts', 'signals', 'scheduler', 'dashboard', 'settings'],
+  },
+  {
+    slug: 'scheduler',
+    title: 'Scheduler',
+    tagline: 'One place to see and cancel future email and AI calling launches.',
+    icon: 'calendar-clock',
+    category: 'Core features',
+    intro: [
+      'Scheduler shows every campaign queued for a future launch time. It combines scheduled email campaigns and scheduled AI calling campaigns into one chronological view.',
+      'The backend checks due campaigns once per minute. When a scheduled time arrives, the normal launch pipeline runs, so delivery, call history, alerts, and dashboard metrics behave the same as a manual launch.',
+    ],
+    sections: [
+      {
+        heading: 'What appears here',
+        capabilities: [
+          { title: 'Email campaigns', text: 'Campaigns with status SCHEDULED and a scheduledAt timestamp.' },
+          { title: 'AI calling campaigns', text: 'Calling campaigns with status SCHEDULED and a scheduledAt timestamp.' },
+        ],
+      },
+      {
+        heading: 'Scheduling flow',
+        steps: [
+          'Open Email Campaigns or AI Calling and configure the campaign.',
+          'Choose Schedule instead of launching immediately.',
+          'Pick a future date and time.',
+          'Open Scheduler to verify the campaign is queued.',
+          'Cancel from Scheduler if the campaign should return to draft/immediate mode.',
+        ],
+      },
+      {
+        heading: 'Backend behavior',
+        body: [
+          'The Campaign Scheduler runs every minute in the NestJS backend. It queries MongoDB for due scheduled email and calling campaigns, then launches each campaign through the same service method used by manual launch.',
+          'If the backend is offline at the scheduled time, the campaign launches after the backend comes back and the cron sees the campaign as due.',
+        ],
+      },
+    ],
+    tips: [
+      'Scheduling stores launch intent on the campaign document; there is no separate queue service.',
+      'Make sure provider credentials and contacts are ready before the scheduled time.',
+    ],
+    related: ['email-campaigns', 'ai-calling', 'history', 'dashboard'],
   },
   {
     slug: 'history',
