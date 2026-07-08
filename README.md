@@ -6,7 +6,8 @@ one workspace for exploring job opportunities and driving conversions.
 
 This app is the operator UI. It talks to the [ReachConvert backend](../AgentReach-backend)
 over REST (`NEXT_PUBLIC_API_URL`) and ships a full in-app **Documentation portal** at
-`/documentation`.
+`/documentation`, including rendered architecture diagrams for the whole system and
+each major feature.
 
 ---
 
@@ -63,7 +64,7 @@ src/
 │   │   ├── calling-campaigns/  # AI voice calling campaigns
 │   │   ├── bot-chat/           # chat with a bot's knowledge base
 │   │   ├── history/            # email + call history
-│   │   ├── settings/           # SES / OpenRouter / Twilio / Gemini creds
+│   │   ├── settings/           # SES / Twilio / Gemini credentials
 │   │   └── profile/            # profile, theme, accent colour, password
 │   ├── documentation/          # in-app docs portal (index + [slug] pages)
 │   ├── login/                  # login + password reset
@@ -96,7 +97,7 @@ src/
 | `/scheduler` | View and cancel future email/calling campaign launches. |
 | `/bot-chat` | Chat against a bot's knowledge base (semantic search). |
 | `/history` | Filterable email and call history, including replies. |
-| `/settings` | Connect AWS SES, OpenRouter, Twilio, and Gemini; test each connection. |
+| `/settings` | Connect AWS SES, Twilio, and Gemini; test each connection. |
 | `/profile` | User profile, theme, accent colours, and password update. |
 | `/documentation` | In-app documentation portal (see below). |
 
@@ -128,8 +129,14 @@ categories (*Getting started*, *Core features*, *AI outreach*, *Configuration*).
 Each page is rendered uniformly by `documentation/[slug]/page.tsx` with a shared
 sidebar (`DocSidebar.tsx`).
 
-To add or edit docs, update the `DOC_PAGES` array in `src/lib/docs.ts`; no new React
-components are required.
+The Architecture section includes rendered Mermaid diagrams for system topology,
+REST/auth flow, NestJS module boundaries, MongoDB relationships, provider boundaries,
+and cross-feature dependencies. Feature pages include their own flow diagrams, such as
+email launch, Twilio-to-Gemini realtime calling, bot RAG, signals/playbooks, scheduler,
+and history/analytics.
+
+To add or edit docs, update the `DOC_PAGES` array in `src/lib/docs.ts`. Diagram sections
+use the `diagram` field and render through `src/components/MermaidDiagram.tsx`.
 
 ---
 

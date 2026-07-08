@@ -30,6 +30,7 @@ export interface DocSection {
   capabilities?: DocCapability[];
   steps?: string[];
   code?: { caption?: string; lines: string[] };
+  diagram?: { caption?: string; chart: string };
 }
 
 export interface DocPage {
@@ -46,11 +47,694 @@ export interface DocPage {
 
 export const DOC_CATEGORIES = [
   'Architecture',
+  'Feature architecture',
   'Getting started',
   'Core features',
   'AI outreach',
   'Configuration',
 ] as const;
+
+const DIAGRAMS = {
+  appTopology: String.raw`flowchart TB
+  Operator["Operator browser"]
+  subgraph FE["AgentReach-frontend - Next.js"]
+    Routes["App Router pages"]
+    Shell["AuthGuard + AppShell + Sidebar"]
+    Query["TanStack Query"]
+    Store["Zustand UI state"]
+    Api["src/lib/api.ts"]
+    LocalAuth["localAuth tokens + profile"]
+    Docs["In-app documentation"]
+  end
+  subgraph BE["AgentReach-backend - NestJS"]
+    Main["main.ts: /api, CORS, Swagger"]
+    Guard["Global AuthGuard"]
+    Modules["Feature modules"]
+    Realtime["/twilio/stream WebSocket bridge"]
+    Schedulers["Campaign + signal schedulers"]
+    MongoSvc["MongoService delegates"]
+  end
+  subgraph DB["MongoDB"]
+    Identity["Users + settings"]
+    Audience["Contacts + directories"]
+    Outreach["Templates + email campaigns"]
+    Voice["Bots + calls"]
+    SignalData["Watches + signals + playbooks"]
+  end
+  subgraph Providers["External providers"]
+    SES["AWS SES"]
+    Twilio["Twilio"]
+    Gemini["Google Gemini text, embeddings, Live"]
+    Feeds["News, EDGAR, job boards"]
+  end
+  Operator --> Routes
+  Routes --> Shell
+  Shell --> LocalAuth
+  Routes --> Query
+  Routes --> Store
+  Query --> Api
+  Docs --> Routes
+  Api -->|"REST /api + Bearer token"| Main
+  Main --> Guard
+  Guard --> Modules
+  Main -->|"HTTP upgrade"| Realtime
+  Modules --> MongoSvc
+  Schedulers --> Modules
+  Realtime --> MongoSvc
+  MongoSvc --> DB
+  Modules --> SES
+  Modules --> Gemini
+  Modules --> Twilio
+  Modules --> Feeds
+  Realtime <-->|"live call audio"| Twilio
+  Realtime <-->|"native audio session"| Gemini`,
+
+  appRestFlow: String.raw`sequenceDiagram
+  actor User as Operator
+  participant Page as Dashboard Page
+  participant Api as src/lib/api.ts
+  participant Auth as localAuth
+  participant API as NestJS /api
+  participant Guard as AuthGuard
+  participant Service as Feature Service
+  participant DB as MongoDB
+  User->>Page: Open authenticated route
+  Page->>Api: Query or mutation
+  Api->>Auth: Read access token
+  Api->>API: Fetch with Bearer token
+  API->>Guard: Verify token and user
+  Guard->>Service: Allow request
+  Service->>DB: Read or write through MongoService
+  DB-->>Service: Documents
+  Service-->>API: DTO response
+  API-->>Api: JSON
+  Api-->>Page: Typed result
+  alt Access token expired
+    Api->>API: POST /auth/refresh
+    API-->>Api: New access + refresh tokens
+    Api->>Auth: Save session
+    Api->>API: Retry original request once
+  end`,
+
+  backendModules: String.raw`flowchart TB
+  App["AppModule"]
+  Mongo["MongoModule + MongoService"]
+  Auth["AuthModule"]
+  Settings["SettingsModule"]
+  Contacts["ContactsModule"]
+  Templates["TemplatesModule"]
+  Email["EmailCampaignsModule"]
+  Bots["BotModule"]
+  Calling["CallingCampaignsModule"]
+  Realtime["RealtimeCallingModule"]
+  Signals["SignalsModule"]
+  Scheduler["CampaignSchedulerModule"]
+  History["HistoryModule"]
+  Analytics["AnalyticsModule"]
+  App --> Mongo
+  App --> Auth
+  App --> Settings
+  App --> Contacts
+  App --> Templates
+  App --> Email
+  App --> Bots
+  App --> Calling
+  App --> Realtime
+  App --> Signals
+  App --> Scheduler
+  App --> History
+  App --> Analytics
+  Contacts --> Signals
+  Email --> Templates
+  Calling --> Bots
+  Calling --> Realtime
+  Signals --> Email
+  Scheduler --> Email
+  Scheduler --> Calling
+  History --> Email
+  History --> Calling
+  Analytics --> Email
+  Analytics --> Calling
+  Auth --> Mongo
+  Settings --> Mongo
+  Contacts --> Mongo
+  Templates --> Mongo
+  Email --> Mongo
+  Bots --> Mongo
+  Calling --> Mongo
+  Realtime --> Mongo
+  Signals --> Mongo
+  History --> Mongo
+  Analytics --> Mongo`,
+
+  persistence: String.raw`erDiagram
+  USER ||--|| SYSTEM_SETTINGS : configures
+  CONTACT_DIRECTORY ||--o{ CONTACT : groups
+  CONTACT ||--o{ EMAIL_CAMPAIGN_CONTACT : receives
+  TEMPLATE ||--o{ EMAIL_CAMPAIGN : powers
+  EMAIL_CAMPAIGN ||--o{ EMAIL_CAMPAIGN_CONTACT : has
+  AI_CALLING_BOT ||--o{ AI_CALLING_BOT_EMBEDDING : trains
+  AI_CALLING_BOT ||--o{ CALLING_CAMPAIGN : configures
+  CALLING_CAMPAIGN ||--o{ CALL_HISTORY : dials
+  CONTACT ||--o{ CALL_HISTORY : receives
+  COMPANY_WATCH ||--o{ SIGNAL : detects
+  SIGNAL ||--o{ SIGNAL_MATCH : matches
+  CONTACT ||--o{ SIGNAL_MATCH : matched_to
+  PLAYBOOK ||--o{ SIGNAL_MATCH : queues
+  PLAYBOOK ||--o{ TRIGGERED_OUTREACH : launches
+  SIGNAL ||--o{ TRIGGERED_OUTREACH : attributes
+  CONTACT ||--o{ TRIGGERED_OUTREACH : targeted`,
+
+  providers: String.raw`flowchart LR
+  Settings["Settings module stores encrypted credentials"]
+  SES["AWS SES"]
+  Twilio["Twilio"]
+  GeminiText["Gemini text"]
+  GeminiLive["Gemini Live"]
+  Sources["RSS, EDGAR, job boards"]
+  Email["Email campaigns"]
+  Templates["Templates"]
+  Calling["Calling campaigns"]
+  Realtime["Realtime calling"]
+  Bots["AI bots + RAG"]
+  Signals["Signals"]
+  Settings --> Email
+  Settings --> Templates
+  Settings --> Calling
+  Settings --> Realtime
+  Settings --> Bots
+  Settings --> Signals
+  Email --> SES
+  Templates --> GeminiText
+  Calling --> Twilio
+  Realtime --> GeminiLive
+  Realtime --> Twilio
+  Bots --> GeminiText
+  Signals --> GeminiText
+  Signals --> Sources`,
+
+  crossFeature: String.raw`flowchart LR
+  Auth["Auth + profile"] --> Settings["Settings + credentials"]
+  Settings --> EmailInfra["SES email"]
+  Settings --> VoiceInfra["Twilio + Gemini Live"]
+  Settings --> AiText["Gemini text generation"]
+  Contacts["Contacts + directories"] --> Email["Email campaigns"]
+  Contacts --> Calling["AI calling campaigns"]
+  Contacts --> Watches["Company watches"]
+  Templates["Templates"] --> Email
+  Bots["AI calling bots"] --> Calling
+  Watches --> Signals["Signals"]
+  Signals --> Matches["Signal matches"]
+  Matches --> Playbooks["Playbooks"]
+  Playbooks --> Trigger["Triggered outreach"]
+  Trigger --> Email
+  Email --> History["History"]
+  Calling --> History
+  Email --> Analytics["Dashboard analytics"]
+  Calling --> Analytics
+  Trigger --> Analytics`,
+
+  quickStart: String.raw`flowchart LR
+  Account["Create account"]
+  Settings["Connect SES, Gemini, or Twilio"]
+  Contacts["Import contacts"]
+  Build["Create template or bot"]
+  Launch["Launch or schedule campaign"]
+  Review["Review dashboard and history"]
+  Automate["Add signals playbooks"]
+  Account --> Settings --> Contacts --> Build --> Launch --> Review --> Automate`,
+
+  dashboard: String.raw`flowchart TB
+  Dashboard["/dashboard"]
+  Api["api.analytics.get"]
+  Analytics["AnalyticsController + AnalyticsService"]
+  EmailRows["EmailCampaignContact"]
+  Calls["CallHistory"]
+  Contacts["Contact"]
+  Templates["Template"]
+  Triggered["TriggeredOutreach"]
+  Charts["Recharts cards, charts, tables"]
+  Dashboard --> Api --> Analytics
+  Analytics --> EmailRows
+  Analytics --> Calls
+  Analytics --> Contacts
+  Analytics --> Templates
+  Analytics --> Triggered
+  Dashboard --> Charts`,
+
+  contacts: String.raw`flowchart TB
+  Page["/contacts"]
+  Api["api.contacts"]
+  Controller["ContactsController"]
+  Service["ContactsService"]
+  Parser["CSV/XLSX parser"]
+  Mapper["Column mapping + duplicate strategy"]
+  Contact["Contact collection"]
+  Directory["ContactDirectory collection"]
+  Watch["WatchService"]
+  CompanyWatch["CompanyWatch collection"]
+  Downstream["Email, calling, signals, analytics"]
+  Page --> Api --> Controller --> Service
+  Service --> Parser --> Mapper
+  Service --> Contact
+  Service --> Directory
+  Service --> Watch --> CompanyWatch
+  Contact --> Downstream
+  Directory --> Downstream`,
+
+  email: String.raw`flowchart TB
+  Page["/email-campaigns"]
+  ApiTemplates["api.templates"]
+  ApiCampaigns["api.emailCampaigns"]
+  Templates["TemplatesService"]
+  Campaigns["EmailCampaignsService"]
+  AI["Gemini text generation"]
+  Template["Template"]
+  Campaign["EmailCampaign"]
+  Recipients["EmailCampaignContact"]
+  Contacts["Contact"]
+  SES["AWS SES or mock send"]
+  History["History + analytics"]
+  Page --> ApiTemplates --> Templates
+  Templates --> AI
+  Templates --> Template
+  Page --> ApiCampaigns --> Campaigns
+  Campaigns --> Campaign
+  Campaigns --> Template
+  Campaigns --> Contacts
+  Campaigns --> Recipients
+  Campaigns --> SES
+  Recipients --> History`,
+
+  scheduler: String.raw`flowchart TB
+  EmailPage["/email-campaigns schedule"]
+  CallingPage["/calling-campaigns schedule"]
+  SchedulerPage["/scheduler"]
+  EmailCampaign["EmailCampaign status=SCHEDULED"]
+  CallingCampaign["CallingCampaign status=SCHEDULED"]
+  Cron["CampaignSchedulerService every minute"]
+  EmailLaunch["EmailCampaignsService.launchCampaign"]
+  CallingLaunch["CallingCampaignsService.launchCampaign"]
+  EmailPage --> EmailCampaign
+  CallingPage --> CallingCampaign
+  EmailCampaign --> SchedulerPage
+  CallingCampaign --> SchedulerPage
+  EmailCampaign --> Cron
+  CallingCampaign --> Cron
+  Cron --> EmailLaunch
+  Cron --> CallingLaunch`,
+
+  history: String.raw`flowchart TB
+  HistoryPage["/history"]
+  EmailApi["api.history.emails"]
+  CallApi["api.history.calls"]
+  RecordingApi["api.callingCampaigns.recordingAudio"]
+  HistoryService["HistoryService"]
+  RecordingProxy["CallingCampaignsService recording proxy"]
+  EmailRows["EmailCampaignContact + campaign/contact/template"]
+  Calls["CallHistory + campaign/contact"]
+  Twilio["Twilio recording URL"]
+  HistoryPage --> EmailApi --> HistoryService --> EmailRows
+  HistoryPage --> CallApi --> HistoryService --> Calls
+  HistoryPage --> RecordingApi --> RecordingProxy --> Twilio`,
+
+  aiCalling: String.raw`sequenceDiagram
+  actor Operator
+  participant Page as /calling-campaigns
+  participant Service as CallingCampaignsService
+  participant DB as MongoDB
+  participant Twilio
+  participant WS as /twilio/stream gateway
+  participant Gemini as Gemini Live
+  Operator->>Page: Launch campaign
+  Page->>Service: POST /calling-campaigns/:id/launch
+  Service->>DB: Create or reset CallHistory rows
+  Service->>Twilio: Create outbound calls
+  Twilio->>Service: answer webhook
+  Service-->>Twilio: TwiML Connect Stream with callId
+  Twilio->>WS: Media WebSocket
+  WS->>DB: Load call, campaign, contact, bot
+  WS->>Gemini: Start Live session
+  Twilio-->>WS: Caller audio
+  WS-->>Gemini: Transcoded audio
+  Gemini-->>WS: Agent audio + transcripts
+  WS-->>Twilio: Audio frames
+  WS->>DB: Persist transcript, outcome, errors`,
+
+  aiBots: String.raw`flowchart TB
+  BotsPage["/ai-calling-bots"]
+  ChatPage["/bot-chat"]
+  Api["api.aiCallingBots"]
+  BotService["BotService"]
+  Pdf["PDF/text extraction"]
+  Chunks["Knowledge chunks"]
+  Embed["local-hash-embedding-v1"]
+  Bot["AiCallingBot"]
+  Embedding["AiCallingBotEmbedding"]
+  Search["Semantic search"]
+  Calling["Calling campaign defaults + fetch_context"]
+  BotsPage --> Api --> BotService
+  ChatPage --> Api
+  BotService --> Bot
+  BotService --> Pdf --> Chunks --> Embed --> Embedding
+  BotService --> Search --> Embedding
+  Search --> ChatPage
+  BotService --> Calling`,
+
+  aiChat: String.raw`flowchart LR
+  Page["/bot-chat"]
+  Api["api.aiCallingBots.chat"]
+  Service["BotService.chat"]
+  Search["searchBotKnowledge"]
+  Bot["AiCallingBot persona"]
+  Embeddings["Knowledge chunks"]
+  Reply["Grounded assistant reply + sources"]
+  Page --> Api --> Service
+  Service --> Bot
+  Service --> Search --> Embeddings
+  Bot --> Reply
+  Embeddings --> Reply
+  Reply --> Page`,
+
+  signals: String.raw`flowchart TB
+  Contacts["Contacts import/create"]
+  Watch["CompanyWatch"]
+  Scheduler["Signal scheduler every 6 hours"]
+  Collectors["News RSS, EDGAR, job-board, SES bounce"]
+  Ingestion["IngestionService"]
+  Classifier["SignalClassifierService"]
+  Signal["Signal"]
+  Matching["MatchingService"]
+  Match["SignalMatch"]
+  Playbooks["PlaybooksService"]
+  Trigger["TriggerService"]
+  Email["Email campaign pipeline"]
+  Review["/signals review queue"]
+  Contacts --> Watch
+  Watch --> Scheduler --> Collectors --> Ingestion
+  Ingestion --> Classifier
+  Ingestion --> Signal
+  Signal --> Matching --> Match
+  Match --> Playbooks
+  Playbooks -->|"review mode"| Review
+  Playbooks -->|"auto high confidence"| Trigger --> Email`,
+
+  settings: String.raw`flowchart TB
+  Page["/settings"]
+  Api["api.settings"]
+  Controller["SettingsController"]
+  Service["SettingsService"]
+  Encrypt["credential-encryption helpers"]
+  Settings["SystemSettings singleton"]
+  Tests["test-ses, test-twilio, test-gemini, preview voice"]
+  Consumers["Templates, email, bots, calling, realtime, signals"]
+  Providers["SES, Twilio, Gemini"]
+  Page --> Api --> Controller --> Service
+  Service --> Encrypt --> Settings
+  Service --> Tests --> Providers
+  Settings --> Consumers
+  Consumers --> Providers`,
+
+  profile: String.raw`sequenceDiagram
+  actor User
+  participant Login as /login or /profile
+  participant Api as api.auth
+  participant Local as localAuth
+  participant Guard as Frontend AuthGuard
+  participant Backend as AuthController + AuthService
+  participant Token as TokenService
+  participant DB as User collection
+  User->>Login: Login, register, reset, or update profile
+  Login->>Api: Auth request
+  Api->>Backend: /api/auth/*
+  Backend->>DB: Read or update user
+  Backend->>Token: Issue or verify tokens
+  Backend-->>Api: Profile + token pair
+  Api->>Local: Save tokens, profile, theme
+  Guard->>Api: GET /auth/me for dashboard access
+  Api->>Backend: Bearer access token
+  Backend-->>Guard: Current user profile`,
+} as const;
+
+const FEATURE_ARCHITECTURE_PAGES: DocPage[] = [
+  {
+    slug: 'architecture-auth-profile',
+    title: 'Auth & profile architecture',
+    tagline: 'Session tokens, route guards, profile persistence, and theme application.',
+    icon: 'user',
+    category: 'Feature architecture',
+    intro: [
+      'Authentication spans the public /login page, the dashboard AuthGuard, the central api.auth client methods, and the backend AuthModule. Profile settings reuse the same user record for identity, password updates, theme, and accent color.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'Register, login, refresh, reset-password, profile update, and logout are exposed by /api/auth. The frontend stores access and refresh tokens in localAuth, applies theme values immediately, and verifies dashboard access with GET /auth/me.',
+        ],
+        diagram: { caption: 'Auth, token, profile, and theme flow', chart: DIAGRAMS.profile },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/login, /profile, AuthGuard, Sidebar theme toggle, localAuth, and api.auth.' },
+          { title: 'Backend', text: 'AuthController, AuthService, TokenService, password helpers, Public decorator, and global AuthGuard.' },
+          { title: 'Data', text: 'User stores email, passwordHash, refreshTokenHash, name, initials, title, company, phone, theme, and accentColor.' },
+          { title: 'Security', text: 'Access tokens are short-lived, refresh tokens are hashed on the user document, and logout invalidates the stored refresh token hash.' },
+        ],
+      },
+    ],
+    related: ['profile', 'settings', 'architecture'],
+  },
+  {
+    slug: 'architecture-settings',
+    title: 'Settings architecture',
+    tagline: 'Encrypted credentials and provider readiness for email, AI, and calls.',
+    icon: 'settings',
+    category: 'Feature architecture',
+    intro: [
+      'Settings is the provider boundary. The UI saves AWS SES, Twilio, and Gemini values; the backend encrypts secrets into SystemSettings and exposes masked reads plus connection tests.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'Feature services do not read provider secrets from the frontend. They resolve decrypted settings server-side when sending email, previewing Gemini voice, generating text, launching calls, classifying signals, or serving bot workflows.',
+        ],
+        diagram: { caption: 'Encrypted provider configuration', chart: DIAGRAMS.settings },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/settings, MissingCredentials helper, api.settings.get/update/testSes/testTwilio/testGemini/previewGeminiVoice.' },
+          { title: 'Backend', text: 'SettingsController, SettingsService, credential-encryption helpers, and gemini-text model resolver.' },
+          { title: 'Data', text: 'SystemSettings singleton stores encrypted AWS, Twilio, and Gemini values plus verification status timestamps.' },
+          { title: 'Providers', text: 'AWS SES sends email, Twilio places calls, Gemini handles text generation, signal classification, voice preview, and Live calls.' },
+        ],
+      },
+    ],
+    related: ['settings', 'email-campaigns', 'ai-calling', 'signals'],
+  },
+  {
+    slug: 'architecture-contacts',
+    title: 'Contacts architecture',
+    tagline: 'Audience records, directories, imports, and signal watch creation.',
+    icon: 'users',
+    category: 'Feature architecture',
+    intro: [
+      'Contacts are the shared audience model for email, calling, signals, history, and analytics. Directories provide lightweight segmentation for campaigns and playbooks.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'The /contacts page uses api.contacts to load contacts/directories, parse import files, map columns, save rows, and refresh query caches. Imports can create company watches from business email domains.',
+        ],
+        diagram: { caption: 'Contact import and downstream usage', chart: DIAGRAMS.contacts },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/contacts, contact/directory modals, import mapper, TanStack Query, and selectedContactIds in Zustand.' },
+          { title: 'Backend', text: 'ContactsController and ContactsService own CRUD, CSV/XLSX parsing, duplicate behavior, custom fields, and directory lifecycle.' },
+          { title: 'Data', text: 'Contact, ContactDirectory, and best-effort CompanyWatch records.' },
+          { title: 'Consumers', text: 'Email campaigns, calling campaigns, signal matching, history filters, and dashboard segment analytics.' },
+        ],
+      },
+    ],
+    related: ['contacts', 'architecture-email-campaigns', 'architecture-signals'],
+  },
+  {
+    slug: 'architecture-email-campaigns',
+    title: 'Email campaigns architecture',
+    tagline: 'Templates, recipients, personalization, launch, scheduling, and SES delivery.',
+    icon: 'mail',
+    category: 'Feature architecture',
+    intro: [
+      'Email outreach is split between TemplatesService for reusable copy and EmailCampaignsService for campaign shells, recipient rows, interpolation, sending, scheduling, and relaunch.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'A campaign references a template, recipient rows reference contacts, and launch personalizes subject/body per contact before sending with AWS SES or mock local behavior. Recipient rows become the source of truth for history and analytics.',
+        ],
+        diagram: { caption: 'Template and email campaign lifecycle', chart: DIAGRAMS.email },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/email-campaigns, api.templates, api.emailCampaigns, generation polling, recipient picker, schedule UI.' },
+          { title: 'Backend', text: 'TemplatesController/Service and EmailCampaignsController/Service.' },
+          { title: 'Data', text: 'Template, EmailCampaign, EmailCampaignContact, Contact, and SystemSettings.' },
+          { title: 'Outcomes', text: 'EmailCampaignContact stores personalized copy, sentTime, deliveryStatus, openStatus, replyStatus, and errorMessage.' },
+        ],
+      },
+    ],
+    related: ['email-campaigns', 'architecture-contacts', 'architecture-scheduler', 'architecture-dashboard-history'],
+  },
+  {
+    slug: 'architecture-ai-calling',
+    title: 'AI calling architecture',
+    tagline: 'Twilio outbound calls, media streams, Gemini Live, transcripts, and recordings.',
+    icon: 'phone',
+    category: 'Feature architecture',
+    intro: [
+      'AI Calling combines REST campaign management with public Twilio webhooks and a raw media WebSocket. The backend owns every provider callback and persists call state in CallHistory.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'Launching a campaign creates or resets call rows, Twilio dials contacts, answer webhooks return TwiML, and Twilio streams audio to /twilio/stream. RealtimeCallingGateway bridges audio to Gemini Live and writes transcripts/outcomes back to MongoDB.',
+        ],
+        diagram: { caption: 'Twilio media stream to Gemini Live', chart: DIAGRAMS.aiCalling },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/calling-campaigns, /history, api.callingCampaigns, voice preview, campaign polling, recording download.' },
+          { title: 'Backend', text: 'CallingCampaignsService, Twilio webhook handlers, RealtimeCallingGateway, GeminiLiveSessionWrapper, audio-codec, prompts, tools, and language profiles.' },
+          { title: 'Data', text: 'CallingCampaign, CallHistory, Contact, AiCallingBot, and SystemSettings.' },
+          { title: 'Providers', text: 'Twilio places calls and serves recordings; Gemini Live handles realtime native-audio conversations.' },
+        ],
+      },
+    ],
+    related: ['ai-calling', 'architecture-ai-bots', 'architecture-dashboard-history'],
+  },
+  {
+    slug: 'architecture-ai-bots',
+    title: 'AI bots & RAG architecture',
+    tagline: 'Reusable voice personas, knowledge ingestion, local embeddings, search, and chat.',
+    icon: 'bot',
+    category: 'Feature architecture',
+    intro: [
+      'AI Calling Bots provide reusable persona and knowledge settings for live calls and test chat. Knowledge ingestion is local-friendly: text/PDF content is chunked and embedded with local-hash-embedding-v1.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'BotService normalizes persona fields, extracts knowledge, stores embeddings, performs semantic search, builds chat replies, and provides default voice/persona context to calling campaigns.',
+        ],
+        diagram: { caption: 'Bot persona and RAG knowledge flow', chart: DIAGRAMS.aiBots },
+      },
+      {
+        heading: 'Chat flow',
+        body: [
+          '/bot-chat uses the same BotService search path as live-call context, making it a safe place to test persona tone and knowledge quality before launching calls.',
+        ],
+        diagram: { caption: 'Bot chat response flow', chart: DIAGRAMS.aiChat },
+      },
+    ],
+    related: ['ai-bots', 'ai-chat', 'architecture-ai-calling'],
+  },
+  {
+    slug: 'architecture-signals',
+    title: 'Signals & playbooks architecture',
+    tagline: 'Company watches, collectors, classification, matching, review, and triggered outreach.',
+    icon: 'radar',
+    category: 'Feature architecture',
+    intro: [
+      'Signals turns contacts into monitored account intelligence. Company watches feed collectors, collectors emit raw events, ingestion classifies and deduplicates, matching links events to contacts, and playbooks decide review or auto-trigger behavior.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'The scheduler polls active watches every six hours, while /signals/poll can run immediately. Triggered email outreach reuses EmailCampaignsService so attribution, history, and analytics remain connected.',
+        ],
+        diagram: { caption: 'Signal ingestion, matching, and playbook automation', chart: DIAGRAMS.signals },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/signals feed/review/watches, /signals/playbooks wizard, and api.signals methods.' },
+          { title: 'Backend', text: 'SignalsService, SchedulerService, collectors, IngestionService, SignalClassifierService, MatchingService, PlaybooksService, TriggerService, WatchService.' },
+          { title: 'Data', text: 'CompanyWatch, Signal, SignalMatch, Playbook, TriggeredOutreach, Contact, Template, and EmailCampaign.' },
+          { title: 'Guardrails', text: 'Duplicate suppression, cooldown windows, daily caps, review mode, and active/paused toggles.' },
+        ],
+      },
+    ],
+    related: ['signals', 'architecture-contacts', 'architecture-email-campaigns'],
+  },
+  {
+    slug: 'architecture-scheduler',
+    title: 'Scheduler architecture',
+    tagline: 'Mongo-backed scheduled email and calling campaign launches.',
+    icon: 'calendar-clock',
+    category: 'Feature architecture',
+    intro: [
+      'Campaign scheduling is stored on campaign documents, not in a separate queue. A backend cron checks due campaigns every minute and launches them through the same services used by manual launch.',
+    ],
+    sections: [
+      {
+        heading: 'Runtime flow',
+        body: [
+          'The Scheduler page composes existing email and calling campaign APIs. Cancelling a schedule calls the campaign-specific unschedule endpoint and returns the item to draft/immediate mode.',
+        ],
+        diagram: { caption: 'Campaign scheduler lifecycle', chart: DIAGRAMS.scheduler },
+      },
+      {
+        heading: 'Implementation map',
+        capabilities: [
+          { title: 'Frontend', text: '/scheduler plus schedule controls inside /email-campaigns and /calling-campaigns.' },
+          { title: 'Backend', text: 'CampaignSchedulerService, EmailCampaignsService.findDueScheduled/launchCampaign, CallingCampaignsService.findDueScheduled/launchCampaign.' },
+          { title: 'Data', text: 'EmailCampaign uses status and scheduledAt; CallingCampaign uses status, scheduleType, scheduledAt, and timezone.' },
+          { title: 'Failure behavior', text: 'Failed launches are logged and unscheduled where possible so the cron does not retry forever every minute.' },
+        ],
+      },
+    ],
+    related: ['scheduler', 'architecture-email-campaigns', 'architecture-ai-calling'],
+  },
+  {
+    slug: 'architecture-dashboard-history',
+    title: 'Dashboard & history architecture',
+    tagline: 'Derived analytics and raw email/call audit trails.',
+    icon: 'history',
+    category: 'Feature architecture',
+    intro: [
+      'Dashboard and History are read surfaces over campaign outcome records. Dashboard aggregates performance; History exposes filtered raw records and recording playback.',
+    ],
+    sections: [
+      {
+        heading: 'Dashboard data flow',
+        body: [
+          'AnalyticsService reads email recipient rows, call history, contacts, templates, and triggered outreach attribution to produce live dashboard metrics and charts.',
+        ],
+        diagram: { caption: 'Dashboard analytics data flow', chart: DIAGRAMS.dashboard },
+      },
+      {
+        heading: 'History data flow',
+        body: [
+          'HistoryService returns filtered EmailCampaignContact and CallHistory records with related campaign/contact data. Recording audio is proxied through the backend to keep Twilio credentials server-side.',
+        ],
+        diagram: { caption: 'History and recording access', chart: DIAGRAMS.history },
+      },
+    ],
+    related: ['dashboard', 'history', 'architecture-email-campaigns', 'architecture-ai-calling'],
+  },
+];
 
 export const DOC_PAGES: DocPage[] = [
   // ─────────────────────────────── Architecture
@@ -66,6 +750,66 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
+        heading: 'Whole application topology',
+        body: [
+          'This is the full runtime shape: a browser-based operator workspace, a NestJS API and realtime bridge, MongoDB persistence, scheduled jobs, and provider integrations. Regular product traffic goes through REST under /api; Twilio media bypasses the API prefix and upgrades directly at /twilio/stream.',
+        ],
+        diagram: {
+          caption: 'ReachConvert system topology',
+          chart: DIAGRAMS.appTopology,
+        },
+      },
+      {
+        heading: 'Frontend to backend request flow',
+        body: [
+          'All product pages call the backend through src/lib/api.ts. The client attaches the access token, retries once through /auth/refresh on a 401, and then returns friendly errors to the page. Server state is cached with TanStack Query; local session and theme data live in localAuth.',
+        ],
+        diagram: {
+          caption: 'Authenticated REST request lifecycle',
+          chart: DIAGRAMS.appRestFlow,
+        },
+      },
+      {
+        heading: 'Backend module map',
+        body: [
+          'AppModule registers the feature modules, MongoModule, realtime calling, and schedulers. Feature services use MongoService delegates for persistence, and only the Twilio media stream is handled outside the normal /api REST path.',
+        ],
+        diagram: {
+          caption: 'NestJS feature boundaries',
+          chart: DIAGRAMS.backendModules,
+        },
+      },
+      {
+        heading: 'Persistence model',
+        body: [
+          'MongoDB is the source of truth for identity, credentials, contacts, campaigns, calls, bots, signals, playbooks, and outcome attribution. MongoService converts Mongo _id fields into API id fields and hydrates selected relationships for campaign, recipient, and call views.',
+        ],
+        diagram: {
+          caption: 'Core collections and relationships',
+          chart: DIAGRAMS.persistence,
+        },
+      },
+      {
+        heading: 'Provider boundaries',
+        body: [
+          'Provider credentials are entered in Settings, encrypted in SystemSettings, and consumed by feature services. Email uses AWS SES, calling uses Twilio plus Gemini Live, text generation and classification use Gemini text models, and signal polling reads public sources.',
+        ],
+        diagram: {
+          caption: 'External service integration map',
+          chart: DIAGRAMS.providers,
+        },
+      },
+      {
+        heading: 'Cross-feature dependencies',
+        body: [
+          'Most features connect through contacts, provider settings, and outcome records. Contacts feed campaigns and watches; templates and bots configure outreach; playbooks convert signals into campaigns; history and analytics read the resulting email and call records.',
+        ],
+        diagram: {
+          caption: 'Product dependency graph',
+          chart: DIAGRAMS.crossFeature,
+        },
+      },
+      {
         heading: 'High-level flow',
         code: {
           lines: [
@@ -78,7 +822,7 @@ export const DOC_PAGES: DocPage[] = [
             'Provider side channels:',
             '  Twilio webhooks -> /api/calling-campaigns/twilio/*',
             '  Twilio media    -> /twilio/stream',
-            '  Backend         -> AWS SES, Gemini, OpenRouter, public signal sources',
+            '  Backend         -> AWS SES, Gemini text/Live, Twilio, public signal sources',
           ],
         },
       },
@@ -111,8 +855,9 @@ export const DOC_PAGES: DocPage[] = [
       'For contributor-facing implementation notes, read docs/ARCHITECTURE.md at the workspace root.',
       'Swagger at /docs on the backend is the most accurate live API contract for the running server.',
     ],
-    related: ['quick-start', 'settings', 'email-campaigns', 'ai-calling', 'signals'],
+    related: ['architecture-auth-profile', 'architecture-settings', 'architecture-contacts', 'architecture-email-campaigns', 'architecture-ai-calling', 'architecture-signals'],
   },
+  ...FEATURE_ARCHITECTURE_PAGES,
 
   // ─────────────────────────────── Getting started
   {
@@ -125,6 +870,16 @@ export const DOC_PAGES: DocPage[] = [
       'ReachConvert unifies personalized bulk email, autonomous AI voice calling, and signal-based automation in one workspace. This guide gets a brand-new account to its first live, tracked campaign.',
     ],
     sections: [
+      {
+        heading: 'Workspace setup flow',
+        body: [
+          'A new workspace becomes useful in layers: authenticate, connect at least one provider, import contacts, build the outreach asset, launch or schedule, then measure and automate.',
+        ],
+        diagram: {
+          caption: 'Recommended first-run path',
+          chart: DIAGRAMS.quickStart,
+        },
+      },
       {
         heading: 'The five-minute path',
         steps: [
@@ -157,7 +912,7 @@ export const DOC_PAGES: DocPage[] = [
       'You can run entirely in mock mode for email: with test AWS keys, sends are simulated so you can explore the full flow without real delivery.',
       'Every list view supports live sync — leave the Dashboard open during a launch to watch metrics update every 10 seconds.',
     ],
-    related: ['dashboard', 'contacts', 'email-campaigns', 'signals'],
+    related: ['architecture', 'architecture-contacts', 'architecture-email-campaigns', 'architecture-signals', 'dashboard'],
   },
 
   // ─────────────────────────────── Core features
@@ -171,6 +926,16 @@ export const DOC_PAGES: DocPage[] = [
       'The Dashboard is the first screen you see. It aggregates email deliverability, AI calling outcomes, template performance, and your most responsive company segments into a single live view that refreshes automatically.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'The Dashboard is a read-only aggregation surface. It asks api.analytics.get for a derived view of recipient rows, call history, templates, contacts, and triggered outreach records, then renders cards, charts, and tables with Recharts.',
+        ],
+        diagram: {
+          caption: 'Dashboard analytics data flow',
+          chart: DIAGRAMS.dashboard,
+        },
+      },
       {
         heading: 'Metrics at a glance',
         capabilities: [
@@ -198,7 +963,7 @@ export const DOC_PAGES: DocPage[] = [
     tips: [
       'If the Dashboard shows an error, it almost always means the backend or database is unreachable — check that the NestJS server is running.',
     ],
-    related: ['email-campaigns', 'ai-calling', 'history'],
+    related: ['architecture-dashboard-history', 'email-campaigns', 'ai-calling', 'history'],
   },
   {
     slug: 'signals',
@@ -211,6 +976,16 @@ export const DOC_PAGES: DocPage[] = [
       'Timing is the strongest predictor of reply rates. A “congrats on the raise” email sent the same day dramatically outperforms the same message three weeks later.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Signals connects imported contacts to monitored companies, scheduled collectors, classification, matching, playbooks, review, and triggered outreach. The same email campaign pipeline sends signal-based messages, so history and analytics stay unified.',
+        ],
+        diagram: {
+          caption: 'Signal ingestion, matching, and playbook automation',
+          chart: DIAGRAMS.signals,
+        },
+      },
       {
         heading: 'How it works',
         steps: [
@@ -267,7 +1042,7 @@ export const DOC_PAGES: DocPage[] = [
       'Use the “Add signal” button to inject a manual signal (e.g. “saw them speak at a conference”) and match it to a specific contact by email.',
       'Hit “Scan now” to run a collection poll immediately instead of waiting for the scheduled cycle.',
     ],
-    related: ['contacts', 'email-campaigns', 'dashboard'],
+    related: ['architecture-signals', 'contacts', 'email-campaigns', 'dashboard'],
   },
   {
     slug: 'contacts',
@@ -279,6 +1054,16 @@ export const DOC_PAGES: DocPage[] = [
       'Contacts is your source of truth for everyone you reach out to. Import in bulk, organize into directories, and enrich each record with the custom fields your templates personalize against.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Contacts are managed by the /contacts page through api.contacts. The backend parses imports, maps columns, applies duplicate behavior, stores contacts/directories, and best-effort creates company watches for signal automation.',
+        ],
+        diagram: {
+          caption: 'Contact import and downstream usage',
+          chart: DIAGRAMS.contacts,
+        },
+      },
       {
         heading: 'Importing contacts',
         steps: [
@@ -306,7 +1091,7 @@ export const DOC_PAGES: DocPage[] = [
       'Importing contacts automatically starts Signal watches for their company domains — no extra step to begin monitoring accounts.',
       'Keep company names consistent across rows so segment analytics and signal matching group them correctly.',
     ],
-    related: ['email-campaigns', 'signals', 'ai-calling'],
+    related: ['architecture-contacts', 'email-campaigns', 'signals', 'ai-calling'],
   },
   {
     slug: 'email-campaigns',
@@ -318,6 +1103,16 @@ export const DOC_PAGES: DocPage[] = [
       'Email Campaigns sends personalized bulk email through AWS SES with per-recipient merge fields, delivery tracking, and optional attachments. Templates can be written by hand or generated by AI from a short brief.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Email Campaigns composes two backend modules: Templates for reusable/generated copy and EmailCampaigns for campaign shells, recipient rows, interpolation, scheduling, relaunch, and SES or mock delivery.',
+        ],
+        diagram: {
+          caption: 'Template and email campaign lifecycle',
+          chart: DIAGRAMS.email,
+        },
+      },
       {
         heading: 'Building templates',
         capabilities: [
@@ -355,7 +1150,7 @@ export const DOC_PAGES: DocPage[] = [
       'With test/mock AWS keys, sends are simulated (about 90% success) so you can rehearse the full flow without delivering real mail.',
       'Signal-triggered campaigns reuse this exact pipeline, so anything you learn here applies to automated outreach too.',
     ],
-    related: ['contacts', 'signals', 'scheduler', 'dashboard', 'settings'],
+    related: ['architecture-email-campaigns', 'contacts', 'signals', 'scheduler', 'dashboard', 'settings'],
   },
   {
     slug: 'scheduler',
@@ -368,6 +1163,16 @@ export const DOC_PAGES: DocPage[] = [
       'The backend checks due campaigns once per minute. When a scheduled time arrives, the normal launch pipeline runs, so delivery, call history, alerts, and dashboard metrics behave the same as a manual launch.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Scheduling is Mongo-backed and intentionally simple. Campaign pages write SCHEDULED status and scheduledAt onto campaign documents; the scheduler page reads those same campaign lists; the backend cron launches due campaigns every minute.',
+        ],
+        diagram: {
+          caption: 'Campaign scheduler lifecycle',
+          chart: DIAGRAMS.scheduler,
+        },
+      },
       {
         heading: 'What appears here',
         capabilities: [
@@ -397,7 +1202,7 @@ export const DOC_PAGES: DocPage[] = [
       'Scheduling stores launch intent on the campaign document; there is no separate queue service.',
       'Make sure provider credentials and contacts are ready before the scheduled time.',
     ],
-    related: ['email-campaigns', 'ai-calling', 'history', 'dashboard'],
+    related: ['architecture-scheduler', 'email-campaigns', 'ai-calling', 'history', 'dashboard'],
   },
   {
     slug: 'history',
@@ -409,6 +1214,16 @@ export const DOC_PAGES: DocPage[] = [
       'History is the searchable record of everything ReachConvert has sent or dialed. Email history and call history live side by side so you can trace any interaction end to end.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'History reads the raw outcome records that campaigns write. Email rows come from EmailCampaignContact with campaign/contact context, call rows come from CallHistory, and recordings are fetched through a backend proxy so provider credentials stay server-side.',
+        ],
+        diagram: {
+          caption: 'History and recording access',
+          chart: DIAGRAMS.history,
+        },
+      },
       {
         heading: 'Email history',
         body: [
@@ -423,7 +1238,7 @@ export const DOC_PAGES: DocPage[] = [
       },
     ],
     tips: ['Use History to debug deliverability: a cluster of failures usually points to a credential or domain issue in Settings.'],
-    related: ['email-campaigns', 'ai-calling', 'dashboard'],
+    related: ['architecture-dashboard-history', 'email-campaigns', 'ai-calling', 'dashboard'],
   },
 
   // ─────────────────────────────── AI outreach
@@ -437,6 +1252,16 @@ export const DOC_PAGES: DocPage[] = [
       'AI Calling runs automated outbound voice campaigns. A Gemini Live agent places calls through Twilio, holds a natural conversation using the persona and script you define, and logs the transcript and outcome for every call.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'AI Calling launches outbound calls with Twilio, answers webhooks with TwiML, upgrades the media stream at /twilio/stream, and bridges live audio into Gemini Live. CallHistory stores provider state, transcripts, outcomes, errors, and recording metadata.',
+        ],
+        diagram: {
+          caption: 'Twilio media stream to Gemini Live',
+          chart: DIAGRAMS.aiCalling,
+        },
+      },
       {
         heading: 'Setting up a campaign',
         steps: [
@@ -465,7 +1290,7 @@ export const DOC_PAGES: DocPage[] = [
       'Latency matters for natural conversation — keep prompts focused and avoid overly long system instructions.',
       'If no calls queue, verify your Twilio credentials and that your public callback URL is reachable.',
     ],
-    related: ['ai-bots', 'contacts', 'settings', 'history'],
+    related: ['architecture-ai-calling', 'ai-bots', 'contacts', 'settings', 'history'],
   },
   {
     slug: 'ai-bots',
@@ -477,6 +1302,16 @@ export const DOC_PAGES: DocPage[] = [
       'AI Bots are the reusable personas that power your calling campaigns. Design a bot once — its voice, personality, objectives, and knowledge — then deploy it across many campaigns for consistent conversations.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'AI Bots store reusable persona fields and optional RAG knowledge. The backend extracts PDF/text knowledge, chunks it, creates local hash embeddings, and serves both semantic search/chat and live-call context through the same BotService.',
+        ],
+        diagram: {
+          caption: 'Bot persona and RAG knowledge flow',
+          chart: DIAGRAMS.aiBots,
+        },
+      },
       {
         heading: 'What defines a bot',
         capabilities: [
@@ -496,7 +1331,7 @@ export const DOC_PAGES: DocPage[] = [
       },
     ],
     tips: ['Test a bot in AI Chat before putting it on live calls — it’s the fastest way to feel out its tone and answers.'],
-    related: ['ai-calling', 'ai-chat', 'settings'],
+    related: ['architecture-ai-bots', 'ai-calling', 'ai-chat', 'settings'],
   },
   {
     slug: 'ai-chat',
@@ -508,6 +1343,16 @@ export const DOC_PAGES: DocPage[] = [
       'AI Chat is a text playground for your AI bots. Use it to rehearse a bot’s conversation, pressure-test its answers, and draft or refine outreach copy without picking up the phone.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'AI Chat is a safe test harness for BotService. It sends a message to the selected bot, retrieves relevant knowledge chunks, combines those with the bot persona, and returns a grounded reply with sources.',
+        ],
+        diagram: {
+          caption: 'Bot chat response flow',
+          chart: DIAGRAMS.aiChat,
+        },
+      },
       {
         heading: 'What you can do',
         capabilities: [
@@ -526,7 +1371,7 @@ export const DOC_PAGES: DocPage[] = [
       },
     ],
     tips: ['Chat is the safe place to break a bot — try the hardest objections here so live calls go smoothly.'],
-    related: ['ai-bots', 'ai-calling'],
+    related: ['architecture-ai-bots', 'ai-bots', 'ai-calling'],
   },
 
   // ─────────────────────────────── Configuration
@@ -540,6 +1385,16 @@ export const DOC_PAGES: DocPage[] = [
       'Settings is where you connect the external services ReachConvert orchestrates. Credentials are stored encrypted, and each integration has a test button so you can verify a connection before you rely on it.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Settings is the provider boundary for the whole system. The UI saves credentials through api.settings, the backend encrypts secrets into the singleton SystemSettings record, and feature services consume decrypted values server-side.',
+        ],
+        diagram: {
+          caption: 'Encrypted credentials and provider consumers',
+          chart: DIAGRAMS.settings,
+        },
+      },
       {
         heading: 'Integrations',
         capabilities: [
@@ -562,7 +1417,7 @@ export const DOC_PAGES: DocPage[] = [
       'Mock/test AWS keys keep email in simulation mode — great for demos, and no mail actually leaves.',
       'Stored credentials are encrypted at rest and masked in the UI once saved.',
     ],
-    related: ['email-campaigns', 'ai-calling', 'signals'],
+    related: ['architecture-settings', 'email-campaigns', 'ai-calling', 'signals'],
   },
   {
     slug: 'profile',
@@ -574,6 +1429,16 @@ export const DOC_PAGES: DocPage[] = [
       'Profile manages your account identity and the appearance of the entire app. Update your details, and personalize the workspace with a theme and accent color that apply everywhere instantly.',
     ],
     sections: [
+      {
+        heading: 'Architecture flow',
+        body: [
+          'Authentication starts at /login and dashboard access is enforced by the frontend AuthGuard plus the backend global AuthGuard. Profile updates persist user identity, theme, and accent values, while localAuth keeps the UI responsive by applying theme changes immediately.',
+        ],
+        diagram: {
+          caption: 'Auth, profile, token, and theme flow',
+          chart: DIAGRAMS.profile,
+        },
+      },
       {
         heading: 'Account details',
         body: ['Edit your name, email, title, company, and phone. Your initials and details appear throughout the app, including the sidebar.'],
@@ -588,7 +1453,7 @@ export const DOC_PAGES: DocPage[] = [
       },
     ],
     tips: ['Use the quick light/dark toggle in the sidebar footer to flip modes without opening Profile.'],
-    related: ['settings'],
+    related: ['architecture-auth-profile', 'settings'],
   },
 ];
 

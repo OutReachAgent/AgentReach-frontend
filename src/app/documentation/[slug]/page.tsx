@@ -8,6 +8,7 @@ import {
 } from '@/lib/docs';
 import { DOC_ICON_MAP } from '../docIcons';
 import { ArrowRight, Check, Lightbulb, ListChecks } from 'lucide-react';
+import MermaidDiagram from '@/components/MermaidDiagram';
 
 export function generateStaticParams() {
   return DOC_PAGES.map((doc) => ({ slug: doc.slug }));
@@ -116,6 +117,13 @@ export default async function DocPageView({
                   <code>{section.code.lines.join('\n')}</code>
                 </pre>
               </div>
+            )}
+
+            {section.diagram && (
+              <MermaidDiagram
+                caption={section.diagram.caption}
+                chart={section.diagram.chart}
+              />
             )}
           </section>
         ))}
