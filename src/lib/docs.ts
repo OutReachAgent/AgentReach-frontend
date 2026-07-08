@@ -45,6 +45,8 @@ export interface DocPage {
   related?: string[];
 }
 
+export type DocTrack = 'User Documentation' | 'Technical Documentation';
+
 export const DOC_CATEGORIES = [
   'Architecture',
   'Feature architecture',
@@ -53,6 +55,16 @@ export const DOC_CATEGORIES = [
   'AI outreach',
   'Configuration',
 ] as const;
+
+const DOC_TRACKS: readonly DocTrack[] = [
+  'User Documentation',
+  'Technical Documentation',
+] as const;
+
+const TECHNICAL_CATEGORIES = new Set<string>([
+  'Architecture',
+  'Feature architecture',
+]);
 
 const DIAGRAMS = {
   appTopology: String.raw`flowchart TB
@@ -914,6 +926,38 @@ export const DOC_PAGES: DocPage[] = [
     ],
     related: ['architecture', 'architecture-contacts', 'architecture-email-campaigns', 'architecture-signals', 'dashboard'],
   },
+  {
+    slug: 'how-features-connect',
+    title: 'How features connect',
+    tagline: 'An operator view of how work moves across contacts, campaigns, and analytics.',
+    icon: 'network',
+    category: 'Getting started',
+    intro: [
+      'ReachConvert works best when features are used together. Contacts feed campaigns, settings unlock channels, and history plus dashboard metrics tell you what is working.',
+    ],
+    sections: [
+      {
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: complete profile and connect channels in Settings (AWS SES for email, Twilio and Gemini for calling).',
+          'Configure: import contacts, organize directories, and create templates or AI bots based on your outreach style.',
+          'Launch: run email and calling campaigns manually or schedule them for future launch windows.',
+          'Monitor: use History for record-level details and Dashboard for roll-up metrics across channels.',
+          'Troubleshoot: if performance drops, check settings status, data quality in contacts, and message/script quality in templates or bots.',
+        ],
+      },
+      {
+        heading: 'What connects to what',
+        capabilities: [
+          { title: 'Contacts -> Campaigns', text: 'Email and calling campaigns pull audiences directly from contacts and directories.' },
+          { title: 'Settings -> Delivery', text: 'Channel credentials in Settings control whether launches can actually send or call.' },
+          { title: 'Signals -> Outreach', text: 'Signals and playbooks can trigger outreach automatically using your existing templates.' },
+          { title: 'Outcomes -> Analytics', text: 'History stores row-level outcomes while Dashboard aggregates those outcomes into trends.' },
+        ],
+      },
+    ],
+    related: ['quick-start', 'contacts', 'email-campaigns', 'ai-calling', 'dashboard'],
+  },
 
   // ─────────────────────────────── Core features
   {
@@ -927,14 +971,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'The Dashboard is a read-only aggregation surface. It asks api.analytics.get for a derived view of recipient rows, call history, templates, contacts, and triggered outreach records, then renders cards, charts, and tables with Recharts.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Dashboard analytics data flow',
-          chart: DIAGRAMS.dashboard,
-        },
       },
       {
         heading: 'Metrics at a glance',
@@ -977,14 +1021,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Signals connects imported contacts to monitored companies, scheduled collectors, classification, matching, playbooks, review, and triggered outreach. The same email campaign pipeline sends signal-based messages, so history and analytics stay unified.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Signal ingestion, matching, and playbook automation',
-          chart: DIAGRAMS.signals,
-        },
       },
       {
         heading: 'How it works',
@@ -1055,14 +1099,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Contacts are managed by the /contacts page through api.contacts. The backend parses imports, maps columns, applies duplicate behavior, stores contacts/directories, and best-effort creates company watches for signal automation.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Contact import and downstream usage',
-          chart: DIAGRAMS.contacts,
-        },
       },
       {
         heading: 'Importing contacts',
@@ -1104,14 +1148,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Email Campaigns composes two backend modules: Templates for reusable/generated copy and EmailCampaigns for campaign shells, recipient rows, interpolation, scheduling, relaunch, and SES or mock delivery.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Template and email campaign lifecycle',
-          chart: DIAGRAMS.email,
-        },
       },
       {
         heading: 'Building templates',
@@ -1164,14 +1208,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Scheduling is Mongo-backed and intentionally simple. Campaign pages write SCHEDULED status and scheduledAt onto campaign documents; the scheduler page reads those same campaign lists; the backend cron launches due campaigns every minute.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Campaign scheduler lifecycle',
-          chart: DIAGRAMS.scheduler,
-        },
       },
       {
         heading: 'What appears here',
@@ -1215,14 +1259,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'History reads the raw outcome records that campaigns write. Email rows come from EmailCampaignContact with campaign/contact context, call rows come from CallHistory, and recordings are fetched through a backend proxy so provider credentials stay server-side.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'History and recording access',
-          chart: DIAGRAMS.history,
-        },
       },
       {
         heading: 'Email history',
@@ -1253,14 +1297,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'AI Calling launches outbound calls with Twilio, answers webhooks with TwiML, upgrades the media stream at /twilio/stream, and bridges live audio into Gemini Live. CallHistory stores provider state, transcripts, outcomes, errors, and recording metadata.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Twilio media stream to Gemini Live',
-          chart: DIAGRAMS.aiCalling,
-        },
       },
       {
         heading: 'Setting up a campaign',
@@ -1303,14 +1347,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'AI Bots store reusable persona fields and optional RAG knowledge. The backend extracts PDF/text knowledge, chunks it, creates local hash embeddings, and serves both semantic search/chat and live-call context through the same BotService.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Bot persona and RAG knowledge flow',
-          chart: DIAGRAMS.aiBots,
-        },
       },
       {
         heading: 'What defines a bot',
@@ -1344,14 +1388,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'AI Chat is a safe test harness for BotService. It sends a message to the selected bot, retrieves relevant knowledge chunks, combines those with the bot persona, and returns a grounded reply with sources.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Bot chat response flow',
-          chart: DIAGRAMS.aiChat,
-        },
       },
       {
         heading: 'What you can do',
@@ -1386,14 +1430,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Settings is the provider boundary for the whole system. The UI saves credentials through api.settings, the backend encrypts secrets into the singleton SystemSettings record, and feature services consume decrypted values server-side.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Encrypted credentials and provider consumers',
-          chart: DIAGRAMS.settings,
-        },
       },
       {
         heading: 'Integrations',
@@ -1430,14 +1474,14 @@ export const DOC_PAGES: DocPage[] = [
     ],
     sections: [
       {
-        heading: 'Architecture flow',
-        body: [
-          'Authentication starts at /login and dashboard access is enforced by the frontend AuthGuard plus the backend global AuthGuard. Profile updates persist user identity, theme, and accent values, while localAuth keeps the UI responsive by applying theme changes immediately.',
+        heading: 'End-to-end operator flow',
+        steps: [
+          'Start: open this feature from the dashboard sidebar and confirm your prerequisites are connected in Settings.',
+          'Configure: complete the required fields and selections for your target audience and objective.',
+          'Launch: run the action immediately or schedule it for later based on your workflow.',
+          'Monitor: watch status, history, and dashboard metrics to confirm progress and outcomes.',
+          'Troubleshoot: if results stall, verify credentials, audience data quality, and feature-specific validation messages.',
         ],
-        diagram: {
-          caption: 'Auth, profile, token, and theme flow',
-          chart: DIAGRAMS.profile,
-        },
       },
       {
         heading: 'Account details',
@@ -1461,18 +1505,35 @@ export function getDocBySlug(slug: string): DocPage | undefined {
   return DOC_PAGES.find((d) => d.slug === slug);
 }
 
-export function getDocsByCategory(): { category: string; docs: DocPage[] }[] {
-  return DOC_CATEGORIES.map((category) => ({
-    category,
-    docs: DOC_PAGES.filter((d) => d.category === category),
-  }));
+export function getDocTrack(doc: DocPage): DocTrack {
+  return TECHNICAL_CATEGORIES.has(doc.category)
+    ? 'Technical Documentation'
+    : 'User Documentation';
+}
+
+export function getDocsByTrackAndCategory(): {
+  track: DocTrack;
+  groups: { category: string; docs: DocPage[] }[];
+}[] {
+  return DOC_TRACKS.map((track) => {
+    const groups = DOC_CATEGORIES.map((category) => {
+      const docs = DOC_PAGES.filter(
+        (d) => d.category === category && getDocTrack(d) === track,
+      );
+      return { category, docs };
+    }).filter((group) => group.docs.length > 0);
+
+    return { track, groups };
+  }).filter((trackGroup) => trackGroup.groups.length > 0);
 }
 
 /** Resolve a doc's `related` slugs into full pages (skips any that don't exist). */
 export function getDocBySlugRelated(slug: string): DocPage[] {
   const doc = getDocBySlug(slug);
   if (!doc?.related) return [];
-  return doc.related
+  const resolved = doc.related
     .map((s) => getDocBySlug(s))
     .filter((d): d is DocPage => !!d);
+  const sameTrack = resolved.filter((d) => getDocTrack(d) === getDocTrack(doc));
+  return sameTrack.length > 0 ? sameTrack : resolved;
 }

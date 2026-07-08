@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getDocsByCategory } from '@/lib/docs';
+import { getDocsByTrackAndCategory } from '@/lib/docs';
 import { DOC_ICON_MAP } from './docIcons';
 import { BookOpen, Menu, X } from 'lucide-react';
 
 export default function DocSidebar() {
   const pathname = usePathname();
-  const groups = getDocsByCategory();
+  const tracks = getDocsByTrackAndCategory();
   const [open, setOpen] = useState(false);
 
   const nav = (
@@ -26,35 +26,42 @@ export default function DocSidebar() {
         <BookOpen className="h-4 w-4" /> Overview
       </Link>
 
-      {groups.map((group) => (
-        <div key={group.category}>
-          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-            {group.category}
+      {tracks.map((track) => (
+        <div key={track.track} className="space-y-3">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-indigo-400">
+            {track.track}
           </p>
-          <div className="space-y-0.5">
-            {group.docs.map((doc) => {
-              const Icon = DOC_ICON_MAP[doc.icon];
-              const href = `/documentation/${doc.slug}`;
-              const active = pathname === href;
-              return (
-                <Link
-                  key={doc.slug}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? 'bg-zinc-900 font-semibold text-white'
-                      : 'text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-200'
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 flex-none ${active ? 'text-indigo-400' : 'text-zinc-500 group-hover:text-zinc-400'}`}
-                  />
-                  <span className="truncate">{doc.title.split(' — ')[0]}</span>
-                </Link>
-              );
-            })}
-          </div>
+          {track.groups.map((group) => (
+            <div key={`${track.track}-${group.category}`}>
+              <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                {group.category}
+              </p>
+              <div className="space-y-0.5">
+                {group.docs.map((doc) => {
+                  const Icon = DOC_ICON_MAP[doc.icon];
+                  const href = `/documentation/${doc.slug}`;
+                  const active = pathname === href;
+                  return (
+                    <Link
+                      key={doc.slug}
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                        active
+                          ? 'bg-zinc-900 font-semibold text-white'
+                          : 'text-zinc-400 hover:bg-zinc-900/40 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Icon
+                        className={`h-4 w-4 flex-none ${active ? 'text-indigo-400' : 'text-zinc-500 group-hover:text-zinc-400'}`}
+                      />
+                      <span className="truncate">{doc.title.split(' — ')[0]}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       ))}
     </nav>

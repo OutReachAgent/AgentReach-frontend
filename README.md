@@ -6,8 +6,9 @@ one workspace for exploring job opportunities and driving conversions.
 
 This app is the operator UI. It talks to the [ReachConvert backend](../AgentReach-backend)
 over REST (`NEXT_PUBLIC_API_URL`) and ships a full in-app **Documentation portal** at
-`/documentation`, including rendered architecture diagrams for the whole system and
-each major feature.
+`/documentation` with two explicit tracks:
+- User Documentation (operator workflows, setup, launch, monitor, troubleshooting)
+- Technical Documentation (architecture, data flow, module boundaries, APIs)
 
 ---
 
@@ -24,8 +25,8 @@ Contributor-facing docs for the full workspace live one level up in [`../docs`](
 - [Signals and playbooks](../docs/features/signals-and-playbooks.md)
 - [Campaign scheduler](../docs/features/scheduler.md)
 
-The in-app `/documentation` portal is product-facing help content. The markdown
-files in `../docs` are contributor-facing architecture and implementation notes.
+The in-app `/documentation` portal includes both user and technical tracks.
+The markdown files in `../docs` remain the contributor-facing technical source of truth.
 
 ---
 
@@ -124,16 +125,14 @@ src/
 
 A first-class, in-app docs site lives under [`src/app/documentation`](src/app/documentation).
 Content is authored as **data** (not JSX) in
-[`src/lib/docs.ts`](src/lib/docs.ts) — an array of `DocPage` objects grouped into
-categories (*Getting started*, *Core features*, *AI outreach*, *Configuration*).
+[`src/lib/docs.ts`](src/lib/docs.ts) — an array of `DocPage` objects grouped by
+track (`User Documentation`, `Technical Documentation`) and category.
 Each page is rendered uniformly by `documentation/[slug]/page.tsx` with a shared
 sidebar (`DocSidebar.tsx`).
 
-The Architecture section includes rendered Mermaid diagrams for system topology,
-REST/auth flow, NestJS module boundaries, MongoDB relationships, provider boundaries,
-and cross-feature dependencies. Feature pages include their own flow diagrams, such as
-email launch, Twilio-to-Gemini realtime calling, bot RAG, signals/playbooks, scheduler,
-and history/analytics.
+Technical pages include rendered Mermaid diagrams for system topology, REST/auth flow,
+NestJS module boundaries, MongoDB relationships, provider boundaries, and feature-level
+architecture flows.
 
 To add or edit docs, update the `DOC_PAGES` array in `src/lib/docs.ts`. Diagram sections
 use the `diagram` field and render through `src/components/MermaidDiagram.tsx`.

@@ -5,6 +5,7 @@ import {
   DOC_PAGES,
   getDocBySlug,
   getDocBySlugRelated,
+  getDocTrack,
 } from '@/lib/docs';
 import { DOC_ICON_MAP } from '../docIcons';
 import { ArrowRight, Check, Lightbulb, ListChecks } from 'lucide-react';
@@ -36,6 +37,7 @@ export default async function DocPageView({
   const { slug } = await params;
   const doc = getDocBySlug(slug);
   if (!doc) notFound();
+  const track = getDocTrack(doc);
 
   const Icon = DOC_ICON_MAP[doc.icon];
   const related = getDocBySlugRelated(slug);
@@ -44,7 +46,10 @@ export default async function DocPageView({
     <article className="mx-auto max-w-3xl">
       {/* Header */}
       <div className="border-b border-zinc-900 pb-8">
-        <p className="text-xs font-bold uppercase tracking-[0.28em] text-indigo-400">{doc.category}</p>
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-indigo-400">{track}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-zinc-500">{doc.category}</p>
+        </div>
         <div className="mt-4 flex items-start gap-4">
           <div className="flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/20">
             <Icon className="h-7 w-7 text-white" />
