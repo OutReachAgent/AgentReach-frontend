@@ -85,6 +85,10 @@ type EmailCampaign = {
   status: string;
   createdAt: string;
   scheduledAt?: string | null;
+  contactCount?: number;
+  pendingCount?: number;
+  failedCount?: number;
+  sentCount?: number;
 };
 type EmailCampaignContact = {
   id: string;
@@ -96,7 +100,7 @@ type EmailCampaignContact = {
 };
 type EmailCampaignDetails = EmailCampaign & {
   contacts?: EmailCampaignContact[];
-  template?: Pick<Template, "name"> | null;
+  template?: Template | null;
 };
 type CampaignLaunchResult = {
   message?: string;
@@ -522,6 +526,11 @@ export default function EmailCampaignsPage() {
     }) => api.templates.update(id, { attachments }) as Promise<Template>,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["templates"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
       showAlert(
         "Template attachments have been updated.",
         "success",
@@ -1082,76 +1091,103 @@ export default function EmailCampaignsPage() {
     );
   };
 
-  const updateSelectedTemplateAttachments = (
+  const updateTemplateAttachmentsFor = (
+    template: Template,
     attachments: TemplateAttachment[],
   ) => {
-    if (!selectedTemplate) return;
     updateTemplateAttachmentsMutation.mutate({
-      id: selectedTemplate.id,
+      id: template.id,
       attachments,
     });
   };
 
-  const handleSelectedTemplateAttachmentFiles = async (
+  const addTemplateAttachmentFiles = async (
+    template: Template,
     files: FileList | null,
   ) => {
-    if (!selectedTemplate) return;
-    const currentAttachments = selectedTemplate.attachments || [];
+    const currentAttachments = template.attachments || [];
     const attachments = await readAttachmentFiles(
       files,
       currentAttachments.length,
     );
     if (attachments.length > 0) {
-      updateSelectedTemplateAttachments([
+      updateTemplateAttachmentsFor(template, [
         ...currentAttachments,
         ...attachments,
       ]);
     }
   };
 
-  const replaceSelectedTemplateAttachment = async (
+  const replaceTemplateAttachment = async (
+    template: Template,
     attachmentId: string,
     files: FileList | null,
   ) => {
-    if (!selectedTemplate) return;
     const [replacement] = await readAttachmentFiles(files, 0);
     if (!replacement) return;
 
-    updateSelectedTemplateAttachments(
-      (selectedTemplate.attachments || []).map(
-        (attachment: TemplateAttachment) =>
-          attachment.id === attachmentId
-            ? { ...replacement, id: attachmentId }
-            : attachment,
+    updateTemplateAttachmentsFor(
+      template,
+      (template.attachments || []).map((attachment: TemplateAttachment) =>
+        attachment.id === attachmentId
+          ? { ...replacement, id: attachmentId }
+          : attachment,
       ),
     );
   };
 
-  const renameSelectedTemplateAttachment = (
+  const renameTemplateAttachment = (
+    template: Template,
     attachmentId: string,
     name: string,
   ) => {
-    if (!selectedTemplate) return;
     const cleanName = name.trim();
     if (!cleanName) return;
 
-    updateSelectedTemplateAttachments(
-      (selectedTemplate.attachments || []).map(
-        (attachment: TemplateAttachment) =>
-          attachment.id === attachmentId
-            ? { ...attachment, name: cleanName }
-            : attachment,
+    updateTemplateAttachmentsFor(
+      template,
+      (template.attachments || []).map((attachment: TemplateAttachment) =>
+        attachment.id === attachmentId
+          ? { ...attachment, name: cleanName }
+          : attachment,
       ),
     );
   };
 
-  const removeSelectedTemplateAttachment = (attachmentId: string) => {
-    if (!selectedTemplate) return;
-    updateSelectedTemplateAttachments(
-      (selectedTemplate.attachments || []).filter(
+  const removeTemplateAttachment = (
+    template: Template,
+    attachmentId: string,
+  ) => {
+    updateTemplateAttachmentsFor(
+      template,
+      (template.attachments || []).filter(
         (attachment: TemplateAttachment) => attachment.id !== attachmentId,
       ),
     );
+  };
+
+  const getLaunchState = (camp: {
+    contactCount?: number;
+    pendingCount?: number;
+    failedCount?: number;
+  }) => {
+    const contactCount = camp.contactCount ?? 0;
+    const pending = camp.pendingCount ?? 0;
+    const failed = camp.failedCount ?? 0;
+
+    if (contactCount === 0) {
+      return { canLaunch: false, label: "Add Contacts" };
+    }
+    if (pending === 0 && failed === 0) {
+      return { canLaunch: false, label: "All Sent" };
+    }
+    return {
+      canLaunch: true,
+      label:
+        failed > 0 && pending === 0
+          ? `Retry ${failed} Failed`
+          : "Launch",
+    };
   };
 
   const formatAttachmentSize = (size: number) => {
@@ -1297,15 +1333,23 @@ export default function EmailCampaignsPage() {
                       <Eye className="h-3.5 w-3.5" />
                       View Details
                     </button>
-                    {camp.status !== "RUNNING" && (
-                      <button
-                        onClick={() => handleLaunchCampaign(camp.id)}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
-                      >
-                        <Play className="h-3.5 w-3.5" />
-                        {camp.status === "DRAFT" ? "Launch" : "Launch Again"}
-                      </button>
-                    )}
+                    {camp.status !== "RUNNING" &&
+                      (() => {
+                        const launchState = getLaunchState(camp);
+                        return launchState.canLaunch ? (
+                          <button
+                            onClick={() => handleLaunchCampaign(camp.id)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                            {launchState.label}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-zinc-600 font-semibold">
+                            {launchState.label}
+                          </span>
+                        );
+                      })()}
                   </div>
                 </div>
               );
@@ -1360,15 +1404,34 @@ export default function EmailCampaignsPage() {
                   </button>
                   {campaignDetails.status !== "RUNNING" && (
                     <>
-                      <button
-                        onClick={() => handleLaunchCampaign(campaignDetails.id)}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110"
-                      >
-                        <Play className="h-3.5 w-3.5" />{" "}
-                        {campaignDetails.status === "DRAFT"
-                          ? "Launch Campaign"
-                          : "Launch Again"}
-                      </button>
+                      {(() => {
+                        const contacts = campaignDetails.contacts || [];
+                        const launchState = getLaunchState({
+                          contactCount: contacts.length,
+                          pendingCount: contacts.filter(
+                            (c) => c.deliveryStatus === "PENDING",
+                          ).length,
+                          failedCount: contacts.filter(
+                            (c) => c.deliveryStatus === "FAILED",
+                          ).length,
+                        });
+                        return (
+                          <button
+                            onClick={() =>
+                              handleLaunchCampaign(campaignDetails.id)
+                            }
+                            disabled={!launchState.canLaunch}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-xl text-xs font-bold text-white shadow-md hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:brightness-100"
+                          >
+                            <Play className="h-3.5 w-3.5" />{" "}
+                            {launchState.canLaunch
+                              ? campaignDetails.status === "DRAFT"
+                                ? "Launch Campaign"
+                                : launchState.label
+                              : launchState.label}
+                          </button>
+                        );
+                      })()}
                       {campaignDetails.status === "SCHEDULED" ? (
                         <button
                           onClick={() =>
@@ -1421,6 +1484,111 @@ export default function EmailCampaignsPage() {
                   >
                     Confirm schedule
                   </button>
+                </div>
+              )}
+
+              {/* Email Template & Attachments */}
+              {campaignDetails.template && (
+                <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
+                  <div className="px-6 py-4 border-b border-zinc-850 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-zinc-200 uppercase tracking-wider">
+                        Email Template
+                      </h4>
+                      <p className="mt-1 text-xs text-zinc-500 truncate">
+                        {campaignDetails.template.name} —{" "}
+                        {campaignDetails.template.subject}
+                      </p>
+                    </div>
+                    {campaignDetails.status !== "RUNNING" && (
+                      <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[10px] font-bold text-zinc-300 hover:border-indigo-500/40 hover:text-white">
+                        <Upload className="h-3.5 w-3.5" />
+                        Add Files
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={async (e) => {
+                            const input = e.currentTarget;
+                            await addTemplateAttachmentFiles(
+                              campaignDetails.template!,
+                              input.files,
+                            );
+                            input.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  <div className="p-4 space-y-2">
+                    {(campaignDetails.template.attachments?.length || 0) >
+                    0 ? (
+                      campaignDetails.template.attachments!.map(
+                        (attachment) => (
+                          <div
+                            key={attachment.id}
+                            className="grid grid-cols-1 gap-2 rounded-lg border border-zinc-850 bg-zinc-950/40 p-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center"
+                          >
+                            <input
+                              key={`${attachment.id}-${attachment.name}`}
+                              type="text"
+                              defaultValue={attachment.name}
+                              disabled={campaignDetails.status === "RUNNING"}
+                              onBlur={(e) => {
+                                if (e.target.value !== attachment.name) {
+                                  renameTemplateAttachment(
+                                    campaignDetails.template!,
+                                    attachment.id,
+                                    e.target.value,
+                                  );
+                                }
+                              }}
+                              className="min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                            />
+                            <span className="text-[10px] text-zinc-500">
+                              {formatAttachmentSize(attachment.size)}
+                            </span>
+                            {campaignDetails.status !== "RUNNING" && (
+                              <>
+                                <label className="flex cursor-pointer items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-[10px] font-bold text-zinc-300 hover:bg-zinc-850">
+                                  Replace
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const input = e.currentTarget;
+                                      await replaceTemplateAttachment(
+                                        campaignDetails.template!,
+                                        attachment.id,
+                                        input.files,
+                                      );
+                                      input.value = "";
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeTemplateAttachment(
+                                      campaignDetails.template!,
+                                      attachment.id,
+                                    )
+                                  }
+                                  className="rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-[10px] font-bold text-rose-400 hover:bg-rose-950/30"
+                                >
+                                  Remove
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        ),
+                      )
+                    ) : (
+                      <p className="text-[11px] text-zinc-600">
+                        No attachments on this template.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -2208,7 +2376,11 @@ export default function EmailCampaignsPage() {
                   <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-850 bg-white">
                     <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-3">
                       <div className="flex flex-col gap-1 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-                        <span>From: oswin.alex@oswinalex.site</span>
+                        <span>
+                          From:{" "}
+                          {settings?.awsSenderEmail ||
+                            "Not configured — set one in Settings"}
+                        </span>
                         <span>To: {"{{email}}"}</span>
                       </div>
                       <p className="mt-2 text-sm font-bold text-zinc-900">
@@ -2233,7 +2405,8 @@ export default function EmailCampaignsPage() {
                                 className="hidden"
                                 onChange={async (e) => {
                                   const input = e.currentTarget;
-                                  await handleSelectedTemplateAttachmentFiles(
+                                  await addTemplateAttachmentFiles(
+                                    selectedTemplate!,
                                     input.files,
                                   );
                                   input.value = "";
@@ -2257,7 +2430,8 @@ export default function EmailCampaignsPage() {
                                     defaultValue={attachment.name}
                                     onBlur={(e) => {
                                       if (e.target.value !== attachment.name) {
-                                        renameSelectedTemplateAttachment(
+                                        renameTemplateAttachment(
+                                          selectedTemplate!,
                                           attachment.id,
                                           e.target.value,
                                         );
@@ -2281,7 +2455,8 @@ export default function EmailCampaignsPage() {
                                       className="hidden"
                                       onChange={async (e) => {
                                         const input = e.currentTarget;
-                                        await replaceSelectedTemplateAttachment(
+                                        await replaceTemplateAttachment(
+                                          selectedTemplate!,
                                           attachment.id,
                                           input.files,
                                         );
@@ -2294,7 +2469,8 @@ export default function EmailCampaignsPage() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      removeSelectedTemplateAttachment(
+                                      removeTemplateAttachment(
+                                        selectedTemplate!,
                                         attachment.id,
                                       )
                                     }

@@ -152,7 +152,7 @@ function toFriendlyApiError(message: unknown, status: number) {
   if (lower.includes("invalid"))
     return "Some information looks incorrect. Please check it and try again.";
   if (lower.includes("no pending contacts"))
-    return "Everyone in this campaign has already been sent. Use Launch Again to send it again.";
+    return "Everyone in this campaign has already been sent successfully. Add more recipients to send to more people.";
   if (lower.includes("no pending calls"))
     return "Please add contacts before launching this calling campaign.";
   if (lower.includes("not running or queued"))

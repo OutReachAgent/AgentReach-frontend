@@ -7,7 +7,6 @@ import { useState, useEffect } from "react";
 import { Settings, Server, Key, Mail, Check, RefreshCw } from "lucide-react";
 
 const DEFAULT_GEMINI_TEXT_MODEL = "gemini-2.5-flash-lite";
-const CAMPAIGN_SENDER_EMAIL = "oswin.alex@oswinalex.site";
 const MASKED_CREDENTIAL = "••••••••••••••••";
 
 /* ------------------------------------------------------------------ */
@@ -20,6 +19,7 @@ export default function SettingsPage() {
   const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState("");
   const [awsRegion, setAwsRegion] = useState("us-east-1");
+  const [awsSenderEmail, setAwsSenderEmail] = useState("");
   const [geminiTextModel, setGeminiTextModel] = useState(
     DEFAULT_GEMINI_TEXT_MODEL,
   );
@@ -41,6 +41,7 @@ export default function SettingsPage() {
         setAwsAccessKeyId(settings.awsAccessKeyId || "");
         setAwsSecretAccessKey(settings.awsSecretAccessKey || "");
         setAwsRegion(settings.awsRegion || "us-east-1");
+        setAwsSenderEmail(settings.awsSenderEmail || "");
         setGeminiTextModel(
           settings.geminiTextModel || DEFAULT_GEMINI_TEXT_MODEL,
         );
@@ -163,7 +164,7 @@ export default function SettingsPage() {
       awsAccessKeyId,
       awsSecretAccessKey,
       awsRegion,
-      awsSenderEmail: CAMPAIGN_SENDER_EMAIL,
+      awsSenderEmail,
       geminiApiKey,
       geminiTextModel,
       twilioAccountSid,
@@ -247,10 +248,14 @@ export default function SettingsPage() {
               </label>
               <input
                 type="email"
-                value={CAMPAIGN_SENDER_EMAIL}
-                readOnly
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400 focus:outline-none"
+                value={awsSenderEmail}
+                onChange={(e) => setAwsSenderEmail(e.target.value)}
+                placeholder="you@yourdomain.com"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500/50"
               />
+              <p className="mt-1.5 text-[11px] text-zinc-600">
+                Must be a verified identity in your AWS SES account.
+              </p>
             </div>
           </div>
 
