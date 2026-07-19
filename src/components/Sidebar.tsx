@@ -19,6 +19,7 @@ import {
   Radar,
   BookOpen,
   CalendarClock,
+  Globe,
 } from "lucide-react";
 import {
   applyTheme,
@@ -49,6 +50,7 @@ const NAV_SECTIONS = [
       { name: "Scheduler", href: "/scheduler", icon: CalendarClock },
       { name: "AI Bots", href: "/ai-calling-bots", icon: Bot },
       { name: "AI Chat", href: "/bot-chat", icon: MessageSquareText },
+      { name: "WebPilot", href: "/web-pilot", icon: Globe },
     ],
   },
   {
