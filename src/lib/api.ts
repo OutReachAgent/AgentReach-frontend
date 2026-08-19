@@ -9,6 +9,7 @@ import {
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 const REQUEST_TIMEOUT_MS = 8000;
 const AI_REQUEST_TIMEOUT_MS = 45000;
+const IMPORT_REQUEST_TIMEOUT_MS = 60000;
 
 type ApiPayload = { [key: string]: unknown };
 export type LooseApiResponse = ReturnType<typeof JSON.parse>;
@@ -89,12 +90,20 @@ type ContactPayload = {
   customFields?: Record<string, string>;
 };
 type ContactImportPayload = ApiPayload;
+type TemplateAttachmentPayload = {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  contentBase64: string;
+};
 type TemplatePayload = {
   [key: string]: unknown;
   name?: string;
   subject?: string;
   bodyHtml?: string;
   bodyText?: string;
+  attachments?: TemplateAttachmentPayload[];
 };
 
 type AiCallingBotPayload = {
@@ -430,11 +439,15 @@ export const api = {
       });
     },
     import: (data: ContactImportPayload) =>
-      request("/contacts/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }),
+      request(
+        "/contacts/import",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        IMPORT_REQUEST_TIMEOUT_MS,
+      ),
   },
 
   // Profile - resume upload
@@ -540,6 +553,8 @@ export const api = {
       }),
     launch: (id: string) =>
       request(`/email-campaigns/${id}/launch`, { method: "POST" }),
+    relaunch: (id: string) =>
+      request(`/email-campaigns/${id}/relaunch`, { method: "POST" }),
     schedule: (id: string, scheduledAt: string) =>
       request(`/email-campaigns/${id}/schedule`, {
         method: "POST",

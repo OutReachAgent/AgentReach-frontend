@@ -23,6 +23,7 @@ import {
   Paperclip,
   Upload,
   Folder,
+  RefreshCw,
 } from "lucide-react";
 import { MissingCredentials } from "@/components/MissingCredentials";
 import { LoaderOverlay } from "@/components/Loader";
@@ -89,6 +90,10 @@ type EmailCampaign = {
   pendingCount?: number;
   failedCount?: number;
   sentCount?: number;
+  cc?: string[];
+  bcc?: string[];
+  // findAll returns a { id, name } projection alongside each campaign.
+  template?: { id: string; name: string } | null;
 };
 type EmailCampaignContact = {
   id: string;
@@ -115,7 +120,114 @@ const getErrorMessage = (error: unknown, fallback: string) =>
 
 const MAX_TEMPLATE_ATTACHMENTS = 5;
 const MAX_TEMPLATE_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+// Mirrors MAX_TEMPLATE_ATTACHMENTS_TOTAL_BYTES on the backend so oversized
+// sets are caught before upload rather than at launch.
+const MAX_TEMPLATE_ATTACHMENTS_TOTAL_BYTES = 7 * 1024 * 1024;
 const MAX_REFERENCE_PDF_BYTES = 8 * 1024 * 1024;
+const MAX_COPY_RECIPIENTS = 10;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const formatBytes = (bytes: number) =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/**
+ * Chip-style entry for CC/BCC addresses. Commits on Enter, comma, or blur so a
+ * half-typed address in the input never gets silently dropped on submit.
+ */
+function EmailChipInput({
+  label,
+  hint,
+  values,
+  onChange,
+  disabled,
+  invalidAddresses = [],
+}: {
+  label: string;
+  hint?: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+  invalidAddresses?: string[];
+}) {
+  const [draft, setDraft] = useState("");
+  const invalid = new Set(invalidAddresses);
+
+  const commit = (raw: string) => {
+    const entries = raw
+      .split(/[,;\s]+/)
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+    if (entries.length === 0) return;
+    const merged = Array.from(new Set([...values, ...entries]));
+    onChange(merged.slice(0, MAX_COPY_RECIPIENTS));
+    setDraft("");
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+        {label}
+      </label>
+      <div
+        className={`flex flex-wrap items-center gap-1.5 rounded-xl border bg-zinc-950 px-2 py-2 ${
+          disabled ? "border-zinc-850 opacity-60" : "border-zinc-800"
+        }`}
+      >
+        {values.map((address) => (
+          <span
+            key={address}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium ${
+              invalid.has(address)
+                ? "bg-red-500/10 text-red-300 ring-1 ring-red-500/40"
+                : "bg-zinc-850 text-zinc-200"
+            }`}
+          >
+            {address}
+            {!disabled && (
+              <button
+                type="button"
+                aria-label={`Remove ${address}`}
+                onClick={() => onChange(values.filter((v) => v !== address))}
+                className="text-zinc-500 hover:text-red-300"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        <input
+          type="text"
+          disabled={disabled || values.length >= MAX_COPY_RECIPIENTS}
+          value={draft}
+          placeholder={
+            values.length >= MAX_COPY_RECIPIENTS
+              ? `Limit of ${MAX_COPY_RECIPIENTS} reached`
+              : values.length === 0
+                ? "name@company.com"
+                : "Add another…"
+          }
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commit(draft);
+            } else if (e.key === "Backspace" && !draft && values.length) {
+              onChange(values.slice(0, -1));
+            }
+          }}
+          // Commit on blur too — otherwise a typed-but-not-entered address is
+          // lost when the user clicks straight to the submit button.
+          onBlur={() => commit(draft)}
+          className="min-w-[10rem] flex-1 bg-transparent px-1 py-1 text-sm text-zinc-200 focus:outline-none disabled:cursor-not-allowed"
+        />
+      </div>
+      {hint && <p className="mt-1.5 text-[11px] text-zinc-500">{hint}</p>}
+    </div>
+  );
+}
 
 export default function EmailCampaignsPage() {
   const queryClient = useQueryClient();
@@ -131,6 +243,14 @@ export default function EmailCampaignsPage() {
   // Wizard Creation State
   const [wizardStep, setWizardStep] = useState(1); // 1: Name, 2: Template selection/generation, 3: Contacts selection
   const [campaignName, setCampaignName] = useState("");
+  const [campaignCc, setCampaignCc] = useState<string[]>([]);
+  const [campaignBcc, setCampaignBcc] = useState<string[]>([]);
+  const [isEditingCopyLists, setIsEditingCopyLists] = useState(false);
+  const [editCc, setEditCc] = useState<string[]>([]);
+  const [editBcc, setEditBcc] = useState<string[]>([]);
+  const [isEditingCampaign, setIsEditingCampaign] = useState(false);
+  const [editCampaignName, setEditCampaignName] = useState("");
+  const [editCampaignTemplateId, setEditCampaignTemplateId] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
   );
@@ -244,8 +364,12 @@ export default function EmailCampaignsPage() {
 
   // Mutations
   const createCampaignMutation = useMutation({
-    mutationFn: (data: { name: string; templateId: string }) =>
-      api.emailCampaigns.create(data) as Promise<EmailCampaign>,
+    mutationFn: (data: {
+      name: string;
+      templateId: string;
+      cc?: string[];
+      bcc?: string[];
+    }) => api.emailCampaigns.create(data) as Promise<EmailCampaign>,
     onSuccess: (newCampaign) => {
       // Associate selected contacts
       if (selectedContactIds.length > 0) {
@@ -331,6 +455,101 @@ export default function EmailCampaignsPage() {
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleValue, setScheduleValue] = useState("");
+
+  const relaunchCampaignMutation = useMutation<
+    CampaignLaunchResult,
+    Error,
+    string
+  >({
+    mutationFn: (id: string) =>
+      api.emailCampaigns.relaunch(id) as Promise<CampaignLaunchResult>,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
+      showAlert(
+        res?.message || "This campaign is being sent again to every recipient.",
+        "success",
+        "Campaign relaunched",
+      );
+    },
+    onError: (err: unknown) => {
+      showAlert(
+        getErrorMessage(err, "We could not relaunch this campaign."),
+        "error",
+      );
+    },
+  });
+
+  const updateCampaignMutation = useMutation<
+    EmailCampaign,
+    Error,
+    { id: string; name: string; templateId: string }
+  >({
+    mutationFn: ({ id, name, templateId }) =>
+      api.emailCampaigns.update(id, {
+        name,
+        templateId,
+      }) as Promise<EmailCampaign>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
+      setIsEditingCampaign(false);
+      showAlert(
+        "Campaign details have been updated.",
+        "success",
+        "Campaign updated",
+      );
+    },
+    onError: (err: unknown) => {
+      showAlert(
+        getErrorMessage(
+          err,
+          "We could not update this campaign. Please try again.",
+        ),
+        "error",
+      );
+    },
+  });
+
+  const updateCopyListsMutation = useMutation<
+    EmailCampaign,
+    Error,
+    { id: string; cc: string[]; bcc: string[] }
+  >({
+    mutationFn: ({ id, cc, bcc }) =>
+      api.emailCampaigns.update(id, { cc, bcc }) as Promise<EmailCampaign>,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-campaigns"] });
+      if (selectedCampaignId) {
+        queryClient.invalidateQueries({
+          queryKey: ["email-campaign", selectedCampaignId],
+        });
+      }
+      setIsEditingCopyLists(false);
+      showAlert(
+        "CC and BCC recipients have been updated for this campaign.",
+        "success",
+        "Recipients saved",
+      );
+    },
+    onError: (err: unknown) => {
+      showAlert(
+        getErrorMessage(
+          err,
+          "We could not update CC/BCC for this campaign. Please try again.",
+        ),
+        "error",
+      );
+    },
+  });
 
   const scheduleCampaignMutation = useMutation<
     CampaignLaunchResult,
@@ -440,6 +659,10 @@ export default function EmailCampaignsPage() {
         instructions: data.referenceDocumentName
           ? `${data.instructions || ""}\nReference PDF: ${data.referenceDocumentName}`.trim()
           : data.instructions,
+        // Files staged in the builder apply to whichever mode produced the
+        // template. Without this the AI path silently dropped them and the
+        // only way to attach was to save first, reselect, then re-upload.
+        attachments: manualTemplateAttachments,
       }) as Promise<Template>;
     },
     onSuccess: (res) => {
@@ -697,15 +920,30 @@ export default function EmailCampaignsPage() {
       return;
     }
 
+    const invalid = [...campaignCc, ...campaignBcc].filter(
+      (address) => !EMAIL_PATTERN.test(address),
+    );
+    if (invalid.length > 0) {
+      showAlert(
+        `These CC/BCC addresses are not valid email addresses: ${invalid.join(", ")}`,
+        "error",
+      );
+      return;
+    }
+
     createCampaignMutation.mutate({
       name: campaignName,
       templateId: selectedTemplateId,
+      cc: campaignCc,
+      bcc: campaignBcc,
     });
   };
 
   const resetWizard = () => {
     setWizardStep(1);
     setCampaignName("");
+    setCampaignCc([]);
+    setCampaignBcc([]);
     setSelectedTemplateId(null);
     setSelectedContactIds([]);
     setSelectedContactDirectoryId("all");
@@ -919,6 +1157,86 @@ export default function EmailCampaignsPage() {
     setIsEditingSelectedTemplate(false);
   };
 
+  // Shared between the AI and manual builders: files staged here are sent with
+  // whichever template the builder saves. Previously this lived inside the
+  // manual branch only, so AI templates could not be given an attachment.
+  const renderStagedAttachmentsPanel = (className = "") => (
+    <div className={`${className} overflow-hidden rounded-xl border border-zinc-850 bg-zinc-950/60`}>
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-500">
+            <Paperclip className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-zinc-300">
+              Template Attachments
+            </p>
+            <p className="mt-1 text-[11px] text-zinc-600">
+              {manualTemplateAttachments.length}/
+              {MAX_TEMPLATE_ATTACHMENTS} files, 5 MB each
+            </p>
+          </div>
+        </div>
+        <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-300 hover:border-emerald-500/40 hover:text-white">
+          <Upload className="h-3.5 w-3.5" />
+          Add Files
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            onChange={async (e) => {
+              const input = e.currentTarget;
+              await handleManualAttachmentFiles(input.files);
+              input.value = "";
+            }}
+          />
+        </label>
+      </div>
+
+      {manualTemplateAttachments.length > 0 ? (
+        <div className="space-y-2 border-t border-zinc-850 bg-zinc-950 p-3">
+          {manualTemplateAttachments.map((attachment) => (
+            <div
+              key={attachment.id}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-lg border border-zinc-850 bg-zinc-900/40 p-2"
+            >
+              <input
+                type="text"
+                value={attachment.name}
+                onChange={(e) =>
+                  updateManualAttachmentName(
+                    attachment.id,
+                    e.target.value,
+                  )
+                }
+                className="min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
+              />
+              <span className="text-[10px] text-zinc-600">
+                {formatAttachmentSize(attachment.size)}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  removeManualAttachment(attachment.id)
+                }
+                className="rounded-lg p-1.5 text-zinc-500 hover:bg-rose-950/30 hover:text-rose-400"
+                title="Remove attachment"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="border-t border-zinc-850 bg-zinc-950 px-4 py-3">
+          <p className="text-[11px] text-zinc-600">
+            No attachments added to this template draft.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   const selectedTemplate = templates.find(
     (tpl) => tpl.id === selectedTemplateId,
   );
@@ -1038,12 +1356,12 @@ export default function EmailCampaignsPage() {
 
   const readAttachmentFiles = async (
     files: FileList | null,
-    existingCount: number,
+    existing: TemplateAttachment[] = [],
   ) => {
     const list = Array.from(files || []);
     if (list.length === 0) return [];
 
-    if (existingCount + list.length > MAX_TEMPLATE_ATTACHMENTS) {
+    if (existing.length + list.length > MAX_TEMPLATE_ATTACHMENTS) {
       showAlert(
         `Templates can include up to ${MAX_TEMPLATE_ATTACHMENTS} attachments.`,
         "error",
@@ -1059,13 +1377,28 @@ export default function EmailCampaignsPage() {
       return [];
     }
 
+    // Mirrors the backend total cap. Without this the per-file check passes and
+    // the whole set is only rejected later — after upload, or at launch.
+    const totalBytes =
+      existing.reduce((sum, attachment) => sum + (attachment.size || 0), 0) +
+      list.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_TEMPLATE_ATTACHMENTS_TOTAL_BYTES) {
+      showAlert(
+        `These files total ${formatBytes(totalBytes)}, over the ${formatBytes(
+          MAX_TEMPLATE_ATTACHMENTS_TOTAL_BYTES,
+        )} limit for one email. Remove a file or link to it instead.`,
+        "error",
+      );
+      return [];
+    }
+
     return Promise.all(list.map(fileToTemplateAttachment));
   };
 
   const handleManualAttachmentFiles = async (files: FileList | null) => {
     const attachments = await readAttachmentFiles(
       files,
-      manualTemplateAttachments.length,
+      manualTemplateAttachments,
     );
     if (attachments.length > 0) {
       setManualTemplateAttachments([
@@ -1106,10 +1439,7 @@ export default function EmailCampaignsPage() {
     files: FileList | null,
   ) => {
     const currentAttachments = template.attachments || [];
-    const attachments = await readAttachmentFiles(
-      files,
-      currentAttachments.length,
-    );
+    const attachments = await readAttachmentFiles(files, currentAttachments);
     if (attachments.length > 0) {
       updateTemplateAttachmentsFor(template, [
         ...currentAttachments,
@@ -1123,7 +1453,7 @@ export default function EmailCampaignsPage() {
     attachmentId: string,
     files: FileList | null,
   ) => {
-    const [replacement] = await readAttachmentFiles(files, 0);
+    const [replacement] = await readAttachmentFiles(files, []);
     if (!replacement) return;
 
     updateTemplateAttachmentsFor(
@@ -1299,7 +1629,25 @@ export default function EmailCampaignsPage() {
                         {camp.status}
                       </span>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {camp.status !== "RUNNING" && (
+                          <button
+                            title="Edit campaign"
+                            onClick={() => {
+                              setSelectedCampaignId(camp.id);
+                              setEditCampaignName(camp.name);
+                              setEditCampaignTemplateId(
+                                camp.template?.id || "",
+                              );
+                              setIsEditingCampaign(true);
+                              setActiveTab("detail");
+                            }}
+                            className="p-1 hover:bg-indigo-950/20 text-zinc-500 hover:text-indigo-400 rounded transition-colors"
+                          >
+                            <PenLine className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
+                          title="Delete campaign"
                           onClick={() => {
                             if (confirm("Delete this campaign?")) {
                               deleteCampaignMutation.mutate(camp.id);
@@ -1375,21 +1723,135 @@ export default function EmailCampaignsPage() {
             <div className="space-y-6">
               {/* Summary Banner */}
               <div className="p-6 bg-zinc-900/50 border border-zinc-850 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-bold text-white">
-                      {campaignDetails.name}
-                    </h3>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-400">
-                      {campaignDetails.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    Template:{" "}
-                    <span className="text-zinc-300 font-semibold">
-                      {campaignDetails.template?.name || "No Template"}
-                    </span>
-                  </p>
+                <div className="space-y-2 min-w-0 flex-1">
+                  {isEditingCampaign ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                          Campaign name
+                        </label>
+                        <input
+                          type="text"
+                          value={editCampaignName}
+                          onChange={(e) => setEditCampaignName(e.target.value)}
+                          className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                          Template
+                        </label>
+                        <select
+                          value={editCampaignTemplateId}
+                          onChange={(e) =>
+                            setEditCampaignTemplateId(e.target.value)
+                          }
+                          className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 focus:border-indigo-500 focus:outline-none"
+                        >
+                          {templates.map((tpl) => (
+                            <option key={tpl.id} value={tpl.id}>
+                              {tpl.name}
+                              {(tpl.attachments?.length || 0) > 0
+                                ? ` — ${tpl.attachments!.length} file(s)`
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {(campaignDetails.sentCount || 0) > 0 && (
+                        <p className="max-w-md text-[11px] leading-relaxed text-amber-200/70">
+                          {campaignDetails.sentCount} email
+                          {campaignDetails.sentCount === 1 ? " has" : "s have"}{" "}
+                          already gone out. Changing the template only affects
+                          recipients who have not been sent to yet — it does not
+                          alter what was already delivered.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={updateCampaignMutation.isPending}
+                          onClick={() => {
+                            if (!editCampaignName.trim()) {
+                              showAlert(
+                                "Campaign name cannot be empty.",
+                                "error",
+                              );
+                              return;
+                            }
+                            if (!editCampaignTemplateId) {
+                              showAlert(
+                                "Pick a template for this campaign.",
+                                "error",
+                              );
+                              return;
+                            }
+                            updateCampaignMutation.mutate({
+                              id: campaignDetails.id,
+                              name: editCampaignName.trim(),
+                              templateId: editCampaignTemplateId,
+                            });
+                          }}
+                          className="rounded-lg bg-indigo-500 px-3 py-2 text-[10px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+                        >
+                          {updateCampaignMutation.isPending
+                            ? "Saving…"
+                            : "Save changes"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingCampaign(false)}
+                          className="rounded-lg border border-zinc-800 px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-bold text-white">
+                          {campaignDetails.name}
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-400">
+                          {campaignDetails.status}
+                        </span>
+                        {campaignDetails.status !== "RUNNING" && (
+                          <button
+                            type="button"
+                            title="Edit campaign"
+                            onClick={() => {
+                              setEditCampaignName(campaignDetails.name);
+                              setEditCampaignTemplateId(
+                                campaignDetails.template?.id || "",
+                              );
+                              setIsEditingCampaign(true);
+                            }}
+                            className="flex items-center gap-1 rounded-lg border border-zinc-800 px-2 py-1 text-[10px] font-bold text-zinc-400 hover:border-indigo-500/40 hover:text-white"
+                          >
+                            <PenLine className="h-3 w-3" />
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">
+                        Template:{" "}
+                        <span className="text-zinc-300 font-semibold">
+                          {campaignDetails.template?.name || "No Template"}
+                        </span>
+                        {(campaignDetails.template?.attachments?.length || 0) >
+                          0 && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-zinc-500">
+                            <Paperclip className="h-3 w-3" />
+                            {campaignDetails.template!.attachments!.length} file
+                            {campaignDetails.template!.attachments!.length === 1
+                              ? ""
+                              : "s"}
+                          </span>
+                        )}
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -1429,6 +1891,40 @@ export default function EmailCampaignsPage() {
                                 ? "Launch Campaign"
                                 : launchState.label
                               : launchState.label}
+                          </button>
+                        );
+                      })()}
+                      {(() => {
+                        const contacts = campaignDetails.contacts || [];
+                        const alreadySent = contacts.filter((c) =>
+                          ["SENT", "DELIVERED"].includes(c.deliveryStatus),
+                        ).length;
+                        // Only meaningful once something has actually gone out —
+                        // otherwise the normal Launch button already covers it.
+                        if (alreadySent === 0) return null;
+                        return (
+                          <button
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `Re-send this campaign to all ${contacts.length} recipients?\n\n` +
+                                    `${alreadySent} of them have already received it and will get a second copy.\n\n` +
+                                    `This cannot be undone once sending starts.`,
+                                )
+                              ) {
+                                relaunchCampaignMutation.mutate(
+                                  campaignDetails.id,
+                                );
+                              }
+                            }}
+                            disabled={relaunchCampaignMutation.isPending}
+                            title={`Re-send to all ${contacts.length} recipients, including ${alreadySent} already sent`}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-zinc-950 border border-amber-500/30 rounded-xl text-xs font-semibold text-amber-400 hover:bg-zinc-900 disabled:opacity-50"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            {relaunchCampaignMutation.isPending
+                              ? "Relaunching…"
+                              : "Relaunch All"}
                           </button>
                         );
                       })()}
@@ -1486,6 +1982,153 @@ export default function EmailCampaignsPage() {
                   </button>
                 </div>
               )}
+
+              {/* CC / BCC recipients */}
+              <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
+                <div className="px-6 py-4 border-b border-zinc-850 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-zinc-200 uppercase tracking-wider">
+                      CC &amp; BCC
+                    </h4>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Copied on every email this campaign sends.
+                    </p>
+                  </div>
+                  {campaignDetails.status !== "RUNNING" &&
+                    (isEditingCopyLists ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingCopyLists(false)}
+                          className="rounded-lg border border-zinc-800 px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={updateCopyListsMutation.isPending}
+                          onClick={() => {
+                            const invalid = [...editCc, ...editBcc].filter(
+                              (address) => !EMAIL_PATTERN.test(address),
+                            );
+                            if (invalid.length > 0) {
+                              showAlert(
+                                `These are not valid email addresses: ${invalid.join(", ")}`,
+                                "error",
+                              );
+                              return;
+                            }
+                            updateCopyListsMutation.mutate({
+                              id: campaignDetails.id,
+                              cc: editCc,
+                              bcc: editBcc,
+                            });
+                          }}
+                          className="rounded-lg bg-indigo-500 px-3 py-2 text-[10px] font-bold text-white hover:brightness-110 disabled:opacity-50"
+                        >
+                          {updateCopyListsMutation.isPending
+                            ? "Saving…"
+                            : "Save recipients"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditCc(campaignDetails.cc || []);
+                          setEditBcc(campaignDetails.bcc || []);
+                          setIsEditingCopyLists(true);
+                        }}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[10px] font-bold text-zinc-300 hover:border-indigo-500/40 hover:text-white"
+                      >
+                        <PenLine className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                    ))}
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {isEditingCopyLists ? (
+                    <>
+                      <EmailChipInput
+                        label="CC"
+                        hint="Visible to every recipient."
+                        values={editCc}
+                        onChange={setEditCc}
+                        invalidAddresses={editCc.filter(
+                          (address) => !EMAIL_PATTERN.test(address),
+                        )}
+                      />
+                      <EmailChipInput
+                        label="BCC"
+                        hint="Hidden from recipients."
+                        values={editBcc}
+                        onChange={setEditBcc}
+                        invalidAddresses={editBcc.filter(
+                          (address) => !EMAIL_PATTERN.test(address),
+                        )}
+                      />
+                      {editCc.length + editBcc.length > 0 && (
+                        <p className="text-[11px] leading-relaxed text-amber-200/70">
+                          {editCc.length + editBcc.length} copied{" "}
+                          {editCc.length + editBcc.length === 1
+                            ? "address"
+                            : "addresses"}{" "}
+                          &times; {campaignDetails.contacts?.length || 0}{" "}
+                          recipients ={" "}
+                          <span className="font-semibold text-amber-300">
+                            {(editCc.length + editBcc.length) *
+                              (campaignDetails.contacts?.length || 0)}{" "}
+                            extra emails
+                          </span>{" "}
+                          delivered when this campaign runs.
+                        </p>
+                      )}
+                    </>
+                  ) : (campaignDetails.cc?.length || 0) +
+                      (campaignDetails.bcc?.length || 0) ===
+                    0 ? (
+                    <p className="text-xs text-zinc-500">
+                      No CC or BCC recipients. Emails go only to the contacts in
+                      this campaign.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {(["cc", "bcc"] as const).map((field) => {
+                        const list = campaignDetails[field] || [];
+                        if (list.length === 0) return null;
+                        return (
+                          <div key={field}>
+                            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                              {field.toUpperCase()}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {list.map((address) => (
+                                <span
+                                  key={address}
+                                  className="rounded-lg bg-zinc-850 px-2 py-1 text-xs text-zinc-200"
+                                >
+                                  {address}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-[11px] text-amber-200/70">
+                        Each copied address receives one email per recipient (
+                        {(campaignDetails.cc?.length || 0) +
+                          (campaignDetails.bcc?.length || 0)}{" "}
+                        &times; {campaignDetails.contacts?.length || 0} ={" "}
+                        {((campaignDetails.cc?.length || 0) +
+                          (campaignDetails.bcc?.length || 0)) *
+                          (campaignDetails.contacts?.length || 0)}{" "}
+                        extra emails).
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Email Template & Attachments */}
               {campaignDetails.template && (
@@ -1750,6 +2393,50 @@ export default function EmailCampaignsPage() {
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
+
+              <EmailChipInput
+                label="CC (optional)"
+                hint="Visible to every recipient. Added to each email sent in this campaign."
+                values={campaignCc}
+                onChange={setCampaignCc}
+                invalidAddresses={campaignCc.filter(
+                  (address) => !EMAIL_PATTERN.test(address),
+                )}
+              />
+
+              <EmailChipInput
+                label="BCC (optional)"
+                hint="Hidden from recipients. Useful for archiving a copy to your own inbox or CRM."
+                values={campaignBcc}
+                onChange={setCampaignBcc}
+                invalidAddresses={campaignBcc.filter(
+                  (address) => !EMAIL_PATTERN.test(address),
+                )}
+              />
+
+              {campaignCc.length + campaignBcc.length > 0 && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-300">
+                    Every copied address receives one email per recipient
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
+                    CC and BCC are applied to each send individually, not once
+                    per campaign. With {campaignCc.length + campaignBcc.length}{" "}
+                    copied {""}
+                    {campaignCc.length + campaignBcc.length === 1
+                      ? "address"
+                      : "addresses"}
+                    , a 200-contact campaign delivers{" "}
+                    {(campaignCc.length + campaignBcc.length) * 200} extra
+                    emails to {""}
+                    {campaignCc.length + campaignBcc.length === 1
+                      ? "that inbox"
+                      : "those inboxes"}
+                    . For a single summary copy, send yourself a test instead.
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-end pt-4">
                 <button
                   type="button"
@@ -2076,6 +2763,8 @@ export default function EmailCampaignsPage() {
                           </div>
                         </div>
                       )}
+
+                      {renderStagedAttachmentsPanel()}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -2133,80 +2822,7 @@ export default function EmailCampaignsPage() {
                           className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-300 focus:outline-none resize-none font-mono"
                         />
                       </div>
-                      <div className="md:col-span-2 overflow-hidden rounded-xl border border-zinc-850 bg-zinc-950/60">
-                        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-zinc-500">
-                              <Paperclip className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-zinc-300">
-                                Template Attachments
-                              </p>
-                              <p className="mt-1 text-[11px] text-zinc-600">
-                                {manualTemplateAttachments.length}/
-                                {MAX_TEMPLATE_ATTACHMENTS} files, 5 MB each
-                              </p>
-                            </div>
-                          </div>
-                          <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-300 hover:border-emerald-500/40 hover:text-white">
-                            <Upload className="h-3.5 w-3.5" />
-                            Add Files
-                            <input
-                              type="file"
-                              multiple
-                              className="hidden"
-                              onChange={async (e) => {
-                                const input = e.currentTarget;
-                                await handleManualAttachmentFiles(input.files);
-                                input.value = "";
-                              }}
-                            />
-                          </label>
-                        </div>
-
-                        {manualTemplateAttachments.length > 0 ? (
-                          <div className="space-y-2 border-t border-zinc-850 bg-zinc-950 p-3">
-                            {manualTemplateAttachments.map((attachment) => (
-                              <div
-                                key={attachment.id}
-                                className="grid grid-cols-[1fr_auto_auto] items-center gap-2 rounded-lg border border-zinc-850 bg-zinc-900/40 p-2"
-                              >
-                                <input
-                                  type="text"
-                                  value={attachment.name}
-                                  onChange={(e) =>
-                                    updateManualAttachmentName(
-                                      attachment.id,
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="min-w-0 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
-                                />
-                                <span className="text-[10px] text-zinc-600">
-                                  {formatAttachmentSize(attachment.size)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeManualAttachment(attachment.id)
-                                  }
-                                  className="rounded-lg p-1.5 text-zinc-500 hover:bg-rose-950/30 hover:text-rose-400"
-                                  title="Remove attachment"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="border-t border-zinc-850 bg-zinc-950 px-4 py-3">
-                            <p className="text-[11px] text-zinc-600">
-                              No attachments added to this template draft.
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      {renderStagedAttachmentsPanel("md:col-span-2")}
                       <button
                         type="button"
                         disabled={createManualTemplateMutation.isPending}
