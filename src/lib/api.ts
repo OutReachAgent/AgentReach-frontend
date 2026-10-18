@@ -34,6 +34,47 @@ const AUTH_PATHS_WITHOUT_REFRESH = new Set([
 
 type ApiPayload = { [key: string]: unknown };
 export type LooseApiResponse = ReturnType<typeof JSON.parse>;
+export type AiChatReasoningEffort = 'low' | 'medium' | 'high';
+export type AiChatModelOption = { value: string; label: string };
+export type AiChatThread = {
+  id: string;
+  title: string;
+  model: string;
+  reasoningEffort: AiChatReasoningEffort;
+  status: string;
+  hasPendingAction?: boolean;
+  pendingAction?: {
+    kind: string;
+    campaignId: string;
+    campaignName?: string;
+    contactCount?: number;
+  } | null;
+  lastMessageAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+export type AiChatMessage = {
+  id: string;
+  threadId: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  toolName?: string | null;
+  toolResult?: Record<string, unknown> | null;
+  createdAt?: string;
+};
+export type AiChatModels = {
+  models: AiChatModelOption[];
+  defaultModel: string;
+  reasoningEfforts: Array<{
+    value: AiChatReasoningEffort;
+    label: string;
+    description: string;
+  }>;
+};
+export type AiChatStreamEvent = {
+  type: 'start' | 'status' | 'tool_start' | 'tool_result' | 'delta' | 'done' | 'error';
+  data: Record<string, any>;
+};
 type AuthProfileUpdate = {
   name?: string;
   email?: string;
@@ -673,6 +714,38 @@ async function requestWithAuth<T = LooseApiResponse>(
 
     throw error;
   }
+}
+
+/**
+ * Streaming counterpart to requestWithAuth. It intentionally shares the
+ * module's CSRF token and refresh path instead of making the chat page manage
+ * authentication separately.
+ */
+export async function streamAiChatMessage(
+  path: string,
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Response> {
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+  if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
+  const response = await fetchBackend(
+    path,
+    { method: 'POST', headers, body: JSON.stringify(body), signal },
+    120000,
+  );
+  csrfToken = response.headers.get('X-CSRF-Token') || csrfToken;
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return streamAiChatMessage(path, body, signal);
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch((): ApiPayload => ({}));
+    throw new ApiError(
+      toFriendlyApiError(errorData.message || response.statusText, response.status, path),
+      response.status,
+    );
+  }
+  return response;
 }
 
 async function requestBlobWithAuth(
@@ -1516,5 +1589,29 @@ export const api = {
   // Analytics
   analytics: {
     get: () => request("/analytics"),
+  },
+
+  // Unified AI workspace
+  aiChat: {
+    models: () => request('/ai-chat/models') as Promise<AiChatModels>,
+    threads: () => request('/ai-chat/threads') as Promise<AiChatThread[]>,
+    createThread: (data?: {
+      title?: string;
+      model?: string;
+      reasoningEffort?: AiChatReasoningEffort;
+    }) =>
+      request('/ai-chat/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data || {}),
+      }) as Promise<AiChatThread>,
+    getThread: (id: string) => request(`/ai-chat/threads/${id}`) as Promise<AiChatThread & { messages: AiChatMessage[] }>,
+    updateThread: (id: string, data: { title?: string; model?: string; reasoningEffort?: AiChatReasoningEffort }) =>
+      request(`/ai-chat/threads/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }) as Promise<AiChatThread>,
+    deleteThread: (id: string) => request(`/ai-chat/threads/${id}`, { method: 'DELETE' }),
   },
 };

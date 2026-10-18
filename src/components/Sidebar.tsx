@@ -21,6 +21,7 @@ import {
   Inbox,
   Telescope,
   UserSearch,
+  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -51,6 +52,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
     label: "Command",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "AI Command Center", href: "/ai-command-center", icon: Sparkles, beta: true },
       { name: "Signals", href: "/signals", icon: Radar },
     ],
   },
