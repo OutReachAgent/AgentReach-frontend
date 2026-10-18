@@ -106,6 +106,15 @@ export type ContactFinderSearchParams = {
   type?: "personal" | "generic";
   seniority?: string[];
   department?: string[];
+  location?: {
+    country?: string;
+    state?: string;
+    city?: string;
+    continent?: string;
+    businessRegion?: string;
+  };
+  jobTitles?: string[];
+  hiring?: boolean;
   limit?: number;
   offset?: number;
 };
