@@ -73,7 +73,7 @@ export type AiChatModels = {
 };
 export type AiChatStreamEvent = {
   type: 'start' | 'status' | 'tool_start' | 'tool_result' | 'delta' | 'done' | 'error';
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 };
 type AuthProfileUpdate = {
   name?: string;
@@ -540,6 +540,12 @@ async function fetchBackend(
   const send = async (baseUrl: string) => {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    const externalSignal = init?.signal;
+    const abortFromCaller = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', abortFromCaller, { once: true });
+    }
     try {
       return await fetch(`${baseUrl}${path}`, {
         ...init,
@@ -548,6 +554,7 @@ async function fetchBackend(
       });
     } finally {
       window.clearTimeout(timeoutId);
+      externalSignal?.removeEventListener('abort', abortFromCaller);
     }
   };
 
@@ -725,6 +732,7 @@ export async function streamAiChatMessage(
   path: string,
   body: Record<string, unknown>,
   signal?: AbortSignal,
+  allowRefresh = true,
 ): Promise<Response> {
   const headers = new Headers({ 'Content-Type': 'application/json' });
   if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
@@ -734,9 +742,9 @@ export async function streamAiChatMessage(
     120000,
   );
   csrfToken = response.headers.get('X-CSRF-Token') || csrfToken;
-  if (response.status === 401) {
+  if (response.status === 401 && allowRefresh) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) return streamAiChatMessage(path, body, signal);
+    if (refreshed) return streamAiChatMessage(path, body, signal, false);
   }
   if (!response.ok) {
     const errorData = await response.json().catch((): ApiPayload => ({}));

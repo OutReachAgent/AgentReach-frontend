@@ -485,6 +485,7 @@ export default function ContactFinderPage() {
     picked.has(person.email),
   );
   const busy = searchMutation.isPending || findMutation.isPending;
+  const account = accountQuery.data;
   const isFreePlan = Boolean(
     account?.planName.trim().toLowerCase().startsWith("free"),
   );
@@ -558,7 +559,6 @@ export default function ContactFinderPage() {
     };
   };
 
-  const account = accountQuery.data;
   const usage = account?.credits || account?.searches;
 
   return (
