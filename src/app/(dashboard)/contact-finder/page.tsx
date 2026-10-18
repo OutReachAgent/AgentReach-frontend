@@ -485,8 +485,15 @@ export default function ContactFinderPage() {
     picked.has(person.email),
   );
   const busy = searchMutation.isPending || findMutation.isPending;
+  const isFreePlan = Boolean(
+    account?.planName.trim().toLowerCase().startsWith("free"),
+  );
   const canLoadMore =
-    lastQuery !== null && people.length < total && !searchMutation.isPending;
+    lastQuery !== null &&
+    people.length < total &&
+    !searchMutation.isPending &&
+    accountQuery.isSuccess &&
+    !isFreePlan;
 
   const togglePicked = (email: string) =>
     setPicked((prev) => {
@@ -874,6 +881,15 @@ export default function ContactFinderPage() {
               </button>
             </div>
           )}
+          {lastQuery !== null &&
+            people.length < total &&
+            accountQuery.isSuccess &&
+            isFreePlan && (
+              <p className="text-center text-xs text-zinc-500">
+                Free Hunter plans return the first 10 results only. Upgrade
+                your Hunter plan to load more.
+              </p>
+            )}
           {searchMutation.isPending && people.length > 0 && (
             <p className="flex items-center justify-center gap-2 text-xs text-zinc-500">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading more…
