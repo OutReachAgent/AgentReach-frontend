@@ -20,6 +20,7 @@ import {
   CalendarClock,
   Inbox,
   Telescope,
+  UserSearch,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -60,6 +61,12 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
         name: "Prospect Finder",
         href: "/prospects",
         icon: Telescope,
+        beta: true,
+      },
+      {
+        name: "Contact Finder",
+        href: "/contact-finder",
+        icon: UserSearch,
         beta: true,
       },
       { name: "Contacts", href: "/contacts", icon: Users },

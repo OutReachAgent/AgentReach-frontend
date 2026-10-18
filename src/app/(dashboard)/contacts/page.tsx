@@ -6,6 +6,7 @@ import type { LooseApiResponse } from '@/lib/api';
 import { useOutreachStore } from '@/store/useOutreachStore';
 import { useEscapeKey } from '@/lib/useEscapeKey';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import Pagination from '@/components/Pagination';
 import { useDebouncedValue } from '@/lib/pagination';
 import {
@@ -24,6 +25,7 @@ import {
   ChevronRight,
   Folder,
   FolderPlus,
+  UserSearch,
 } from 'lucide-react';
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -433,7 +435,14 @@ export default function ContactsPage() {
             Manage your client accounts, leads, and job market opportunities.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/contact-finder"
+            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-850 hover:text-white transition-all"
+          >
+            <UserSearch className="h-3.5 w-3.5" />
+            Find Contacts
+          </Link>
           <button
             onClick={() => {
               setImportDirectoryId(selectedDirectoryId !== 'all' && selectedDirectoryId !== 'uncategorized' ? selectedDirectoryId : '');

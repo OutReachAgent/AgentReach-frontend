@@ -14,6 +14,7 @@ import {
   Copy,
   RefreshCw,
   Inbox,
+  UserSearch,
 } from "lucide-react";
 
 // Mirrors GEMINI_TEXT_MODEL_OPTIONS in the backend's config/gemini-text.ts.
@@ -98,6 +99,7 @@ export default function SettingsPage() {
   const [plivoAuthToken, setPlivoAuthToken] = useState("");
   const [plivoPhoneNumber, setPlivoPhoneNumber] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [hunterApiKey, setHunterApiKey] = useState("");
 
   // Fetch saved settings
   const { data: settings, isLoading } = useQuery({
@@ -138,6 +140,17 @@ export default function SettingsPage() {
         setPlivoPhoneNumber(settings.plivoPhoneNumber || "");
         setGeminiApiKey((prev) => {
           const incoming = settings.geminiApiKey || "";
+          if (
+            incoming === MASKED_CREDENTIAL &&
+            prev &&
+            prev !== MASKED_CREDENTIAL
+          ) {
+            return prev;
+          }
+          return incoming;
+        });
+        setHunterApiKey((prev) => {
+          const incoming = settings.hunterApiKey || "";
           if (
             incoming === MASKED_CREDENTIAL &&
             prev &&
@@ -274,6 +287,33 @@ export default function SettingsPage() {
     },
   });
 
+  const testHunterMutation = useMutation({
+    mutationFn: () => api.settings.testHunter({ hunterApiKey }),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-finder", "account"] });
+      if (res.success) {
+        showAlert(
+          res.message || "Your Hunter.io API key is working.",
+          "success",
+          "Hunter.io key verified",
+        );
+      } else {
+        showAlert(
+          res.error || "We could not verify your Hunter.io API key.",
+          "error",
+        );
+      }
+    },
+    onError: (err: Error) => {
+      showAlert(
+        err.message ||
+          "We could not test your Hunter.io API key. Please try again.",
+        "error",
+      );
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateSettingsMutation.mutate({
@@ -295,6 +335,7 @@ export default function SettingsPage() {
       plivoAuthId,
       plivoAuthToken,
       plivoPhoneNumber,
+      hunterApiKey,
     });
   };
 
@@ -336,7 +377,7 @@ export default function SettingsPage() {
         </h2>
         <p className="text-sm text-zinc-400 mt-1">
           Configure API credentials for AWS SES, Twilio/Plivo telephony,
-          and Gemini AI.
+          Gemini AI and Hunter.io.
         </p>
       </div>
 
@@ -853,6 +894,61 @@ export default function SettingsPage() {
                 <Key className="h-3.5 w-3.5" />
               )}
               Test Gemini Live Key
+            </button>
+          </div>
+        </div>
+
+        {/* Hunter.io Panel */}
+        <div className="p-6 bg-zinc-900/40 border border-zinc-850 rounded-2xl shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800/60">
+            <div className="flex items-center gap-2">
+              <UserSearch className="h-5 w-5 text-orange-400" />
+              <h3 className="text-base font-bold text-white">
+                Hunter.io API Key
+              </h3>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <StatusPill status={settings?.hunterStatus} />
+              {settings?.hunterLastVerified && (
+                <span className="text-[10px] text-zinc-500">
+                  Verified:{" "}
+                  {new Date(settings.hunterLastVerified).toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Hunter API Key
+            </label>
+            <input
+              type="password"
+              value={hunterApiKey}
+              onChange={(e) => setHunterApiKey(e.target.value)}
+              placeholder="Paste your key from hunter.io/api-keys"
+              autoComplete="off"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-zinc-200 focus:border-indigo-500/50 focus:outline-none"
+            />
+            <p className="mt-2 text-[11px] text-zinc-500">
+              Saved encrypted and used by Contact Finder to look up work
+              emails. Searches use your Hunter plan&apos;s credits.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-start gap-3 pt-3">
+            <button
+              type="button"
+              disabled={testHunterMutation.isPending}
+              onClick={() => testHunterMutation.mutate()}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {testHunterMutation.isPending ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Key className="h-3.5 w-3.5" />
+              )}
+              Test Hunter Key
             </button>
           </div>
         </div>

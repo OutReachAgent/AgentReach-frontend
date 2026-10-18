@@ -64,10 +64,77 @@ type SettingsUpdate = {
   plivoPhoneNumber?: string;
   plivoStatus?: string;
   geminiStatus?: string;
+  hunterApiKey?: string;
 };
 
 type GeminiKeyTestPayload = {
   geminiApiKey?: string;
+};
+
+type HunterKeyTestPayload = {
+  hunterApiKey?: string;
+};
+
+export type HunterUsage = { used: number; available: number; remaining: number };
+export type ContactFinderAccount = {
+  planName: string;
+  resetDate: string;
+  searches: HunterUsage;
+  verifications: HunterUsage;
+  credits?: HunterUsage;
+};
+export type HunterPerson = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  seniority: string;
+  department: string;
+  linkedinUrl: string;
+  phoneNumber: string;
+  company: string;
+  domain: string;
+  type: string;
+  confidence: number;
+  verificationStatus: string;
+  sourceUrl: string;
+  alreadyInContacts?: boolean;
+};
+export type ContactFinderSearchParams = {
+  domain?: string;
+  company?: string;
+  type?: "personal" | "generic";
+  seniority?: string[];
+  department?: string[];
+  limit?: number;
+  offset?: number;
+};
+export type ContactFinderSearchResult = {
+  domain: string;
+  company: string;
+  pattern: string;
+  people: HunterPerson[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+export type ContactFinderSavePerson = {
+  email: string;
+  firstName: string;
+  lastName?: string;
+  position?: string;
+  company?: string;
+  linkedinUrl?: string;
+  phoneNumber?: string;
+  confidence?: number;
+  verificationStatus?: string;
+  sourceUrl?: string;
+};
+export type ContactFinderSaveResult = {
+  added: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
 };
 
 type GeminiVoicePreviewPayload = {
@@ -785,6 +852,16 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data || {}),
       }),
+    testHunter: (data?: HunterKeyTestPayload) =>
+      request(
+        "/settings/test-hunter",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data || {}),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ),
     previewGeminiVoice: (data: GeminiVoicePreviewPayload) =>
       request(
         "/settings/preview-gemini-voice",
@@ -1346,6 +1423,62 @@ export const api = {
       ),
     watchCompany: (id: string) =>
       request(`/prospects/companies/${id}/watch`, { method: "POST" }),
+  },
+
+  // Contact Finder (Hunter.io). Every call except account and save uses the
+  // user's Hunter credits.
+  contactFinder: {
+    account: () =>
+      request("/contact-finder/account") as Promise<ContactFinderAccount>,
+    search: (data: ContactFinderSearchParams) =>
+      request(
+        "/contact-finder/search",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ) as Promise<ContactFinderSearchResult>,
+    findEmail: (data: {
+      domain?: string;
+      company?: string;
+      firstName: string;
+      lastName: string;
+    }) =>
+      request(
+        "/contact-finder/find-email",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ) as Promise<{ person: HunterPerson | null }>,
+    verify: (email: string) =>
+      request(
+        "/contact-finder/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        },
+        AI_REQUEST_TIMEOUT_MS,
+      ) as Promise<{ email: string; status: string; score: number }>,
+    save: (data: {
+      people: ContactFinderSavePerson[];
+      directoryId?: string;
+      duplicateStrategy?: "SKIP" | "OVERWRITE";
+    }) =>
+      request(
+        "/contact-finder/save",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+        IMPORT_REQUEST_TIMEOUT_MS,
+      ) as Promise<ContactFinderSaveResult>,
   },
 
   // History
