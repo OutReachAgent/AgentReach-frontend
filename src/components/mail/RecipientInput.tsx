@@ -111,11 +111,11 @@ export default function RecipientInput({
           }}
           onFocus={() => setFocused(true)}
           onBlur={() => {
-            // Leave time for a click on a suggestion to land first.
-            window.setTimeout(() => {
-              setFocused(false);
-              commit(draftRef.current);
-            }, 150);
+            // Commit before the send button's click handler runs. Suggestion
+            // buttons prevent the blur on mouse-down, so they still get a
+            // chance to select an option without delaying normal submits.
+            setFocused(false);
+            commit(draftRef.current);
           }}
           onPaste={(event) => {
             const text = event.clipboardData.getData("text");
