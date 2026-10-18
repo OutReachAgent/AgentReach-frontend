@@ -69,6 +69,7 @@ const VERIFICATION_STYLES: Record<string, string> = {
 };
 
 type Names = { firstName: string; lastName: string };
+type ContactLocation = NonNullable<ContactFinderSearchParams["location"]>;
 
 function confidenceStyle(score: number) {
   if (score >= 80) return "bg-emerald-500/10 text-emerald-400";
@@ -377,6 +378,9 @@ export default function ContactFinderPage() {
   const [type, setType] = useState<"personal" | "generic">("personal");
   const [seniority, setSeniority] = useState<string[]>([]);
   const [department, setDepartment] = useState<string[]>([]);
+  const [location, setLocation] = useState<ContactLocation>({});
+  const [jobTitles, setJobTitles] = useState("");
+  const [hiring, setHiring] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
@@ -496,11 +500,22 @@ export default function ContactFinderPage() {
     event.preventDefault();
     if (!target.trim()) return;
     if (mode === "company") {
+      const cleanLocation = Object.fromEntries(
+        Object.entries(location).filter(([, value]) => value?.trim()),
+      ) as ContactLocation;
+      const cleanJobTitles = jobTitles
+        .split(",")
+        .map((title) => title.trim())
+        .filter(Boolean);
       searchMutation.mutate({
         ...toTarget(target),
         type,
         seniority,
         department,
+        location:
+          Object.keys(cleanLocation).length > 0 ? cleanLocation : undefined,
+        jobTitles: cleanJobTitles.length > 0 ? cleanJobTitles : undefined,
+        hiring: hiring || undefined,
         limit: PAGE_SIZE,
         offset: 0,
       });
@@ -623,6 +638,82 @@ export default function ContactFinderPage() {
 
         {mode === "company" && (
           <div className="space-y-3">
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-zinc-400">
+                Contact location
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <input
+                  value={location.country || ""}
+                  onChange={(event) =>
+                    setLocation((current) => ({
+                      ...current,
+                      country: event.target.value.toUpperCase(),
+                    }))
+                  }
+                  placeholder="Country code (US)"
+                  aria-label="Contact country code"
+                  maxLength={2}
+                  className={INPUT_CLASS}
+                />
+                <input
+                  value={location.state || ""}
+                  onChange={(event) =>
+                    setLocation((current) => ({
+                      ...current,
+                      state: event.target.value,
+                    }))
+                  }
+                  placeholder="State code (CA)"
+                  aria-label="Contact state code"
+                  className={INPUT_CLASS}
+                />
+                <input
+                  value={location.city || ""}
+                  onChange={(event) =>
+                    setLocation((current) => ({
+                      ...current,
+                      city: event.target.value,
+                    }))
+                  }
+                  placeholder="City (San Francisco)"
+                  aria-label="Contact city"
+                  className={INPUT_CLASS}
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Use a two-letter country code when filtering by city or state.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="contact-finder-job-titles"
+                  className="mb-1.5 block text-xs font-semibold text-zinc-400"
+                >
+                  Hiring / job title search
+                </label>
+                <input
+                  id="contact-finder-job-titles"
+                  value={jobTitles}
+                  onChange={(event) => setJobTitles(event.target.value)}
+                  placeholder="VP Sales, Head of Growth"
+                  className={INPUT_CLASS}
+                />
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Separate multiple titles with commas.
+                </p>
+              </div>
+              <label className="flex items-center gap-3 self-start pt-7 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={hiring}
+                  onChange={(event) => setHiring(event.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 accent-indigo-500"
+                />
+                Only search companies currently hiring
+              </label>
+            </div>
             <ChipGroup
               label="Email type"
               options={[
@@ -688,7 +779,8 @@ export default function ContactFinderPage() {
           </p>
           <p className="mx-auto mt-1 max-w-md text-sm text-zinc-500">
             Enter a domain like acme.com for the best results. Filter by
-            seniority or department to spend fewer searches.
+            location, hiring, seniority, department, or job title to narrow the
+            results.
           </p>
         </div>
       ) : (
