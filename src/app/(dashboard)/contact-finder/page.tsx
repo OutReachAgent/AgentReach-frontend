@@ -25,7 +25,10 @@ import {
 
 const INPUT_CLASS =
   "w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-200 outline-none focus:border-indigo-500/50";
-const PAGE_SIZE = 10;
+// Hunter accepts up to 100 people per domain-search request. Keep the UI
+// aligned with that API maximum so a result set such as 99 people loads in
+// one search instead of being artificially split into ten-row pages.
+const PAGE_SIZE = 100;
 
 const SENIORITIES: [string, string][] = [
   ["junior", "Junior"],
@@ -886,7 +889,7 @@ export default function ContactFinderPage() {
             accountQuery.isSuccess &&
             isFreePlan && (
               <p className="text-center text-xs text-zinc-500">
-                Free Hunter plans return the first 10 results only. Upgrade
+                Free Hunter plans return only the first result page. Upgrade
                 your Hunter plan to load more.
               </p>
             )}
