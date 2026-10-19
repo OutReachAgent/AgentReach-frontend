@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Zap, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import DocSidebar from './DocSidebar';
 import { pageMetadata } from '@/lib/seo';
 import AdSenseScript from '@/components/AdSenseScript';
+import { BrandMark } from '@/components/fx';
 
 export const metadata: Metadata = pageMetadata({
   title: 'Documentation — ReachConvert',
@@ -24,9 +25,7 @@ export default function DocumentationLayout({
       <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[88rem] items-center justify-between px-5 sm:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/20">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
+            <BrandMark size={36} />
             <div className="leading-tight">
               <h1 className="text-base font-bold tracking-tight text-white">ReachConvert Docs</h1>
               <p className="-mt-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
