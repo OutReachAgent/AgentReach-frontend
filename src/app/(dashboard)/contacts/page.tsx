@@ -26,11 +26,13 @@ import {
   Folder,
   FolderPlus,
   UserSearch,
+  ArrowDownUp,
 } from 'lucide-react';
 
 const DEFAULT_PAGE_SIZE = 50;
 
 type DirectoryFilter = 'all' | 'uncategorized' | string;
+type DirectorySort = 'name-asc' | 'name-desc' | 'contacts-desc' | 'contacts-asc' | 'newest' | 'oldest';
 
 const PHONE_COUNTRY_CODES = [
   { value: '+91', label: 'IN +91' },
@@ -69,6 +71,7 @@ export default function ContactsPage() {
 
   const [search, setSearch] = useState('');
   const [directorySearch, setDirectorySearch] = useState('');
+  const [directorySort, setDirectorySort] = useState<DirectorySort>('name-asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -140,6 +143,16 @@ export default function ContactsPage() {
     queryKey: ['contact-directories'],
     queryFn: api.contacts.directories.list,
   });
+
+  const directoryNameById = useMemo(() => {
+    const names = new Map<string, string>();
+    directories.forEach((directory: LooseApiResponse) => {
+      if (typeof directory.id === 'string' && typeof directory.name === 'string') {
+        names.set(directory.id, directory.name);
+      }
+    });
+    return names;
+  }, [directories]);
 
   // Mutations
   const createContactMutation = useMutation({
@@ -417,10 +430,36 @@ export default function ContactsPage() {
 
   const visibleDirectories = useMemo(() => {
     const term = directorySearch.trim().toLowerCase();
-    return [...directories]
-      .filter((directory: LooseApiResponse) => !term || directory.name.toLowerCase().includes(term))
-      .sort((a: LooseApiResponse, b: LooseApiResponse) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-  }, [directories, directorySearch]);
+    const filtered = [...directories].filter(
+      (directory: LooseApiResponse) =>
+        !term || directory.name.toLowerCase().includes(term),
+    );
+    const compareNames = (a: LooseApiResponse, b: LooseApiResponse) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    const compareCounts = (a: LooseApiResponse, b: LooseApiResponse) =>
+      Number(a.contactCount || 0) - Number(b.contactCount || 0);
+    const compareDates = (a: LooseApiResponse, b: LooseApiResponse) =>
+      new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+
+    filtered.sort((a: LooseApiResponse, b: LooseApiResponse) => {
+      switch (directorySort) {
+        case 'name-desc':
+          return compareNames(b, a);
+        case 'contacts-desc':
+          return compareCounts(b, a) || compareNames(a, b);
+        case 'contacts-asc':
+          return compareCounts(a, b) || compareNames(a, b);
+        case 'newest':
+          return compareDates(b, a) || compareNames(a, b);
+        case 'oldest':
+          return compareDates(a, b) || compareNames(a, b);
+        case 'name-asc':
+        default:
+          return compareNames(a, b);
+      }
+    });
+    return filtered;
+  }, [directories, directorySearch, directorySort]);
 
   return (
     <div className="space-y-6">
@@ -490,6 +529,26 @@ export default function ContactsPage() {
               onChange={(e) => setDirectorySearch(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-indigo-500/50"
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ArrowDownUp className="h-3.5 w-3.5 flex-shrink-0 text-zinc-500" aria-hidden="true" />
+            <label htmlFor="directory-sort" className="text-xs font-medium text-zinc-500">
+              Sort by
+            </label>
+            <select
+              id="directory-sort"
+              value={directorySort}
+              onChange={(e) => setDirectorySort(e.target.value as DirectorySort)}
+              className="min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-2 text-xs text-zinc-300 focus:border-indigo-500/50 focus:outline-none"
+            >
+              <option value="name-asc">Name (A–Z)</option>
+              <option value="name-desc">Name (Z–A)</option>
+              <option value="contacts-desc">Most contacts</option>
+              <option value="contacts-asc">Fewest contacts</option>
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
           </div>
 
           <div className="space-y-1.5">
@@ -588,19 +647,21 @@ export default function ContactsPage() {
           {/* Main Table */}
           <div className="bg-zinc-900/30 border border-zinc-850 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-auto max-h-[calc(100vh-22rem)] min-h-64">
-              <table className="w-full min-w-[860px] table-fixed text-left text-sm text-zinc-300">
+              <table className="w-full min-w-[980px] table-fixed text-left text-sm text-zinc-300">
                 <colgroup>
-                  <col className="w-[18%]" />
-                  <col className="w-[26%]" />
                   <col className="w-[16%]" />
-                  <col className="w-[18%]" />
+                  <col className="w-[23%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[7%]" />
                   <col className="w-[10%]" />
-                  <col className="w-[12%]" />
                 </colgroup>
                 <thead className="sticky top-0 z-10 text-xs text-zinc-500 uppercase border-b border-zinc-850 bg-zinc-900">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Name</th>
                     <th className="px-4 py-3 font-semibold">Email</th>
+                    <th className="px-4 py-3 font-semibold">Directory</th>
                     <th className="px-4 py-3 font-semibold">Company</th>
                     <th className="px-4 py-3 font-semibold">Role</th>
                     <th className="px-4 py-3 font-semibold">LinkedIn</th>
@@ -614,6 +675,7 @@ export default function ContactsPage() {
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-36"></div></td>
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-20"></div></td>
+                        <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-20"></div></td>
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-24"></div></td>
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-16"></div></td>
                         <td className="px-4 py-3"><div className="h-4 bg-zinc-800 rounded w-12 ml-auto"></div></td>
@@ -621,7 +683,7 @@ export default function ContactsPage() {
                     ))
                   ) : isError ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-rose-400">
+                      <td colSpan={7} className="px-6 py-12 text-center text-rose-400">
                         We could not load your contacts. Please try again in a moment.
                       </td>
                     </tr>
@@ -635,6 +697,21 @@ export default function ContactsPage() {
                         </td>
                         <td className="px-4 py-3 text-zinc-400">
                           <span className="block truncate" title={contact.email}>{contact.email}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {contact.directoryId ? (
+                            <span
+                              className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300"
+                              title={directoryNameById.get(String(contact.directoryId)) || 'Directory'}
+                            >
+                              <Folder className="h-3 w-3 flex-shrink-0" />
+                              <span className="truncate">
+                                {directoryNameById.get(String(contact.directoryId)) || 'Directory'}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-zinc-600">Unassigned</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {contact.company ? (
@@ -692,7 +769,7 @@ export default function ContactsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-zinc-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-zinc-500">
                         No contacts found. Create a manual record or upload a list file.
                       </td>
                     </tr>
