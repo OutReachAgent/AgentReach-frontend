@@ -45,9 +45,16 @@ export type AiChatThread = {
   hasPendingAction?: boolean;
   pendingAction?: {
     kind: string;
-    campaignId: string;
+    campaignId?: string;
+    matchId?: string;
+    action?: string;
     campaignName?: string;
     contactCount?: number;
+    signalTitle?: string;
+    companyName?: string;
+    contactName?: string;
+    playbookName?: string;
+    note?: string;
   } | null;
   lastMessageAt?: string | null;
   createdAt?: string;
