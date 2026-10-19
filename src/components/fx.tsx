@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
+import Image from 'next/image';
 
 /* ------------------------------------------------------------------ */
 /* TiltCard — pointer-tracked 3D tilt with a moving glare highlight.  */
@@ -126,8 +127,7 @@ export function CountUp({ value, duration = 1400, className = '' }: CountUpProps
 }
 
 /* ------------------------------------------------------------------ */
-/* BrandMark — the ReachConvert "beacon" logomark: concentric signal  */
-/* arcs radiating from a transmitting node.                           */
+/* BrandMark — the ReachConvert paper-plane logomark.                  */
 /* ------------------------------------------------------------------ */
 
 interface BrandMarkProps {
@@ -142,30 +142,19 @@ export function BrandMark({ size = 36, className = '' }: BrandMarkProps) {
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.28,
-        background:
-          'linear-gradient(140deg, var(--a-500), color-mix(in oklab, var(--a-500) 55%, var(--a2-500)))',
-        boxShadow:
-          '0 6px 18px -6px color-mix(in oklab, var(--a-500) 55%, transparent), inset 0 1px 0 rgba(255,255,255,0.25)',
+        borderRadius: size * 0.24,
       }}
       aria-hidden="true"
     >
-      <svg
-        width={size * 0.62}
-        height={size * 0.62}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="var(--on-accent)"
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      >
-        {/* beacon node */}
-        <circle cx="7.5" cy="16.5" r="2.1" fill="var(--on-accent)" stroke="none" />
-        {/* radiating arcs */}
-        <path d="M11.5 12.5a5.7 5.7 0 0 1 1.7 4" />
-        <path d="M14.4 9.6a9.8 9.8 0 0 1 2.9 6.9" />
-        <path d="M17.3 6.7a13.9 13.9 0 0 1 4.1 9.8" />
-      </svg>
+      <Image
+        src="/reachconvert-icon.png"
+        alt=""
+        width={size}
+        height={size}
+        className="h-full w-full object-contain"
+        draggable={false}
+        unoptimized
+      />
     </div>
   );
 }

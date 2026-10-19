@@ -28,6 +28,10 @@ export const metadata: Metadata = {
   title: "ReachConvert — AI Outreach Platform",
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  icons: {
+    icon: '/reachconvert-icon.png',
+    apple: '/reachconvert-icon.png',
+  },
   keywords: [
     "AI cold calling",
     "AI voice agent",
