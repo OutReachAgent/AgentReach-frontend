@@ -29,6 +29,7 @@ const INPUT_CLASS =
 // aligned with that API maximum so a result set such as 99 people loads in
 // one search instead of being artificially split into ten-row pages.
 const PAGE_SIZE = 100;
+const FREE_PLAN_PAGE_SIZE = 10;
 
 const SENIORITIES: [string, string][] = [
   ["junior", "Junior"],
@@ -492,6 +493,7 @@ export default function ContactFinderPage() {
   const isFreePlan = Boolean(
     account?.planName.trim().toLowerCase().startsWith("free"),
   );
+  const pageSize = isFreePlan ? FREE_PLAN_PAGE_SIZE : PAGE_SIZE;
   const canLoadMore =
     lastQuery !== null &&
     people.length < total &&
@@ -527,7 +529,7 @@ export default function ContactFinderPage() {
           Object.keys(cleanLocation).length > 0 ? cleanLocation : undefined,
         jobTitles: cleanJobTitles.length > 0 ? cleanJobTitles : undefined,
         hiring: hiring || undefined,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         offset: 0,
       });
     } else {
@@ -757,7 +759,7 @@ export default function ContactFinderPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-[11px] text-zinc-500">
             {mode === "company"
-              ? `Each search returns up to ${PAGE_SIZE} people and uses 1 Hunter search.`
+              ? `Each search returns up to ${pageSize} people and uses 1 Hunter search.`
               : "Uses 1 Hunter search, only when an email is found."}
           </p>
           <button

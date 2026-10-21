@@ -21,6 +21,8 @@ Contributor-facing docs for the full workspace live one level up in [`../docs`](
 - [Full architecture](../docs/ARCHITECTURE.md)
 - [Feature documentation index](../docs/FEATURES.md)
 - [Contacts](../docs/features/contacts.md)
+- [Prospect Finder](../docs/features/prospect-finder.md)
+- [Contact Finder (Hunter.io)](../docs/features/contact-finder.md)
 - [Email campaigns and templates](../docs/features/email-campaigns-and-templates.md)
 - [AI calling and realtime voice](../docs/features/ai-calling-and-realtime-voice.md)
 - [AI calling bots and RAG](../docs/features/ai-calling-bots-and-rag.md)
@@ -62,12 +64,15 @@ src/
 │   │   ├── signals/            # signal feed + review queue
 │   │   │   └── playbooks/      # automation playbooks
 │   │   ├── contacts/           # contacts + directories
+│   │   ├── prospects/          # Prospect Finder: ICP search wizard, run loop, results
+│   │   ├── contact-finder/     # Contact Finder: Hunter.io people and email lookup
 │   │   ├── email-campaigns/    # Email campaigns: templates, preview, launch, relaunch
 │   │   ├── ai-calling-bots/    # Calling Agents: personas + RAG knowledge bases
 │   │   ├── calling-campaigns/  # AI calling: voice calling campaigns
 │   │   ├── history/            # email + call history
-│   │   ├── settings/           # SES / Twilio / Gemini credentials
+│   │   ├── settings/           # SES / Twilio / Gemini / Hunter.io credentials
 │   │   └── profile/            # profile, theme, accent colour, password
+│   ├── (site)/prospect-finder/ # public marketing page for Prospect Finder
 │   ├── documentation/          # in-app docs portal (index + [slug] pages)
 │   ├── login/                  # login + password reset
 │   ├── layout.tsx              # root layout
@@ -93,12 +98,14 @@ src/
 | `/signals`           | Signal feed (funding, hiring, news, bounces) and human review queue. |
 | `/signals/playbooks` | Rules that turn signals into automatic outreach. |
 | `/contacts`          | Recruiter, company, hiring-team, and lead contacts + directories; CSV/XLSX import. |
+| `/prospects`         | **Prospect Finder** — describe an ideal customer (or list companies), run a resumable search, review scored companies and verified people, and add them to Contacts. Needs a Gemini key. |
+| `/contact-finder`    | **Contact Finder** — search a company's people through Hunter.io, find or verify a single email, and save results to Contacts. Needs a Hunter.io key; every lookup spends Hunter credits. |
 | `/email-campaigns`   | **Email Campaigns** — build/generate templates, preview, launch, and relaunch bulk email. |
 | `/ai-calling-bots`   | **Calling Agents** — create agent personas with a PDF-backed RAG knowledge base. |
 | `/calling-campaigns` | **AI Calling** — configure and run AI voice calling campaigns with live outcomes. |
 | `/scheduler`         | View and cancel future email/calling launches. |
 | `/history`           | Filterable email and call history, including replies. |
-| `/settings`          | Connect AWS SES, Twilio, and Gemini; test each connection. |
+| `/settings`          | Connect AWS SES, Twilio, Gemini, and Hunter.io; test each connection. |
 | `/profile`           | User profile, theme, accent colours, and password update. |
 | `/documentation`     | In-app documentation portal (see below). |
 
@@ -112,8 +119,9 @@ src/
   state-changing requests. Sessions are **transparently refreshed** on `401` via
   `/auth/refresh`, with request timeouts (8s default, 45s for AI calls) and friendly
   error mapping. Every backend resource has a typed method here
-  (`api.auth`, `api.contacts`, `api.emailCampaigns`, `api.signals`, `api.aiCallingBots`,
-  `api.callingCampaigns`, `api.history`, `api.analytics`, `api.settings`).
+  (`api.auth`, `api.contacts`, `api.prospects`, `api.contactFinder`,
+  `api.emailCampaigns`, `api.signals`, `api.aiCallingBots`, `api.callingCampaigns`,
+  `api.history`, `api.analytics`, `api.settings`).
 - [`src/lib/localAuth.ts`](src/lib/localAuth.ts) persists only the non-sensitive user
   profile and preferences; it does not store authentication tokens.
 - Google SSO goes through an AWS Cognito user pool. [`src/lib/cognitoAuth.ts`](src/lib/cognitoAuth.ts)
@@ -211,6 +219,8 @@ src/app/(dashboard)/layout.tsx              # authenticated shell layout
 src/app/(dashboard)/email-campaigns/page.tsx
 src/app/(dashboard)/calling-campaigns/page.tsx
 src/app/(dashboard)/signals/page.tsx
+src/app/(dashboard)/prospects/page.tsx      # Prospect Finder UI and run loop
+src/app/(dashboard)/contact-finder/page.tsx # Contact Finder UI
 src/app/documentation/[slug]/page.tsx       # renders DocPage content
 src/components/AuthGuard.tsx
 src/components/AppShell.tsx
