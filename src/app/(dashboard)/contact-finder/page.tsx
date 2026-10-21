@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -14,10 +14,15 @@ import { useOutreachStore } from "@/store/useOutreachStore";
 import { MissingCredentials } from "@/components/MissingCredentials";
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import {
+  AlertTriangle,
+  ArrowDownWideNarrow,
   BadgeCheck,
   ExternalLink,
+  History,
   Loader2,
   Search,
+  ShieldCheck,
+  SlidersHorizontal,
   UserPlus,
   UserSearch,
   X,
@@ -30,6 +35,11 @@ const INPUT_CLASS =
 // one search instead of being artificially split into ten-row pages.
 const PAGE_SIZE = 100;
 const FREE_PLAN_PAGE_SIZE = 10;
+const LOW_USAGE = 3;
+const NEW_LIST = "__new__";
+const RECENT_KEY = "reachconvert:contact-finder:recent";
+const RECENT_EVENT = "reachconvert:contact-finder-recent";
+const MAX_RECENT = 5;
 
 const SENIORITIES: [string, string][] = [
   ["junior", "Junior"],
@@ -71,9 +81,30 @@ const VERIFICATION_STYLES: Record<string, string> = {
   invalid: "bg-rose-500/10 text-rose-400",
   disposable: "bg-rose-500/10 text-rose-400",
 };
+// Addresses that would bounce and hurt the SES sending reputation.
+const RISKY_STATUSES = new Set(["invalid", "disposable"]);
+const VERIFICATION_FILTERS: [VerificationFilter, string][] = [
+  ["all", "All statuses"],
+  ["valid", "Verified"],
+  ["accept_all", "Accept-all"],
+  ["unverified", "Unverified"],
+  ["risky", "Invalid or disposable"],
+];
 
 type Names = { firstName: string; lastName: string };
 type ContactLocation = NonNullable<ContactFinderSearchParams["location"]>;
+type VerificationFilter = "all" | "valid" | "accept_all" | "unverified" | "risky";
+type RecentSearch = {
+  key: string;
+  label: string;
+  mode: "company" | "person";
+  query: ContactFinderSearchParams | null;
+  people: HunterPerson[];
+  total: number;
+  company: string;
+  domain: string;
+  pattern: string;
+};
 
 function confidenceStyle(score: number) {
   if (score >= 80) return "bg-emerald-500/10 text-emerald-400";
@@ -91,6 +122,57 @@ function toggleIn(list: string[], value: string) {
   return list.includes(value)
     ? list.filter((item) => item !== value)
     : [...list, value];
+}
+
+function labelOf(options: [string, string][], key: string) {
+  return options.find(([value]) => value === key)?.[1] || key;
+}
+
+function statusOf(person: HunterPerson, verified: Record<string, string>) {
+  return verified[person.email] || person.verificationStatus || "unknown";
+}
+
+function matchesFilter(status: string, filter: VerificationFilter) {
+  if (filter === "all") return true;
+  if (filter === "risky") return RISKY_STATUSES.has(status);
+  if (filter === "unverified") {
+    return !["valid", "accept_all"].includes(status) && !RISKY_STATUSES.has(status);
+  }
+  return status === filter;
+}
+
+// Recent results live in sessionStorage so reopening them spends no Hunter
+// searches; they are a convenience and disappear with the tab.
+function readRecent() {
+  try {
+    return window.sessionStorage.getItem(RECENT_KEY) || "[]";
+  } catch {
+    return "[]";
+  }
+}
+
+function subscribeRecent(callback: () => void) {
+  window.addEventListener(RECENT_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(RECENT_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function saveRecent(entry: RecentSearch) {
+  try {
+    const current: RecentSearch[] = JSON.parse(readRecent());
+    const next = [entry, ...current.filter((item) => item.key !== entry.key)].slice(0, MAX_RECENT);
+    window.sessionStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    return;
+  }
+  window.dispatchEvent(new Event(RECENT_EVENT));
+}
+
+function searchKey(params: ContactFinderSearchParams) {
+  return JSON.stringify({ ...params, limit: undefined, offset: undefined });
 }
 
 function ChipGroup({
@@ -112,6 +194,7 @@ function ChipGroup({
           <button
             key={key}
             type="button"
+            aria-pressed={value.includes(key)}
             onClick={() => onChange(toggleIn(value, key))}
             className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${
               value.includes(key)
@@ -138,8 +221,17 @@ function SaveToContactsModal({
 }) {
   const { showAlert } = useOutreachStore();
   const [directoryId, setDirectoryId] = useState("");
+  const [newListName, setNewListName] = useState("");
   const [overwrite, setOverwrite] = useState(false);
+  const [skipRisky, setSkipRisky] = useState(true);
   useEscapeKey(true, onClose);
+
+  const risky = people.filter((person) =>
+    RISKY_STATUSES.has(person.verificationStatus || ""),
+  );
+  const toSave = skipRisky
+    ? people.filter((person) => !RISKY_STATUSES.has(person.verificationStatus || ""))
+    : people;
 
   const { data: directories } = useQuery({
     queryKey: ["contact-directories"],
@@ -147,23 +239,33 @@ function SaveToContactsModal({
   });
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.contactFinder.save({
-        people,
-        directoryId: directoryId || undefined,
+    mutationFn: async () => {
+      let listId = directoryId;
+      if (directoryId === NEW_LIST) {
+        const created = await api.contacts.directories.create({
+          name: newListName.trim(),
+        });
+        listId = created.id;
+      }
+      return api.contactFinder.save({
+        people: toSave,
+        directoryId: listId || undefined,
         duplicateStrategy: overwrite ? "OVERWRITE" : "SKIP",
-      }),
+      });
+    },
     onSuccess: (res) => {
       showAlert(
         `${res.added} added, ${res.updated} updated, ${res.skipped} skipped.`,
         res.errors.length ? "info" : "success",
         "Contacts updated",
       );
-      onDone(people.map((person) => person.email));
+      onDone(toSave.map((person) => person.email));
     },
     onError: (err: Error) =>
       showAlert(err.message || "Could not save contacts.", "error"),
   });
+
+  const newListMissing = directoryId === NEW_LIST && !newListName.trim();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -176,7 +278,7 @@ function SaveToContactsModal({
         <div className="mb-5 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-white">
             <UserPlus className="h-5 w-5 text-indigo-400" />
-            Save {people.length} to contacts
+            Save {toSave.length} to contacts
           </h3>
           <button
             onClick={onClose}
@@ -204,8 +306,40 @@ function SaveToContactsModal({
                   </option>
                 ),
               )}
+              <option value={NEW_LIST}>+ New list…</option>
             </select>
+            {directoryId === NEW_LIST && (
+              <input
+                autoFocus
+                value={newListName}
+                onChange={(event) => setNewListName(event.target.value)}
+                placeholder="List name, e.g. Stripe hiring managers"
+                aria-label="New list name"
+                className={`${INPUT_CLASS} mt-2`}
+              />
+            )}
           </div>
+          {risky.length > 0 && (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
+              <p className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {risky.length} selected address{risky.length === 1 ? " is" : "es are"} invalid or disposable
+              </p>
+              <p className="mt-1 text-[11px] leading-5 text-zinc-400">
+                Emails to them will bounce, and bounces hurt your sending
+                reputation.
+              </p>
+              <label className="mt-2 flex items-center gap-2 text-xs text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={skipRisky}
+                  onChange={(event) => setSkipRisky(event.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 accent-indigo-500"
+                />
+                Leave them out
+              </label>
+            </div>
+          )}
           <label className="flex items-center gap-3 text-xs text-zinc-300">
             <input
               type="checkbox"
@@ -227,7 +361,7 @@ function SaveToContactsModal({
           <div className="flex justify-end">
             <button
               onClick={() => mutation.mutate()}
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || !toSave.length || newListMissing}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110 disabled:opacity-60"
             >
               {mutation.isPending && (
@@ -328,6 +462,15 @@ function PersonRow({
         )}
       </td>
       <td className="px-3 py-3">
+        {person.phoneNumber ? (
+          <a href={`tel:${person.phoneNumber}`} className="whitespace-nowrap hover:underline">
+            {person.phoneNumber}
+          </a>
+        ) : (
+          <span className="text-zinc-500">—</span>
+        )}
+      </td>
+      <td className="px-3 py-3">
         <span
           className={`rounded-md px-2 py-1 font-bold ${confidenceStyle(person.confidence)}`}
         >
@@ -387,6 +530,7 @@ export default function ContactFinderPage() {
   const [hiring, setHiring] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const [lastQuery, setLastQuery] = useState<ContactFinderSearchParams | null>(
     null,
@@ -394,10 +538,25 @@ export default function ContactFinderPage() {
   const [people, setPeople] = useState<HunterPerson[]>([]);
   const [total, setTotal] = useState(0);
   const [company, setCompany] = useState("");
+  const [domain, setDomain] = useState("");
+  const [pattern, setPattern] = useState("");
   const [names, setNames] = useState<Record<string, Names>>({});
   const [verified, setVerified] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<VerificationFilter>("all");
+  const [sortByConfidence, setSortByConfidence] = useState(false);
+  const [bulkVerify, setBulkVerify] = useState<{ done: number; total: number } | null>(null);
+
+  const recentRaw = useSyncExternalStore(subscribeRecent, readRecent, () => "[]");
+  const recent = useMemo<RecentSearch[]>(() => {
+    try {
+      const parsed = JSON.parse(recentRaw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [recentRaw]);
 
   const { data: settings } = useQuery({
     queryKey: ["settings"],
@@ -414,21 +573,37 @@ export default function ContactFinderPage() {
   const refreshAccount = () =>
     queryClient.invalidateQueries({ queryKey: ["contact-finder", "account"] });
 
+  const resetSelection = () => {
+    setPicked(new Set());
+    setNames({});
+    setVerified({});
+  };
+
   // Searches spend Hunter credits, so they run as mutations: React Query
   // never re-runs a mutation on focus or retries it on its own.
   const searchMutation = useMutation({
     mutationFn: api.contactFinder.search,
     onSuccess: (res, params) => {
       const append = (params.offset ?? 0) > 0;
-      setPeople((prev) => (append ? [...prev, ...res.people] : res.people));
+      const nextPeople = append ? [...people, ...res.people] : res.people;
+      setPeople(nextPeople);
       setTotal(res.total);
       setCompany(res.company || res.domain);
+      setDomain(res.domain);
+      setPattern(res.pattern);
       setLastQuery(params);
-      if (!append) {
-        setPicked(new Set());
-        setNames({});
-        setVerified({});
-      }
+      if (!append) resetSelection();
+      saveRecent({
+        key: searchKey(params),
+        label: params.domain || params.company || res.domain,
+        mode: "company",
+        query: params,
+        people: nextPeople,
+        total: res.total,
+        company: res.company || res.domain,
+        domain: res.domain,
+        pattern: res.pattern,
+      });
       refreshAccount();
     },
     onError: (err: Error) => {
@@ -439,15 +614,27 @@ export default function ContactFinderPage() {
 
   const findMutation = useMutation({
     mutationFn: api.contactFinder.findEmail,
-    onSuccess: (res) => {
+    onSuccess: (res, params) => {
       setLastQuery(null);
-      setPicked(new Set());
-      setNames({});
-      setVerified({});
+      resetSelection();
       setPeople(res.person ? [res.person] : []);
       setTotal(res.person ? 1 : 0);
       setCompany(res.person?.company || res.person?.domain || "");
-      if (!res.person) {
+      setDomain(res.person?.domain || "");
+      setPattern("");
+      if (res.person) {
+        saveRecent({
+          key: JSON.stringify(params),
+          label: `${params.firstName} ${params.lastName} · ${params.domain || params.company}`,
+          mode: "person",
+          query: null,
+          people: [res.person],
+          total: 1,
+          company: res.person.company || res.person.domain,
+          domain: res.person.domain,
+          pattern: "",
+        });
+      } else {
         showAlert("Hunter could not find an email for this person.", "info");
       }
       refreshAccount();
@@ -482,12 +669,27 @@ export default function ContactFinderPage() {
       firstName: person.firstName,
       lastName: person.lastName,
     };
-  const selectable = people.filter(
+  const visiblePeople = people
+    .filter((person) => matchesFilter(statusOf(person, verified), statusFilter))
+    .sort((a, b) => (sortByConfidence ? b.confidence - a.confidence : 0));
+  const selectable = visiblePeople.filter(
     (person) => !person.alreadyInContacts && namesFor(person).firstName.trim(),
   );
-  const selectedPeople = selectable.filter((person) =>
-    picked.has(person.email),
+  const safeSelectable = selectable.filter(
+    (person) => !RISKY_STATUSES.has(statusOf(person, verified)),
   );
+  const selectedPeople = people.filter(
+    (person) =>
+      picked.has(person.email) &&
+      !person.alreadyInContacts &&
+      namesFor(person).firstName.trim(),
+  );
+  const toVerify = selectedPeople.filter(
+    (person) => !verified[person.email] && person.verificationStatus !== "valid",
+  );
+  const allSafeSelected =
+    safeSelectable.length > 0 &&
+    safeSelectable.every((person) => picked.has(person.email));
   const busy = searchMutation.isPending || findMutation.isPending;
   const account = accountQuery.data;
   const isFreePlan = Boolean(
@@ -501,6 +703,30 @@ export default function ContactFinderPage() {
     accountQuery.isSuccess &&
     !isFreePlan;
 
+  const usage = account?.credits || account?.searches;
+  const outOfSearches = Boolean(usage) && (usage?.remaining ?? 1) <= 0;
+  const lowSearches = Boolean(usage) && !outOfSearches && (usage?.remaining ?? 0) <= LOW_USAGE;
+
+  const activeFilters = [
+    location.country && { key: "country", label: `Country ${location.country}`, clear: () => setLocation((current) => ({ ...current, country: "" })) },
+    location.state && { key: "state", label: `State ${location.state}`, clear: () => setLocation((current) => ({ ...current, state: "" })) },
+    location.city && { key: "city", label: location.city, clear: () => setLocation((current) => ({ ...current, city: "" })) },
+    jobTitles.trim() && { key: "titles", label: `Titles: ${jobTitles.trim()}`, clear: () => setJobTitles("") },
+    hiring && { key: "hiring", label: "Hiring now", clear: () => setHiring(false) },
+    type === "generic" && { key: "type", label: "Generic emails", clear: () => setType("personal") },
+    ...seniority.map((key) => ({ key: `seniority-${key}`, label: labelOf(SENIORITIES, key), clear: () => setSeniority((list) => list.filter((item) => item !== key)) })),
+    ...department.map((key) => ({ key: `department-${key}`, label: labelOf(DEPARTMENTS, key), clear: () => setDepartment((list) => list.filter((item) => item !== key)) })),
+  ].filter((item): item is { key: string; label: string; clear: () => void } => Boolean(item));
+
+  const clearFilters = () => {
+    setLocation({});
+    setJobTitles("");
+    setHiring(false);
+    setType("personal");
+    setSeniority([]);
+    setDepartment([]);
+  };
+
   const togglePicked = (email: string) =>
     setPicked((prev) => {
       const next = new Set(prev);
@@ -511,7 +737,7 @@ export default function ContactFinderPage() {
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!target.trim()) return;
+    if (!target.trim() || outOfSearches) return;
     if (mode === "company") {
       const cleanLocation = Object.fromEntries(
         Object.entries(location).filter(([, value]) => value?.trim()),
@@ -547,6 +773,34 @@ export default function ContactFinderPage() {
     searchMutation.mutate({ ...lastQuery, offset: people.length });
   };
 
+  const restoreRecent = (entry: RecentSearch) => {
+    setPeople(entry.people);
+    setTotal(entry.total);
+    setCompany(entry.company);
+    setDomain(entry.domain);
+    setPattern(entry.pattern);
+    setLastQuery(entry.query);
+    resetSelection();
+    if (entry.query) setTarget(entry.query.domain || entry.query.company || "");
+  };
+
+  const verifySelected = async () => {
+    if (!toVerify.length) return;
+    setBulkVerify({ done: 0, total: toVerify.length });
+    for (const [index, person] of toVerify.entries()) {
+      try {
+        const res = await api.contactFinder.verify(person.email);
+        setVerified((prev) => ({ ...prev, [person.email]: res.status }));
+      } catch (err) {
+        showAlert(err instanceof Error ? err.message : "Verification failed.", "error");
+        break;
+      }
+      setBulkVerify({ done: index + 1, total: toVerify.length });
+    }
+    setBulkVerify(null);
+    refreshAccount();
+  };
+
   const toSave = (person: HunterPerson): ContactFinderSavePerson => {
     const personNames = namesFor(person);
     return {
@@ -564,8 +818,6 @@ export default function ContactFinderPage() {
     };
   };
 
-  const usage = account?.credits || account?.searches;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 border-b border-zinc-900 pb-5 sm:flex-row sm:items-center sm:justify-between">
@@ -579,43 +831,92 @@ export default function ContactFinderPage() {
             then save the ones you want to Contacts.
           </p>
         </div>
-        {usage && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-2.5 text-xs text-zinc-400">
-            <span className="font-bold text-white">{usage.remaining}</span> of{" "}
-            {usage.available} {account?.credits ? "credits" : "searches"} left
-            {account?.resetDate && (
-              <span className="block text-[11px] text-zinc-500">
-                {account.planName} plan · resets {account.resetDate}
-              </span>
-            )}
+        {usage && account && (
+          <div
+            className={`rounded-xl border px-4 py-2.5 text-xs text-zinc-400 ${
+              outOfSearches
+                ? "border-rose-500/30 bg-rose-500/5"
+                : lowSearches
+                  ? "border-amber-500/30 bg-amber-500/5"
+                  : "border-zinc-800 bg-zinc-950/60"
+            }`}
+          >
+            <p>
+              <span className="font-bold text-white">{usage.remaining}</span> of{" "}
+              {usage.available} {account.credits ? "credits" : "searches"} left
+              {account.verifications && (
+                <>
+                  {" · "}
+                  <span className="font-bold text-white">
+                    {account.verifications.remaining}
+                  </span>{" "}
+                  verifications
+                </>
+              )}
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              {account.planName} plan
+              {account.resetDate ? ` · resets ${account.resetDate}` : ""}
+              {lowSearches ? " · running low" : ""}
+            </p>
           </div>
         )}
       </div>
+
+      {outOfSearches && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/5 p-4 text-sm text-rose-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+          <p>
+            No Hunter searches left on your {account?.planName} plan
+            {account?.resetDate ? ` until ${account.resetDate}` : ""}. You can
+            still reopen recent results below without spending a search.
+          </p>
+        </div>
+      )}
 
       <form
         onSubmit={submit}
         className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-5"
       >
-        <div className="flex gap-2">
-          {(
-            [
-              ["company", "Search a company"],
-              ["person", "Find one person"],
-            ] as const
-          ).map(([value, label]) => (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-xl border border-zinc-800 p-1">
+            {(
+              [
+                ["company", "Search a company"],
+                ["person", "Find one person"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                onClick={() => setMode(value)}
+                className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${
+                  mode === value
+                    ? "bg-indigo-500/15 text-indigo-200"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {mode === "company" && (
             <button
-              key={value}
               type="button"
-              onClick={() => setMode(value)}
-              className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
-                mode === value
-                  ? "bg-indigo-500/10 text-indigo-200"
-                  : "text-zinc-500 hover:bg-zinc-900"
-              }`}
+              onClick={() => setShowFilters((current) => !current)}
+              aria-expanded={showFilters}
+              className="flex items-center gap-2 rounded-lg border border-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-900"
             >
-              {label}
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              {showFilters ? "Hide filters" : "More filters"}
+              {activeFilters.length > 0 && (
+                <span className="rounded-md bg-indigo-500/20 px-1.5 text-[10px] text-indigo-200">
+                  {activeFilters.length}
+                </span>
+              )}
             </button>
-          ))}
+          )}
         </div>
 
         <div
@@ -648,8 +949,36 @@ export default function ContactFinderPage() {
           />
         </div>
 
-        {mode === "company" && (
-          <div className="space-y-3">
+        {mode === "company" && !showFilters && activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {activeFilters.map((filter) => (
+              <span
+                key={filter.key}
+                className="flex items-center gap-1 rounded-lg border border-indigo-500/30 bg-indigo-500/10 py-1 pl-2.5 pr-1 text-xs font-semibold text-indigo-200"
+              >
+                {filter.label}
+                <button
+                  type="button"
+                  onClick={filter.clear}
+                  aria-label={`Remove ${filter.label}`}
+                  className="rounded p-0.5 hover:bg-indigo-500/20"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="px-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-300"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
+        {mode === "company" && showFilters && (
+          <div className="space-y-4 border-t border-zinc-900 pt-4">
             <div>
               <p className="mb-1.5 text-xs font-semibold text-zinc-400">
                 Contact location
@@ -726,21 +1055,33 @@ export default function ContactFinderPage() {
                 Only search companies currently hiring
               </label>
             </div>
-            <ChipGroup
-              label="Email type"
-              options={[
-                ["personal", "People"],
-                ["generic", "Generic (info@, sales@)"],
-              ]}
-              value={[type]}
-              onChange={(value) =>
-                setType(
-                  value.includes("generic") && type !== "generic"
-                    ? "generic"
-                    : "personal",
-                )
-              }
-            />
+            <div>
+              <p className="mb-1.5 text-xs font-semibold text-zinc-400">
+                Email type
+              </p>
+              <div className="inline-flex rounded-lg border border-zinc-800 p-0.5">
+                {(
+                  [
+                    ["personal", "People"],
+                    ["generic", "Generic (info@, sales@)"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={type === value}
+                    onClick={() => setType(value)}
+                    className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                      type === value
+                        ? "bg-indigo-500/15 text-indigo-200"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ChipGroup
               label="Seniority"
               options={SENIORITIES}
@@ -766,6 +1107,7 @@ export default function ContactFinderPage() {
             type="submit"
             disabled={
               busy ||
+              outOfSearches ||
               !target.trim() ||
               (mode === "person" && (!firstName.trim() || !lastName.trim()))
             }
@@ -780,6 +1122,25 @@ export default function ContactFinderPage() {
           </button>
         </div>
       </form>
+
+      {recent.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1.5 pr-1 text-xs font-semibold text-zinc-500">
+            <History className="h-3.5 w-3.5" /> Recent
+          </span>
+          {recent.map((entry) => (
+            <button
+              key={entry.key}
+              onClick={() => restoreRecent(entry)}
+              title="Reopen these results without spending a Hunter search"
+              className="rounded-lg border border-zinc-800 px-2.5 py-1 text-xs text-zinc-300 hover:border-indigo-500/40 hover:bg-zinc-900"
+            >
+              {entry.label}
+              <span className="ml-1.5 text-zinc-500">{entry.people.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {people.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-zinc-800 p-10 text-center">
@@ -797,28 +1158,77 @@ export default function ContactFinderPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-zinc-400">
-              <span className="font-semibold text-white">{people.length}</span>
-              {total > people.length ? ` of ${total}` : ""} people
-              {company ? ` at ${company}` : ""}
-            </p>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-sm text-zinc-400">
+                <span className="font-semibold text-white">{people.length}</span>
+                {total > people.length ? ` of ${total}` : ""} people
+                {company ? ` at ${company}` : ""}
+              </p>
+              {pattern && domain && (
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Email format at this company:{" "}
+                  <span className="font-semibold text-zinc-300">
+                    {pattern}@{domain}
+                  </span>
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as VerificationFilter)
+                }
+                aria-label="Filter by verification status"
+                className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-300 outline-none focus:border-indigo-500/50"
+              >
+                {VERIFICATION_FILTERS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSortByConfidence((current) => !current)}
+                aria-pressed={sortByConfidence}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
+                  sortByConfidence
+                    ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
+                    : "border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+                Highest confidence
+              </button>
               <button
                 onClick={() =>
                   setPicked(
-                    selectedPeople.length === selectable.length
+                    allSafeSelected
                       ? new Set()
-                      : new Set(selectable.map((person) => person.email)),
+                      : new Set(safeSelectable.map((person) => person.email)),
                   )
                 }
-                disabled={selectable.length === 0}
-                className="text-xs font-semibold text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
+                disabled={safeSelectable.length === 0}
+                title="Selects everyone shown except invalid or disposable addresses"
+                className="px-1 text-xs font-semibold text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
               >
-                {selectedPeople.length === selectable.length &&
-                selectable.length > 0
-                  ? "Clear"
-                  : "Select all"}
+                {allSafeSelected ? "Clear" : "Select all"}
+              </button>
+              <button
+                onClick={() => void verifySelected()}
+                disabled={!toVerify.length || Boolean(bulkVerify)}
+                title={`Uses ${toVerify.length} Hunter verification${toVerify.length === 1 ? "" : "s"}`}
+                className="flex items-center gap-1.5 rounded-xl border border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-900 disabled:opacity-50"
+              >
+                {bulkVerify ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                )}
+                {bulkVerify
+                  ? `Verifying ${bulkVerify.done + 1} of ${bulkVerify.total}`
+                  : `Verify ${toVerify.length || ""}`}
               </button>
               <button
                 onClick={() => setSaving(true)}
@@ -845,6 +1255,7 @@ export default function ContactFinderPage() {
                   <th className="w-10 px-3 py-2" />
                   <th className="px-3 py-2">Person</th>
                   <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Phone</th>
                   <th className="px-3 py-2">Confidence</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Department</th>
@@ -852,7 +1263,7 @@ export default function ContactFinderPage() {
                 </tr>
               </thead>
               <tbody>
-                {people.map((person) => (
+                {visiblePeople.map((person) => (
                   <PersonRow
                     key={person.email}
                     person={person}
@@ -870,6 +1281,13 @@ export default function ContactFinderPage() {
                     }
                   />
                 ))}
+                {visiblePeople.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-6 text-center text-xs text-zinc-500">
+                      Nobody matches this status filter.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -878,7 +1296,8 @@ export default function ContactFinderPage() {
             <div className="flex justify-center">
               <button
                 onClick={loadMore}
-                className="flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-900"
+                disabled={outOfSearches}
+                className="flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-900 disabled:opacity-50"
               >
                 <BadgeCheck className="h-3.5 w-3.5" />
                 Load {Math.min(PAGE_SIZE, total - people.length)} more (1

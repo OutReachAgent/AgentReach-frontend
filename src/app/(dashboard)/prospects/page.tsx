@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
 import type { LooseApiResponse } from "@/lib/api";
@@ -25,6 +26,7 @@ import {
   Telescope,
   Trash2,
   UserPlus,
+  UserSearch,
   X,
 } from "lucide-react";
 
@@ -103,6 +105,8 @@ type Person = {
   reasons: string[];
   status: string;
 };
+
+type HunterSuggestion = { email: string; confidence: number; status: string };
 
 type Estimate = { companies: number; costUsd: { min: number; max: number } };
 type PeopleFilter =
@@ -927,6 +931,9 @@ function PersonRow({
   busy,
   showMatch,
   pattern,
+  hunterResult,
+  onFindEmail,
+  finding,
 }: {
   person: Person;
   showMatch: boolean;
@@ -936,6 +943,10 @@ function PersonRow({
   onSaveEmail: (email: string) => void;
   onAction: (action: "dismissed" | "restore") => void;
   busy: boolean;
+  /** undefined: not looked up yet; null: Hunter found nothing. */
+  hunterResult?: HunterSuggestion | null;
+  onFindEmail?: () => void;
+  finding?: boolean;
 }) {
   const [email, setEmail] = useState("");
   return (
@@ -995,6 +1006,45 @@ function PersonRow({
                 {formatPattern(pattern, person.domain)}
               </p>
             )}
+            {onFindEmail &&
+              (hunterResult ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="text-zinc-400">
+                    Hunter:{" "}
+                    <span className="font-semibold text-zinc-200">
+                      {hunterResult.email}
+                    </span>{" "}
+                    · {hunterResult.confidence}%
+                    {hunterResult.status === "valid" ? " · verified" : ""}
+                  </span>
+                  <button
+                    onClick={() => onSaveEmail(hunterResult.email)}
+                    disabled={busy}
+                    className="font-semibold text-indigo-400 hover:underline disabled:opacity-50"
+                  >
+                    Use this email
+                  </button>
+                </div>
+              ) : hunterResult === null ? (
+                <p className="mt-1.5 text-[11px] text-zinc-500">
+                  Hunter has no email for this person.
+                </p>
+              ) : (
+                <button
+                  onClick={onFindEmail}
+                  disabled={finding}
+                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-400 hover:underline disabled:opacity-50"
+                >
+                  {finding ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <UserSearch className="h-3 w-3" />
+                  )}
+                  {finding
+                    ? "Searching Hunter…"
+                    : "Find with Hunter (1 search if found)"}
+                </button>
+              ))}
           </div>
         ) : (
           <span className="text-zinc-500">—</span>
@@ -1062,10 +1112,21 @@ function PersonRow({
   );
 }
 
-export default function ProspectsPage() {
+function ProspectsPage() {
   const queryClient = useQueryClient();
   const { showAlert } = useOutreachStore();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // ?search=<id> (from Scout) opens that search, including when it changes
+  // while this page is already open.
+  const searchParam = useSearchParams().get("search");
+  const [selectedId, setSelectedId] = useState<string | null>(searchParam);
+  const [openedParam, setOpenedParam] = useState(searchParam);
+  if (searchParam !== openedParam) {
+    setOpenedParam(searchParam);
+    if (searchParam) setSelectedId(searchParam);
+  }
+  const [hunterResults, setHunterResults] = useState<
+    Record<string, HunterSuggestion | null>
+  >({});
   const [showWizard, setShowWizard] = useState(false);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [tab, setTab] = useState<"companies" | "people">("people");
@@ -1202,6 +1263,31 @@ export default function ProspectsPage() {
     onSuccess: refresh,
     onError: (err: Error) =>
       showAlert(err.message || "Could not update.", "error"),
+  });
+
+  const hasHunterKey = Boolean(settings?.hunterApiKey);
+  const hunterMutation = useMutation({
+    mutationFn: (person: Person) =>
+      api.contactFinder.findEmail({
+        domain: person.domain,
+        firstName: person.firstName,
+        lastName: person.lastName,
+      }),
+    onSuccess: (res, person) => {
+      setHunterResults((current) => ({
+        ...current,
+        [person.id]: res.person
+          ? {
+              email: res.person.email,
+              confidence: res.person.confidence,
+              status: res.person.verificationStatus,
+            }
+          : null,
+      }));
+      queryClient.invalidateQueries({ queryKey: ["contact-finder", "account"] });
+    },
+    onError: (err: Error) =>
+      showAlert(err.message || "Hunter lookup failed.", "error"),
   });
 
   const patternByCompany = useMemo(
@@ -1533,6 +1619,16 @@ export default function ProspectsPage() {
                               data: { action },
                             })
                           }
+                          hunterResult={hunterResults[person.id]}
+                          onFindEmail={
+                            hasHunterKey
+                              ? () => hunterMutation.mutate(person)
+                              : undefined
+                          }
+                          finding={
+                            hunterMutation.isPending &&
+                            hunterMutation.variables?.id === person.id
+                          }
                         />
                       ))}
                     </tbody>
@@ -1618,5 +1714,19 @@ export default function ProspectsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ProspectsRoute() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-20 text-zinc-500">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      }
+    >
+      <ProspectsPage />
+    </Suspense>
   );
 }

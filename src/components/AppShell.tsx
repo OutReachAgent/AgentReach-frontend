@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Alert from '@/components/Alert';
+import AssistantLauncher from '@/components/assistant/AssistantLauncher';
 import { BrandMark } from '@/components/fx';
 import { lockBodyScroll } from '@/lib/scrollLock';
 
@@ -100,6 +101,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <Alert />
+      <AssistantLauncher />
     </div>
   );
 }

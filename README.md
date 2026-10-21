@@ -78,6 +78,7 @@ src/
 │   ├── layout.tsx              # root layout
 │   └── providers.tsx           # React Query + global providers
 ├── components/                 # AppShell, Sidebar, AuthGuard, Alert, Loader, fx…
+│   └── assistant/              # Scout: floating launcher, chat, result cards, Markdown
 ├── lib/
 │   ├── api.ts                  # typed fetch client (auth, refresh, all endpoints)
 │   ├── localAuth.ts            # token/session persistence
@@ -99,6 +100,7 @@ src/
 | `/signals/playbooks` | Rules that turn signals into automatic outreach. |
 | `/contacts`          | Recruiter, company, hiring-team, and lead contacts + directories; CSV/XLSX import. |
 | `/prospects`         | **Prospect Finder** — describe an ideal customer (or list companies), run a resumable search, review scored companies and verified people, and add them to Contacts. Needs a Gemini key. |
+| `/ai-command-center` | **Scout** full view — the outreach assistant, also opened from the floating button in the bottom-right corner of every dashboard page. Needs a Gemini key. |
 | `/contact-finder`    | **Contact Finder** — search a company's people through Hunter.io, find or verify a single email, and save results to Contacts. Needs a Hunter.io key; every lookup spends Hunter credits. |
 | `/email-campaigns`   | **Email Campaigns** — build/generate templates, preview, launch, and relaunch bulk email. |
 | `/ai-calling-bots`   | **Calling Agents** — create agent personas with a PDF-backed RAG knowledge base. |
@@ -221,6 +223,8 @@ src/app/(dashboard)/calling-campaigns/page.tsx
 src/app/(dashboard)/signals/page.tsx
 src/app/(dashboard)/prospects/page.tsx      # Prospect Finder UI and run loop
 src/app/(dashboard)/contact-finder/page.tsx # Contact Finder UI
+src/components/assistant/AssistantLauncher.tsx # floating Scout button and panel
+src/components/assistant/AssistantChat.tsx  # Scout conversation UI (page and panel)
 src/app/documentation/[slug]/page.tsx       # renders DocPage content
 src/components/AuthGuard.tsx
 src/components/AppShell.tsx

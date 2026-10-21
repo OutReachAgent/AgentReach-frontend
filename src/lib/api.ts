@@ -44,6 +44,7 @@ export type AiChatThread = {
   status: string;
   hasPendingAction?: boolean;
   pendingAction?: {
+    id?: string;
     kind: string;
     campaignId?: string;
     matchId?: string;
@@ -79,7 +80,7 @@ export type AiChatModels = {
   }>;
 };
 export type AiChatStreamEvent = {
-  type: 'start' | 'status' | 'tool_start' | 'tool_result' | 'delta' | 'done' | 'error';
+  type: 'start' | 'status' | 'tool_start' | 'tool_result' | 'delta' | 'reset' | 'done' | 'error';
   data: Record<string, unknown>;
 };
 type AuthProfileUpdate = {
@@ -560,8 +561,9 @@ async function fetchBackend(
         signal: controller.signal,
       });
     } finally {
+      // The caller's signal stays attached so it can still cancel a body
+      // that streams after the headers arrive (AI chat Stop).
       window.clearTimeout(timeoutId);
-      externalSignal?.removeEventListener('abort', abortFromCaller);
     }
   };
 
