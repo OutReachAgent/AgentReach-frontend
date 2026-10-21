@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Sparkles, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import AssistantChat, { ASSISTANT_NAME } from './AssistantChat';
+import { ScoutLogo } from './ScoutLogo';
 import type { AssistantChatState } from './AssistantChat';
 
 const FULL_VIEW_PATH = '/ai-command-center';
@@ -47,7 +48,7 @@ export default function AssistantLauncher() {
           role="dialog"
           aria-label={ASSISTANT_NAME}
           inert={!visible}
-          className={`fixed inset-0 z-50 flex flex-col overflow-hidden border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/50 transition duration-200 ease-out sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[min(720px,calc(100dvh-8rem))] sm:w-[440px] sm:rounded-2xl sm:border ${
+          className={`fixed inset-0 z-50 flex flex-col overflow-hidden border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/50 transition duration-200 ease-out sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[min(720px,calc(100dvh-8rem))] sm:w-110 sm:rounded-2xl sm:border ${
             visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
           }`}
         >
@@ -71,7 +72,7 @@ export default function AssistantLauncher() {
               visible ? 'max-sm:hidden' : ''
             }`}
           >
-            {visible ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+            {visible ? <X className="h-6 w-6" /> : <ScoutLogo tile={false} className="h-9 w-9" />}
             {attention && (
               <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />

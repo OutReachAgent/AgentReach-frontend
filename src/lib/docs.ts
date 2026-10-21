@@ -1198,6 +1198,68 @@ export const DOC_PAGES: DocPage[] = [
     related: ['architecture-signals', 'contacts', 'email-campaigns', 'dashboard'],
   },
   {
+    slug: 'scout',
+    title: 'Scout, the outreach assistant',
+    seoTitle: 'Scout: AI Outreach Assistant for Contacts, Signals and Campaigns',
+    tagline: 'Ask in plain language to find contacts, read Signals, and draft campaigns you approve.',
+    icon: 'bot',
+    category: 'Core features',
+    audience: 'Anyone running outreach in ReachConvert',
+    prerequisites: [
+      'A Gemini API key saved in Settings.',
+      'A Hunter.io API key in Settings if you want Scout to find contacts.',
+    ],
+    lastReviewed: 'October 2026',
+    intro: [
+      'Scout is the assistant built into ReachConvert. Open it from the round Scout button in the bottom-right corner of any page, ask for what you need, and it works across your contacts, Signals, inbox, campaigns and metrics.',
+      'Scout can research and prepare, but it never sends anything on its own. Campaigns and Signal actions are shown as a preview first and launch only when you confirm that exact preview.',
+    ],
+    sections: [
+      {
+        heading: 'Open Scout',
+        steps: [
+          'Click the Scout button in the bottom-right corner of any dashboard page. The panel stays open as you move between pages.',
+          'Type a request, or pick one of the suggestions, and press Enter.',
+          'Use the expand button for the full-page view with your conversation history, or the history button to switch conversations in the panel.',
+          'A dot on the Scout button means it is still working or waiting for your confirmation.',
+        ],
+      },
+      {
+        heading: 'What Scout can do',
+        capabilities: [
+          { title: 'Find contacts', text: 'Search a company for people with Contact Finder (Hunter.io) and save the ones you pick, optionally to a new list.' },
+          { title: 'Find hiring companies', text: 'Run a Prospect Finder search from a description and add the verified people it finds.' },
+          { title: 'Read Signals', text: 'Summarize recent buying signals and the review queue, and prepare a Signal action for you to approve.' },
+          { title: 'Check your workspace', text: 'Answer questions about metrics, campaigns, scheduled launches, inbox replies and history.' },
+          { title: 'Draft campaigns', text: 'Write an email or calling campaign for chosen contacts and show the preview before anything launches.' },
+        ],
+      },
+      {
+        heading: 'You stay in control',
+        body: [
+          'Results appear as cards. Found contacts can be selected and saved straight from the card, and invalid or disposable addresses are left unselected because they would bounce.',
+          'Scout can only save people that a finder actually returned in the same conversation, so it never saves an address it made up.',
+        ],
+        callouts: [
+          { tone: 'info', title: 'Nothing launches without you', text: 'A launch waits for Confirm launch on the preview card. Cancel removes the draft campaign if it was never launched.' },
+          { tone: 'tip', title: 'Credits are capped per answer', text: 'One answer runs at most 3 Hunter searches and 1 Prospect Finder search, and every step that spends credits says so while it runs. Stop ends the work immediately.' },
+        ],
+      },
+      {
+        heading: 'Research depth',
+        body: [
+          'Fast answers simple lookups in a couple of steps, Balanced handles normal multi-step work, and Deep allows longer research. Deeper settings use more of your Gemini quota.',
+        ],
+      },
+    ],
+    tips: [
+      'Be specific: “Find HR leaders at razorpay.com and save them to a list called Razorpay HR” works in one request.',
+      'Ask Scout to explain any failed step; it reports the reason, such as a missing key or no Hunter searches left.',
+      'Open a Prospect Finder search from Scout’s card to resume a search that paused.',
+    ],
+    related: ['prospect-finder', 'contacts', 'signals', 'email-campaigns', 'settings'],
+  },
+  {
     slug: 'prospect-finder',
     title: 'Prospect Finder',
     tagline: 'Describe your ideal customer and add verified matches to Contacts.',

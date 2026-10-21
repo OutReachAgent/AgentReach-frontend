@@ -12,6 +12,7 @@ const FOOTER_GROUPS = [
       { label: 'Calling automation', href: '/calling-automation' },
       { label: 'Email automation', href: '/email-automation' },
       { label: 'Outreach automation', href: '/outreach-automation' },
+      { label: 'Scout AI assistant', href: '/scout' },
     ],
   },
   {

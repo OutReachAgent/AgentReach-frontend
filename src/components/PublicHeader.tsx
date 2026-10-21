@@ -9,6 +9,7 @@ import { Brand } from '@/components/fx';
 const PRODUCT_LINKS = [
   { label: 'AI calling', href: '/ai-calling' },
   { label: 'Email automation', href: '/email-automation' },
+  { label: 'Scout', href: '/scout' },
 ];
 
 const EXPLORE_LINKS = [

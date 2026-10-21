@@ -23,6 +23,7 @@ Contributor-facing docs for the full workspace live one level up in [`../docs`](
 - [Contacts](../docs/features/contacts.md)
 - [Prospect Finder](../docs/features/prospect-finder.md)
 - [Contact Finder (Hunter.io)](../docs/features/contact-finder.md)
+- [Scout, the outreach assistant](../docs/features/scout.md)
 - [Email campaigns and templates](../docs/features/email-campaigns-and-templates.md)
 - [AI calling and realtime voice](../docs/features/ai-calling-and-realtime-voice.md)
 - [AI calling bots and RAG](../docs/features/ai-calling-bots-and-rag.md)
@@ -110,6 +111,31 @@ src/
 | `/settings`          | Connect AWS SES, Twilio, Gemini, and Hunter.io; test each connection. |
 | `/profile`           | User profile, theme, accent colours, and password update. |
 | `/documentation`     | In-app documentation portal (see below). |
+
+---
+
+## Scout, the outreach assistant
+
+<img src="public/scout-logo.svg" alt="Scout logo" width="72" height="72" />
+
+**Scout** is the AI assistant inside the dashboard. A round button in the
+bottom-right corner of every dashboard page opens it as a panel, and
+`/ai-command-center` shows the full view with conversation history. Scout finds
+contacts (Contact Finder) and hiring companies (Prospect Finder), reads Signals,
+the inbox and metrics, and drafts email or calling campaigns that launch only
+after the user confirms the preview.
+
+| Piece | File |
+| --- | --- |
+| Floating button and panel | [`src/components/assistant/AssistantLauncher.tsx`](src/components/assistant/AssistantLauncher.tsx) |
+| Conversation UI (page and panel) | [`src/components/assistant/AssistantChat.tsx`](src/components/assistant/AssistantChat.tsx) |
+| Result cards (contacts, prospects, campaigns, Signals) | [`src/components/assistant/AssistantCards.tsx`](src/components/assistant/AssistantCards.tsx) |
+| Markdown answers | [`src/components/assistant/AssistantMarkdown.tsx`](src/components/assistant/AssistantMarkdown.tsx) |
+| Logo component / static logo | [`src/components/assistant/ScoutLogo.tsx`](src/components/assistant/ScoutLogo.tsx), [`public/scout-logo.svg`](public/scout-logo.svg) |
+| Public product page | [`src/app/(site)/scout/page.tsx`](src/app/(site)/scout/page.tsx) (`/scout`) |
+
+The backend side is `src/ai-chat` in the backend repo; see
+[Scout architecture](../docs/features/scout.md).
 
 ---
 

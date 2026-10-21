@@ -23,7 +23,6 @@ import {
   Search,
   Send,
   ShieldCheck,
-  Sparkles,
   Square,
   Telescope,
   Trash2,
@@ -34,6 +33,7 @@ import { api, streamAiChatMessage } from '@/lib/api';
 import type { AiChatMessage, AiChatReasoningEffort, AiChatStreamEvent, AiChatThread } from '@/lib/api';
 import { AssistantMarkdown } from './AssistantMarkdown';
 import { ToolArtifact, asRecord, describeTool } from './AssistantCards';
+import { ScoutLogo } from './ScoutLogo';
 
 export const ASSISTANT_NAME = 'Scout';
 export const ASSISTANT_TAGLINE = 'Your outreach assistant';
@@ -87,12 +87,7 @@ function isSmallScreen() {
 
 export function ScoutAvatar({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const box = size === 'lg' ? 'h-14 w-14 rounded-2xl' : size === 'md' ? 'h-9 w-9 rounded-xl' : 'h-7 w-7 rounded-lg';
-  const icon = size === 'lg' ? 'h-7 w-7' : size === 'md' ? 'h-4 w-4' : 'h-3.5 w-3.5';
-  return (
-    <div className={`${box} flex flex-none items-center justify-center bg-gradient-to-tr from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25`}>
-      <Sparkles className={icon} />
-    </div>
-  );
+  return <ScoutLogo className={`${box} flex-none shadow-lg shadow-indigo-500/25`} />;
 }
 
 /**
@@ -546,7 +541,7 @@ export default function AssistantChat({
       className={
         panel
           ? 'relative flex h-full min-h-0 overflow-hidden bg-zinc-950'
-          : 'relative flex h-[calc(100dvh-6.5rem)] min-h-[30rem] overflow-hidden rounded-2xl border border-zinc-850 bg-zinc-950/60 shadow-2xl sm:h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-4rem)]'
+          : 'relative flex h-[calc(100dvh-6.5rem)] min-h-120 overflow-hidden rounded-2xl border border-zinc-850 bg-zinc-950/60 shadow-2xl sm:h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-4rem)]'
       }
     >
       {panel ? (
@@ -835,7 +830,7 @@ function MessageRow({ message, copied, onCopy }: { message: AiChatMessage; copie
   if (message.role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-indigo-500 px-4 py-2.5 text-sm leading-6 text-white shadow-lg shadow-indigo-500/10">
+        <div className="max-w-[85%] whitespace-pre-wrap wrap-break-word rounded-2xl rounded-br-md bg-indigo-500 px-4 py-2.5 text-sm leading-6 text-white shadow-lg shadow-indigo-500/10">
           {message.content}
         </div>
       </div>
