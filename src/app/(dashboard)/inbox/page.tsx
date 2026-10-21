@@ -308,7 +308,7 @@ function Mailbox() {
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[190px_minmax(0,340px)_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[200px_minmax(0,400px)_minmax(0,1fr)]">
         {/* Folders */}
         <nav className={`${threadId ? "hidden lg:block" : ""} space-y-3`}>
           <button
