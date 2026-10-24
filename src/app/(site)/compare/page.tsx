@@ -3,12 +3,11 @@ import Link from 'next/link';
 import { ArrowRight, Check, CircleMinus, Layers, Scale } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import { pageMetadata } from '@/lib/seo';
-import { REPOS } from '@/lib/site';
 
 export const metadata: Metadata = pageMetadata({
-  title: 'ReachConvert vs. a Multi-Tool Outreach Stack — Open-Source Alternative',
+  title: 'ReachConvert vs. a Multi-Tool Outreach Stack — All-in-One Alternative',
   description:
-    'Compare ReachConvert with the usual stack of a cold email tool, an AI voice agent platform, and a sales intent tool. See what one open-source workspace replaces, and where it does not fit.',
+    'Compare ReachConvert with the usual stack of a cold email tool, an AI voice agent platform, and a sales intent tool. See what one workspace replaces, and where it does not fit.',
   path: '/compare',
 });
 
@@ -42,12 +41,12 @@ const ROWS = [
   },
   {
     need: 'Cost model',
-    reach: 'Free and open source (AGPL-3.0). You pay Twilio, AWS, and Google directly for what you use.',
+    reach: 'Free to use. You pay Twilio, AWS, and Google directly for what you use.',
     stack: 'Several subscriptions, often with per-seat pricing and usage limits.',
   },
   {
     need: 'Data ownership',
-    reach: 'Self-host it and your contacts, templates, and call recordings stay in your own database.',
+    reach: 'Your contacts, templates, and call recordings are private to your account, in one place.',
     stack: 'Data spread across several vendors’ clouds.',
   },
 ];
@@ -55,7 +54,6 @@ const ROWS = [
 const GOOD_FIT = [
   'You want email and AI calling in one place without paying for several tools.',
   'You are comfortable creating Twilio, AWS SES, and Gemini accounts and pasting in API keys.',
-  'You want to self-host, read the code, or change how it works.',
   'You target a defined list of companies and want to reach out when something changes there.',
 ];
 
@@ -68,11 +66,7 @@ const NOT_A_FIT = [
 const FAQ = [
   {
     q: 'Is ReachConvert really free?',
-    a: 'Yes. The software is free and open source under the AGPL-3.0. Sending email and placing calls uses your own Amazon SES, Twilio, and Gemini accounts, which bill you directly for what you use.',
-  },
-  {
-    q: 'Can I self-host ReachConvert?',
-    a: 'Yes. It is a Next.js frontend and a NestJS backend with MongoDB. The contribute page has the local setup steps, and both repositories are on GitHub.',
+    a: 'Yes. ReachConvert is free to use. Sending email and placing calls uses your own Amazon SES, Twilio, and Gemini accounts, which bill you directly for what you use.',
   },
   {
     q: 'Do I need all three providers?',
@@ -206,14 +200,6 @@ export default function ComparePage() {
           <Link href="/documentation/automate-cold-calls-with-ai" className="sig-btn-ghost justify-center">
             Read the AI calling guide
           </Link>
-          <a
-            href={REPOS.frontend.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="sig-btn-ghost justify-center"
-          >
-            View on GitHub
-          </a>
         </div>
       </Reveal>
     </div>

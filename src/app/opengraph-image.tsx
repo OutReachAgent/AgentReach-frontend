@@ -49,7 +49,7 @@ export default function OpengraphImage() {
             AI cold calling + personalized email, in one workspace
           </div>
           <div style={{ fontSize: 30, color: '#9fb0b8' }}>
-            Open source · Signal-triggered campaigns · Real-time analytics
+            AI calling · Signal-triggered campaigns · Real-time analytics
           </div>
         </div>
       </div>

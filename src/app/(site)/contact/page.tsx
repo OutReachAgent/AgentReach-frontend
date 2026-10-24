@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
-import Link from 'next/link';
 import { ArrowRight, Briefcase, Bug, GitFork, Globe, Mail, MessageSquareText, Phone } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import {
@@ -10,7 +9,6 @@ import {
   GITHUB_PROFILE_URL,
   LINKEDIN_URL,
   PORTFOLIO_URL,
-  REPOS,
 } from '@/lib/site';
 import CopyButton from '@/components/CopyButton';
 
@@ -21,9 +19,9 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const TOPICS = [
-  'Questions about running or self-hosting ReachConvert',
+  'Questions about using ReachConvert',
   'Feedback on features or the documentation',
-  'Collaboration and contribution ideas',
+  'Partnership and collaboration ideas',
 ];
 
 const PROFILES = [
@@ -144,39 +142,21 @@ export default function ContactPage() {
                 <h2 className="text-base font-bold text-white">Found a bug?</h2>
               </div>
               <p className="mt-3 text-sm leading-6 text-zinc-400">
-                Open an issue in the repo where it happens.
+                Email us what happened and the steps to reproduce it.
               </p>
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
-                {[
-                  { label: 'Frontend issues', url: REPOS.frontend.url },
-                  { label: 'Backend issues', url: REPOS.backend.url },
-                ].map((repo) => (
-                  <a
-                    key={repo.label}
-                    href={`${repo.url}/issues`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group inline-flex items-center gap-1.5 text-indigo-300 transition-colors hover:text-white"
-                  >
-                    {repo.label}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </a>
-                ))}
+                <a
+                  href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Bug report')}`}
+                  className="group inline-flex items-center gap-1.5 text-indigo-300 transition-colors hover:text-white"
+                >
+                  Report a bug
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </a>
               </div>
             </div>
           </Reveal>
         </div>
       </section>
-
-      <Reveal>
-        <p className="mx-auto mt-14 max-w-xl text-center text-sm text-zinc-500">
-          Want to send a fix yourself?{' '}
-          <Link href="/contribute" className="font-semibold text-indigo-300 transition-colors hover:text-white">
-            Read the contribution guide
-          </Link>
-          .
-        </p>
-      </Reveal>
     </div>
   );
 }

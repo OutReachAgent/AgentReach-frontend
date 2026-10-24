@@ -16,7 +16,7 @@ over REST (`NEXT_PUBLIC_API_URL`) and ships a full in-app **Documentation portal
 
 ## System documentation
 
-Contributor-facing docs for the full workspace live one level up in [`../docs`](../docs):
+Internal docs for the full workspace live one level up in [`../docs`](../docs):
 
 - [Full architecture](../docs/ARCHITECTURE.md)
 - [Feature documentation index](../docs/FEATURES.md)
@@ -31,7 +31,7 @@ Contributor-facing docs for the full workspace live one level up in [`../docs`](
 - [Campaign scheduler](../docs/features/scheduler.md)
 
 The in-app `/documentation` portal includes both user and technical tracks.
-The markdown files in `../docs` remain the contributor-facing technical source of truth.
+The markdown files in `../docs` remain the internal technical source of truth.
 
 ---
 
@@ -263,10 +263,6 @@ src/store/useOutreachStore.ts              # global client state
 
 ---
 
-## Contributing & license
+## License
 
-Contributions are welcome — see the in-app [`/contribute`](src/app/(site)/contribute/page.tsx)
-page for local setup and the pull request workflow, or reach out via
-[`/contact`](src/app/(site)/contact/page.tsx).
-
-ReachConvert is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+Proprietary. Copyright (c) 2026 ReachConvert. All rights reserved. See [LICENSE](LICENSE).

@@ -15,7 +15,6 @@ const STATIC_ROUTES: { path: string; priority: number }[] = [
   { path: '/compare', priority: 0.8 },
   { path: '/compliance', priority: 0.6 },
   { path: '/documentation', priority: 0.8 },
-  { path: '/contribute', priority: 0.5 },
   { path: '/contact', priority: 0.4 },
   { path: '/support', priority: 0.4 },
   { path: '/privacy', priority: 0.3 },

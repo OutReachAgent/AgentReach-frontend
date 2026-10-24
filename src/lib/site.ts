@@ -1,4 +1,4 @@
-// Public project links shown on the landing, contribute, contact, and support pages.
+// Public project links shown on the landing, contact, and support pages.
 
 /** Canonical public origin. Metadata, the sitemap, and OG URLs resolve against it. */
 export const SITE_URL = 'https://www.reachconvert.site';
@@ -7,7 +7,7 @@ export const SITE_NAME = 'ReachConvert';
 
 /** Default description reused by the root metadata, landing page, and OG image. */
 export const SITE_DESCRIPTION =
-  'Open-source outreach platform with AI cold-calling agents, personalized bulk email, and signal-triggered campaigns in one workspace.';
+  'Outreach platform with AI cold-calling agents, personalized bulk email, and signal-triggered campaigns in one workspace.';
 
 export const CONTACT_EMAIL = 'oswinalex1@gmail.com';
 
@@ -22,20 +22,6 @@ export const LINKEDIN_URL = 'https://www.linkedin.com/in/oswin-alex-727773260/';
 
 export const PORTFOLIO_URL = 'https://www.oswinalex.site/';
 
-export const REPOS = {
-  frontend: {
-    name: 'AgentReach-frontend',
-    url: 'https://github.com/OutReachAgent/AgentReach-frontend',
-  },
-  backend: {
-    name: 'AgentReach-backend',
-    url: 'https://github.com/OutReachAgent/AgentReach-backend',
-  },
-} as const;
-
-export const LICENSE_NAME = 'AGPL-3.0';
-export const LICENSE_URL = `${REPOS.frontend.url}/blob/main/LICENSE`;
-
 export const SITE_LINKS = [
   { label: 'Features', href: '/#features' },
   { label: 'AI Calling', href: '/ai-calling' },
@@ -48,7 +34,6 @@ export const SITE_LINKS = [
   { label: 'Docs', href: '/documentation' },
   { label: 'Compliance', href: '/compliance' },
   { label: 'Compare', href: '/compare' },
-  { label: 'Contribute', href: '/contribute' },
   { label: 'Contact', href: '/contact' },
   { label: 'Support', href: '/support' },
   { label: 'Sign in', href: '/login' },

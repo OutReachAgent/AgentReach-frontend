@@ -2,7 +2,7 @@ import SiteFooter from '@/components/SiteFooter';
 import PublicHeader from '@/components/PublicHeader';
 import AdSenseScript from '@/components/AdSenseScript';
 
-/** Shared chrome for public, non-landing pages (contribute, contact, support). */
+/** Shared chrome for public, non-landing pages (contact, support). */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden text-zinc-100">

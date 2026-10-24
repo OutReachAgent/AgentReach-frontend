@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     "cold email software",
     "sales outreach automation",
     "signal-based selling",
-    "open-source outreach platform",
+    "outreach platform",
   ],
   // Public pages set their own canonical/OG fields via pageMetadata (lib/seo).
   // Set GOOGLE_SITE_VERIFICATION to the Search Console token to verify the domain.

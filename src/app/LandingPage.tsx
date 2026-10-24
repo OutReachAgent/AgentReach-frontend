@@ -18,7 +18,6 @@ import {
   Upload,
   Wand2,
   Rocket,
-  GitPullRequest,
   MessageSquare,
   HeartHandshake,
   CirclePlay,
@@ -107,16 +106,6 @@ const PLANS = [
       'Connect your own AWS SES, Twilio or Plivo, and Gemini keys',
     ],
     cta: { label: 'Start free', href: '/login' },
-  },
-  {
-    name: 'Self-hosted',
-    tagline: 'Run it on your own servers under the AGPL-3.0 license.',
-    points: [
-      'The same app, with full source code',
-      'Your database, your infrastructure',
-      'Deploy the NestJS backend and Next.js frontend anywhere',
-    ],
-    cta: { label: 'Read the setup guide', href: '/documentation' },
   },
 ];
 
@@ -289,8 +278,7 @@ export default function LandingPage() {
             <Reveal delay={160}>
               <p className="mt-6 max-w-xl text-base leading-7 text-zinc-400 sm:text-lg">
                 AI voice agents call your leads while personalized emails land in their inbox —
-                all triggered by real buying signals and run from one workspace. Open source, live
-                in minutes.
+                all triggered by real buying signals and run from one workspace. Live in minutes.
               </p>
             </Reveal>
 
@@ -315,7 +303,7 @@ export default function LandingPage() {
                   <Check className="h-4 w-4 text-emerald-400" /> NO CREDIT CARD
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> OPEN SOURCE · SELF-HOSTED
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> YOUR DATA STAYS PRIVATE
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-4 w-4 text-emerald-400" /> LIVE IN MINUTES
@@ -577,7 +565,7 @@ export default function LandingPage() {
             <div className="mx-auto max-w-2xl text-center">
               <p className="sig-label text-indigo-400">[ PRICING ]</p>
               <h2 className="sig-display mt-4 text-3xl font-extrabold text-white sm:text-5xl">
-                Free, hosted or self-hosted
+                Free to use
               </h2>
               <p className="mt-4 text-base leading-7 text-zinc-400">
                 ReachConvert itself costs nothing. You pay your providers directly for what you use.
@@ -585,7 +573,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
 
-          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-md grid-cols-1 gap-5">
             {PLANS.map((plan, i) => (
               <Reveal key={plan.name} delay={i * 120} className="h-full">
                 <div className="sig-card sig-ticks flex h-full flex-col p-7">
@@ -670,13 +658,8 @@ export default function LandingPage() {
               </div>
 
               <div className="mx-auto mt-10 max-w-2xl border-t border-zinc-800/80 pt-6">
-                <p className="sig-label text-zinc-500">OPEN SOURCE · BUILT IN THE OPEN</p>
+                <p className="sig-label text-zinc-500">QUESTIONS? TALK TO US</p>
                 <div className="mt-4 flex flex-col justify-center gap-3 sm:flex-row">
-                  <Link href="/contribute" className="sig-btn-ghost group justify-center">
-                    <GitPullRequest className="h-4 w-4 text-indigo-400" />
-                    Contribute
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
                   <Link href="/contact" className="sig-btn-ghost group justify-center">
                     <MessageSquare className="h-4 w-4 text-indigo-400" />
                     Contact us

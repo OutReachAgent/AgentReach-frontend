@@ -15,16 +15,15 @@ import {
   Server,
   Share2,
   Smartphone,
-  Star,
 } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import Reveal from '@/components/Reveal';
-import { REPOS, UPI_ID, UPI_QR_SRC } from '@/lib/site';
+import { UPI_ID, UPI_QR_SRC } from '@/lib/site';
 
 export const metadata: Metadata = pageMetadata({
   title: 'Support — ReachConvert',
   description:
-    'ReachConvert is free and open source. Support its development with a UPI payment, or help for free by starring, reporting bugs, and sharing.',
+    'ReachConvert is free to use. Support its development with a UPI payment, or help for free by reporting bugs and sharing.',
   path: '/support',
 });
 
@@ -34,7 +33,7 @@ const COSTS = [
   {
     icon: CodeXml,
     title: 'Development time',
-    body: 'Building new features, fixing bugs, and reviewing pull requests.',
+    body: 'Building new features and fixing bugs.',
   },
   {
     icon: FlaskConical,
@@ -55,25 +54,17 @@ const COSTS = [
 
 const FREE_WAYS = [
   {
-    icon: Star,
-    title: 'Star the repos',
-    body: 'Stars help other developers find the project.',
-    href: REPOS.frontend.url,
-    cta: 'Open GitHub',
-    external: true,
-  },
-  {
     icon: Bug,
-    title: 'Report bugs or send fixes',
-    body: 'Issues and pull requests make ReachConvert better for everyone.',
-    href: '/contribute',
-    cta: 'How to contribute',
+    title: 'Report bugs or suggest features',
+    body: 'Bug reports and feature ideas make ReachConvert better for everyone.',
+    href: '/contact',
+    cta: 'Contact us',
     external: false,
   },
   {
     icon: Share2,
     title: 'Tell someone',
-    body: 'Know a team running outreach by hand, or a developer who would enjoy hacking on it? Send them the link.',
+    body: 'Know a team running outreach by hand? Send them the link.',
   },
 ];
 
@@ -88,7 +79,7 @@ export default function SupportPage() {
             Support ReachConvert
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-zinc-400 sm:text-lg">
-            ReachConvert is free and open source. If it is useful to you, a contribution of any size
+            ReachConvert is free to use. If it is useful to you, a contribution of any size
             helps cover the costs of building and testing it.
           </p>
         </Reveal>
@@ -193,7 +184,7 @@ export default function SupportPage() {
             Other ways to help
           </h2>
         </Reveal>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {FREE_WAYS.map((way, i) => {
             const Icon = way.icon;
             const linkClass =

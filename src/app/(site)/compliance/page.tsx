@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { AlertTriangle, ArrowRight, Check, Mail, PhoneCall, ShieldCheck } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import { pageMetadata } from '@/lib/seo';
-import { REPOS } from '@/lib/site';
 
 export const metadata: Metadata = pageMetadata({
   title: 'Outreach compliance — ReachConvert',
@@ -212,15 +211,6 @@ export default function CompliancePage() {
             Need one of the missing safeguards, or spotted something wrong on this page?
           </p>
           <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
-            <a
-              href={`${REPOS.backend.url}/issues`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sig-btn-ghost group justify-center"
-            >
-              Open an issue
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
             <Link href="/contact" className="sig-btn-ghost group justify-center">
               Contact us
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />

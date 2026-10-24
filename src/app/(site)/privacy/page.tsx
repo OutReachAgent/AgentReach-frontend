@@ -50,10 +50,6 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           hosted service, how we use it, and the choices you have. You can reach us about anything
           in this policy at <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>{CONTACT_EMAIL}</a>.
         </p>
-        <p className="mt-3">
-          {SITE_NAME} is also open-source software. If you run your own copy, you operate it and
-          this policy does not cover that installation.
-        </p>
       </>
     ),
   },

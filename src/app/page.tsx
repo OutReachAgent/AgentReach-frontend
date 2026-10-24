@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import LandingPage from './LandingPage';
 import AdSenseScript from '@/components/AdSenseScript';
 import { pageMetadata } from '@/lib/seo';
-import { REPOS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 
 // The landing UI is a client component, so its metadata lives in this server wrapper.
 export const metadata: Metadata = pageMetadata({
@@ -21,7 +21,6 @@ const STRUCTURED_DATA = {
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  sameAs: [REPOS.frontend.url, REPOS.backend.url],
 };
 
 export default function Home() {
