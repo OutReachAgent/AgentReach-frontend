@@ -12,7 +12,6 @@ import {
   Users,
   BarChart3,
   Check,
-  TrendingUp,
   ShieldCheck,
   Clock,
   Upload,
@@ -26,6 +25,7 @@ import Reveal from '@/components/Reveal';
 import SiteFooter from '@/components/SiteFooter';
 import PublicHeader from '@/components/PublicHeader';
 import { CountUp, TiltCard } from '@/components/fx';
+import ProductShot from '@/components/ProductShot';
 
 const FEATURES = [
   {
@@ -33,42 +33,49 @@ const FEATURES = [
     title: 'Personalized bulk email',
     body: 'Send thousands of tailored emails with AI-written variables, merge fields, and deliverability built in.',
     tone: 'a' as const,
+    href: '/email-automation',
   },
   {
     icon: PhoneCall,
     title: 'AI voice calling',
     body: 'Launch calling campaigns where lifelike AI agents dial, qualify, and book on your behalf.',
     tone: 'a2' as const,
+    href: '/ai-calling',
   },
   {
     icon: Bot,
     title: 'Configurable calling agents',
     body: 'Design agent personas, scripts, and objection handling, then deploy them across every campaign.',
     tone: 'a3' as const,
+    href: '/calling-agents',
   },
   {
     icon: Users,
     title: 'Smart contact segments',
     body: 'Organize contacts by company and intent so the right message reaches the right person automatically.',
     tone: 'a2' as const,
+    href: '/documentation/contacts',
   },
   {
     icon: Radar,
     title: 'Signals & playbooks',
     body: 'Watch filings, job posts, news, and bounces for buying signals, then trigger outreach with playbooks.',
     tone: 'a3' as const,
+    href: '/buying-signals',
   },
   {
     icon: BarChart3,
     title: 'Real-time analytics',
     body: 'Track opens, replies, and call outcomes live, with template and segment performance in one view.',
     tone: 'a' as const,
+    href: '/documentation/dashboard',
   },
   {
     icon: Telescope,
     title: 'Prospect Finder',
     body: 'Describe your ideal customer and get matching companies and people, each checked against its own website, ready to add to your contacts.',
     tone: 'a2' as const,
+    href: '/prospect-finder',
   },
 ];
 
@@ -114,11 +121,10 @@ const STATS = [
   { value: '3', label: 'Outreach channels' },
   { value: '2', label: 'Telephony providers' },
   { value: '4', label: 'Signal sources' },
-  { value: '28', label: 'Voice languages' },
+  { value: '24', label: 'Call languages' },
 ];
 
 function HeroVisual() {
-  const bars = [52, 74, 40, 88, 63, 96, 71, 58];
   return (
     <div className="rig-scene relative">
       {/* Orbital rig behind the console */}
@@ -143,89 +149,11 @@ function HeroVisual() {
       {/* Float on a wrapper: the animation's transform would override .tilt-body's */}
       <div className="animate-float">
         <TiltCard strength={5}>
-          <div className="tilt-body sig-card sig-ticks sig-ticks-on relative rounded-2xl p-4 shadow-2xl">
+          <div className="tilt-body relative rounded-2xl">
             <div className="tilt-glare" />
-            {/* Console chrome */}
-            <div className="flex items-center gap-2 pb-4">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-400/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
-              {/* Illustrative numbers, not usage figures: say so on the console. */}
-              <div className="sig-label ml-3 flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-400">
-                <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
-                SAMPLE DATA
-              </div>
-            </div>
-
-            {/* Stat chips */}
-            <div className="grid grid-cols-3 gap-3" style={{ transform: 'translateZ(22px)' }}>
-              {[
-                { label: 'SENT', value: '18,204', tint: 'text-indigo-400' },
-                { label: 'OPEN', value: '61%', tint: 'text-purple-400' },
-                { label: 'REPLIES', value: '2,940', tint: 'text-emerald-400' },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-                  <p className="sig-label text-zinc-600">{s.label}</p>
-                  <p className={`mt-1 font-mono text-lg font-bold tracking-tight ${s.tint}`}>{s.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Animated chart */}
-            <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-xs font-bold text-white">
-                  <TrendingUp className="h-4 w-4 text-indigo-400" />
-                  Campaign performance
-                </p>
-                <span className="sig-label rounded-full bg-indigo-500/10 px-2 py-0.5 text-indigo-400">
-                  +18% WK
-                </span>
-              </div>
-              <div className="flex h-28 items-end gap-2">
-                {bars.map((h, i) => (
-                  <div key={i} className="flex h-full flex-1 flex-col justify-end">
-                    <div
-                      className="animate-bar rounded-sm"
-                      style={{
-                        height: `${h}%`,
-                        animationDelay: `${i * 90}ms`,
-                        background:
-                          'linear-gradient(to top, color-mix(in oklab, var(--a-500) 45%, transparent), var(--a-400))',
-                        boxShadow: '0 0 14px -4px var(--a-400)',
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ProductShot name="dashboard" hero sizes="(min-width: 1280px) 600px, (min-width: 1024px) 48vw, 100vw" />
           </div>
         </TiltCard>
-      </div>
-
-      {/* Floating badge cards */}
-      <div className="animate-float-slow sig-glass absolute -left-6 top-24 hidden rounded-xl p-3 shadow-xl sm:block">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
-            <PhoneCall className="h-4 w-4" />
-          </div>
-          <div className="leading-tight">
-            <p className="text-xs font-bold text-white">Call booked</p>
-            <p className="sig-label mt-0.5 text-zinc-500">SAMPLE · AI AGENT</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="animate-float-slow animation-delay-2000 sig-glass absolute -right-4 bottom-10 hidden rounded-xl p-3 shadow-xl sm:block">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-400">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div className="leading-tight">
-            <p className="text-xs font-bold text-white">AI drafted 40 emails</p>
-            <p className="sig-label mt-0.5 text-zinc-500">SAMPLE</p>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -256,65 +184,53 @@ export default function LandingPage() {
 
         <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-16 lg:grid-cols-[1.05fr_1fr]">
           <div>
-            <Reveal>
-              <span className="sig-label inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-zinc-400 backdrop-blur">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                AI VOICE + EMAIL · ONE WORKSPACE
-                <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 font-bold text-indigo-400">
-                  NEW
-                </span>
+            <span className="sig-label inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3.5 py-2 text-zinc-400 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              AI VOICE + EMAIL · ONE WORKSPACE
+              <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 font-bold text-indigo-400">
+                NEW
               </span>
-            </Reveal>
+            </span>
 
-            <Reveal delay={80}>
-              <h1 className="sig-display mt-6 text-4xl font-extrabold leading-[1.02] text-white sm:text-6xl lg:text-7xl">
-                Turn cold outreach into{' '}
-                <span className="sig-glow animate-gradient bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  booked meetings
-                </span>
-              </h1>
-            </Reveal>
+            <h1 className="sig-display mt-6 text-4xl font-extrabold leading-[1.02] text-white sm:text-6xl lg:text-7xl">
+              Turn cold outreach into{' '}
+              <span className="sig-glow animate-gradient bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                booked meetings
+              </span>
+            </h1>
 
-            <Reveal delay={160}>
-              <p className="mt-6 max-w-xl text-base leading-7 text-zinc-400 sm:text-lg">
-                AI voice agents call your leads while personalized emails land in their inbox —
-                all triggered by real buying signals and run from one workspace. Live in minutes.
-              </p>
-            </Reveal>
+            <p className="mt-6 max-w-xl text-base leading-7 text-zinc-400 sm:text-lg">
+              AI voice agents call your leads while personalized emails land in their inbox —
+              all triggered by real buying signals and run from one workspace. Live in minutes.
+            </p>
 
-            <Reveal delay={240}>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <span className="sig-btn-wrap">
-                  <Link href="/login" className="sig-btn shimmer group">
-                    Start free
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                </span>
-                <a href="#demo" className="sig-btn-ghost">
-                  <CirclePlay className="h-4 w-4" />
-                  Watch the demo
-                </a>
-              </div>
-            </Reveal>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span className="sig-btn-wrap">
+                <Link href="/login" className="sig-btn shimmer group">
+                  Start free
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </span>
+              <a href="#demo" className="sig-btn-ghost">
+                <CirclePlay className="h-4 w-4" />
+                Watch the demo
+              </a>
+            </div>
 
-            <Reveal delay={320}>
-              <div className="sig-label mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-zinc-600">
-                <span className="inline-flex items-center gap-1.5">
-                  <Check className="h-4 w-4 text-emerald-400" /> NO CREDIT CARD
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" /> YOUR DATA STAYS PRIVATE
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-emerald-400" /> LIVE IN MINUTES
-                </span>
-              </div>
-            </Reveal>
+            <div className="sig-label mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-zinc-600">
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-emerald-400" /> NO CREDIT CARD
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-400" /> YOUR DATA STAYS PRIVATE
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-emerald-400" /> LIVE IN MINUTES
+              </span>
+            </div>
           </div>
 
-          <Reveal delay={200}>
-            <HeroVisual />
-          </Reveal>
+          <HeroVisual />
         </div>
       </section>
 
@@ -408,7 +324,7 @@ export default function LandingPage() {
                   }`}
                 >
                   <TiltCard className="group h-full">
-                    <div className="tilt-body sig-card sig-ticks relative h-full overflow-hidden rounded-2xl p-6">
+                    <Link href={feature.href} className="tilt-body sig-card sig-ticks relative block h-full overflow-hidden rounded-2xl p-6">
                       <div className="tilt-glare" />
                       <div
                         className="absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
@@ -427,7 +343,11 @@ export default function LandingPage() {
                       </div>
                       <h3 className="sig-display mt-5 text-lg font-bold text-white">{feature.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-zinc-400">{feature.body}</p>
-                    </div>
+                      <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-400">
+                        Learn more
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </Link>
                   </TiltCard>
                 </Reveal>
               );
@@ -498,7 +418,7 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/login" className="sig-btn-ghost group mt-8">
+              <Link href="#demo" className="sig-btn-ghost group mt-8">
                 See it in action
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
@@ -507,7 +427,7 @@ export default function LandingPage() {
 
           <Reveal delay={140}>
             <TiltCard strength={5}>
-              <div className="tilt-body relative">
+              <div className="tilt-body relative rounded-2xl">
                 <div
                   className="absolute -inset-4 rounded-3xl blur-2xl"
                   style={{
@@ -515,43 +435,8 @@ export default function LandingPage() {
                       'linear-gradient(to top right, color-mix(in oklab, var(--a-500) 13%, transparent), color-mix(in oklab, var(--a2-500) 13%, transparent))',
                   }}
                 />
-                <div className="sig-card sig-ticks sig-ticks-on relative space-y-4 rounded-2xl p-6 shadow-2xl">
-                  <div className="tilt-glare" />
-                  {[
-                    { name: 'Founders — Series A', sent: '4,120', open: 68, reply: 24 },
-                    { name: 'Growth marketers', sent: '2,880', open: 54, reply: 17 },
-                    { name: 'RevOps leaders', sent: '1,540', open: 72, reply: 31 },
-                  ].map((row) => (
-                    <div key={row.name} className="rounded-xl border border-zinc-850/60 bg-zinc-950/50 p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-zinc-100">{row.name}</span>
-                        <span className="sig-label rounded-full border border-indigo-500/10 bg-indigo-500/10 px-2 py-0.5 text-indigo-400">
-                          {row.sent} SENT
-                        </span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-4 text-xs">
-                        <div>
-                          <p className="sig-label text-zinc-600">OPEN</p>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-800">
-                              <div className="h-full rounded-full bg-purple-500" style={{ width: `${row.open}%` }} />
-                            </div>
-                            <span className="font-mono font-bold text-zinc-300">{row.open}%</span>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="sig-label text-zinc-600">REPLY</p>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-800">
-                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${row.reply}%` }} />
-                            </div>
-                            <span className="font-mono font-bold text-zinc-300">{row.reply}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <div className="tilt-glare" />
+                <ProductShot name="email-tracking" className="relative" sizes="(min-width: 1280px) 600px, (min-width: 1024px) 48vw, 100vw" />
               </div>
             </TiltCard>
           </Reveal>
@@ -667,7 +552,7 @@ export default function LandingPage() {
                   </Link>
                   <Link href="/support" className="sig-btn-ghost group justify-center">
                     <HeartHandshake className="h-4 w-4 text-indigo-400" />
-                    Support
+                    Support the project
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </div>

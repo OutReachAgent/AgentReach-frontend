@@ -13,9 +13,14 @@ const PRODUCT_LINKS = [
 ];
 
 const EXPLORE_LINKS = [
+  { label: 'Prospect Finder', href: '/prospect-finder' },
+  { label: 'Buying signals', href: '/buying-signals' },
+  { label: 'Contact Finder', href: '/email-finder' },
   { label: 'Calling agents', href: '/calling-agents' },
   { label: 'Calling automation', href: '/calling-automation' },
   { label: 'Outreach automation', href: '/outreach-automation' },
+  { label: 'Guides', href: '/guides' },
+  { label: 'Integrations', href: '/integrations' },
   { label: 'Compare', href: '/compare' },
   { label: 'Compliance', href: '/compliance' },
 ];

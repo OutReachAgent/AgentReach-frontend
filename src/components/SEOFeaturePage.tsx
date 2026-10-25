@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ArrowRight, Check, CircleHelp, Workflow } from 'lucide-react';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
+import ProductShot from '@/components/ProductShot';
+import type { ScreenName } from '@/lib/screens';
 
 export type SEOFeaturePageData = {
   path: string;
@@ -8,9 +10,15 @@ export type SEOFeaturePageData = {
   title: string;
   intro: string;
   description: string;
+  shot?: ScreenName;
+  stepsTitle?: string;
+  stepsIntro?: string;
   benefits: { title: string; text: string }[];
+  tour?: { title: string; text: string; shot: ScreenName; points?: string[] }[];
   steps: { title: string; text: string }[];
+  specs?: { label: string; value: string }[];
   useCases: string[];
+  guide?: { label: string; href: string };
   faqs: { question: string; answer: string }[];
   related: { label: string; href: string }[];
 };
@@ -30,20 +38,23 @@ export default function SEOFeaturePage({ data }: { data: SEOFeaturePageData }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <article className="px-5 py-16 sm:px-8 sm:py-24">
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-4xl">
-            <p className="sig-label text-indigo-400">[ {data.eyebrow} ]</p>
-            <h1 className="sig-display mt-5 text-4xl font-extrabold leading-[1.04] text-white sm:text-6xl">
-              {data.title}
-            </h1>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">{data.intro}</p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/login" className="sig-btn group justify-center">
-                Start free <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
-              <Link href="/documentation" className="sig-btn-ghost justify-center">
-                Read the documentation
-              </Link>
+          <div className={data.shot ? 'grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]' : ''}>
+            <div className="max-w-4xl">
+              <p className="sig-label text-indigo-400">[ {data.eyebrow} ]</p>
+              <h1 className={`sig-display mt-5 text-4xl font-extrabold leading-[1.04] text-white ${data.shot ? 'sm:text-5xl' : 'sm:text-6xl'}`}>
+                {data.title}
+              </h1>
+              <p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-300">{data.intro}</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/login" className="sig-btn group justify-center">
+                  Start free <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+                <Link href="/documentation" className="sig-btn-ghost justify-center">
+                  Read the documentation
+                </Link>
+              </div>
             </div>
+            {data.shot && <ProductShot name={data.shot} hero sizes="(min-width: 1152px) 620px, (min-width: 1024px) 55vw, 100vw" />}
           </div>
 
           <section className="mt-20 grid gap-5 md:grid-cols-3" aria-labelledby="benefits-heading">
@@ -62,14 +73,44 @@ export default function SEOFeaturePage({ data }: { data: SEOFeaturePageData }) {
             ))}
           </section>
 
+          {data.tour && (
+            <section className="mt-24 space-y-16" aria-labelledby="tour-heading">
+              <div>
+                <p className="sig-label text-indigo-400">[ IN THE APP ]</p>
+                <h2 id="tour-heading" className="sig-display mt-3 text-3xl font-extrabold text-white sm:text-4xl">
+                  What it looks like in ReachConvert
+                </h2>
+              </div>
+              {data.tour.map((row, index) => (
+                <div key={row.title} className="grid items-center gap-10 lg:grid-cols-2">
+                  <div className={index % 2 ? 'lg:order-2' : ''}>
+                    <h3 className="sig-display text-2xl font-bold text-white">{row.title}</h3>
+                    <p className="mt-3 text-base leading-7 text-zinc-400">{row.text}</p>
+                    {row.points && (
+                      <ul className="mt-5 space-y-2.5">
+                        {row.points.map((point) => (
+                          <li key={point} className="flex gap-2.5 text-sm leading-6 text-zinc-300">
+                            <Check className="mt-1 h-4 w-4 flex-none text-emerald-400" />
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <ProductShot name={row.shot} sizes="(min-width: 1152px) 560px, (min-width: 1024px) 50vw, 100vw" />
+                </div>
+              ))}
+            </section>
+          )}
+
           <section className="mt-24 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]" aria-labelledby="steps-heading">
             <div>
               <p className="sig-label text-indigo-400">[ HOW IT WORKS ]</p>
               <h2 id="steps-heading" className="sig-display mt-3 text-3xl font-extrabold text-white sm:text-4xl">
-                Build an outreach workflow that runs with your team
+                {data.stepsTitle ?? 'Build an outreach workflow that runs with your team'}
               </h2>
               <p className="mt-4 text-base leading-7 text-zinc-400">
-                Import contacts, configure your message, and monitor every email or call from one workspace.
+                {data.stepsIntro ?? 'Import contacts, configure your message, and monitor every email or call from one workspace.'}
               </p>
             </div>
             <div className="space-y-4">
@@ -87,6 +128,23 @@ export default function SEOFeaturePage({ data }: { data: SEOFeaturePageData }) {
             </div>
           </section>
 
+          {data.specs && (
+            <section className="mt-24" aria-labelledby="specs-heading">
+              <p className="sig-label text-indigo-400">[ DETAILS ]</p>
+              <h2 id="specs-heading" className="sig-display mt-3 text-3xl font-extrabold text-white sm:text-4xl">
+                The specifics
+              </h2>
+              <dl className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-800 sm:grid-cols-2">
+                {data.specs.map((spec) => (
+                  <div key={spec.label} className="bg-zinc-950 p-5">
+                    <dt className="sig-label text-zinc-500">{spec.label}</dt>
+                    <dd className="mt-2 text-sm leading-6 text-zinc-300">{spec.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
           <section className="mt-24" aria-labelledby="use-cases-heading">
             <div className="flex items-center gap-3">
               <Workflow className="h-5 w-5 text-indigo-400" />
@@ -102,6 +160,16 @@ export default function SEOFeaturePage({ data }: { data: SEOFeaturePageData }) {
               ))}
             </div>
           </section>
+
+          {data.guide && (
+            <Link href={data.guide.href} className="sig-card group mt-24 flex items-center justify-between gap-4 p-6">
+              <div>
+                <p className="sig-label text-indigo-400">[ GUIDE ]</p>
+                <p className="mt-2 text-lg font-bold text-white">{data.guide.label}</p>
+              </div>
+              <ArrowRight className="h-5 w-5 flex-none text-indigo-400 transition-transform group-hover:translate-x-1" />
+            </Link>
+          )}
 
           <section className="mt-24 max-w-4xl" aria-labelledby="faq-heading">
             <div className="flex items-center gap-3">

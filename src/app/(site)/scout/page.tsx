@@ -19,6 +19,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { ScoutLogo } from '@/components/assistant/ScoutLogo';
+import ProductShot from '@/components/ProductShot';
 import { pageMetadata } from '@/lib/seo';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 
@@ -31,6 +32,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Scout: AI Outreach Assistant for Contacts, Signals and Campaigns — ReachConvert',
   description: DESCRIPTION,
   path: PATH,
+  ownShareImage: true,
 });
 
 const CAPABILITIES = [
@@ -184,6 +186,18 @@ export default function ScoutPage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          <section className="mt-24" aria-labelledby="in-app-heading">
+            <p className="sig-label text-indigo-400">[ IN THE APP ]</p>
+            <h2 id="in-app-heading" className="sig-display mt-3 max-w-3xl text-3xl font-extrabold text-white sm:text-4xl">
+              Results arrive as cards you can act on
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400">
+              Asked for operations people at a retailer, Scout searched Hunter.io, left out the two people already in
+              Contacts, and showed each new person&apos;s verification status before saving anything.
+            </p>
+            <ProductShot name="scout" className="mt-8" sizes="(min-width: 1152px) 1152px, 100vw" />
           </section>
 
           <section className="mt-24 grid gap-12 lg:grid-cols-[0.8fr_1.2fr]" aria-labelledby="control-heading">

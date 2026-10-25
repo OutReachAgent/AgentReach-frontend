@@ -537,7 +537,7 @@ const FEATURE_ARCHITECTURE_PAGES: DocPage[] = [
           { title: 'Network', text: 'The site reader only fetches public http and https addresses on ports 80 and 443, re-checks every redirect, and resolves addresses itself so private ranges are refused.' },
           { title: 'Politeness', text: 'robots.txt is honoured for the ReachConvertBot agent, a failing robots.txt counts as disallowed, and requests to one host are at least a second apart.' },
           { title: 'Evidence', text: 'A criterion only counts when its quote is found in the fetched text. People must be named on a fetched page, and an email must be published there at the company domain and match the person.' },
-          { title: 'Cost', text: 'One search at a time per user, ten searches per 24 hours, and a Gemini call budget of three per company plus five.' },
+          { title: 'Cost', text: 'One search at a time per user, and a Gemini call budget of three per company plus five.' },
         ],
       },
     ],
@@ -1334,7 +1334,7 @@ export const DOC_PAGES: DocPage[] = [
         heading: 'Limits and cost',
         capabilities: [
           { title: 'Per search', text: 'Up to 100 companies for a description search, up to 20 for a company lookup, and up to 20 people per company.' },
-          { title: 'Per account', text: 'One running search at a time and 10 new searches per 24 hours.' },
+          { title: 'Per account', text: 'One running search at a time.' },
           { title: 'Gemini usage', text: 'Billed to your own Gemini key. An estimate is shown before you run, and a search stops at a call budget of three per company plus five.' },
           { title: 'Retention', text: 'Companies and people you did not add are deleted after 90 days. Deleting a search removes everything it found; contacts you added are kept.' },
         ],

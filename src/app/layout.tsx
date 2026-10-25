@@ -64,7 +64,7 @@ export const viewport: Viewport = {
  * follow prefers-color-scheme. Must stay in sync with lib/localAuth
  * (normalizeUser, resolveTheme, applyTheme).
  */
-const themeBootScript = `(function(){try{
+const themeBootScript = `(function(){document.documentElement.classList.add("js");try{
 var themes=["dark-midnight","dark-slate","dark-graphite","dark-violet","light-cloud","light-paper","light-mint","light-rose"];
 var accents=["volt","emerald","sky","rose","amber","violet"];
 var u=JSON.parse(localStorage.getItem("reachconvert_user")||"{}")||{};

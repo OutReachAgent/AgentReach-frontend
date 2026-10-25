@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'AI Calling Software for Automated Outbound Calls — ReachConvert',
   description: 'Launch AI voice campaigns that qualify leads, answer questions, and track outbound call outcomes with ReachConvert.',
   path: '/ai-calling',
+  ownShareImage: true,
 });
 
 export default function AICallingPage() {

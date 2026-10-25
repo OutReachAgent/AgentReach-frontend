@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Prospect Finder: Find Leads That Match Your Ideal Customer — ReachConvert',
   description: 'Describe your ideal customer and find matching companies and people, each checked against its own website, then add them to your outreach contacts.',
   path: '/prospect-finder',
+  ownShareImage: true,
 });
 
 export default function ProspectFinderPage() {

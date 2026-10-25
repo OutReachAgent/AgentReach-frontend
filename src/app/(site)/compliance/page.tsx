@@ -24,11 +24,15 @@ const PROVIDED = [
   },
   {
     title: 'Provider keys are encrypted at rest',
-    body: 'AWS, Twilio, Plivo and Gemini credentials saved in Settings are stored with AES-256-GCM encryption and are never shown back in full.',
+    body: 'AWS, Twilio, Plivo, Gemini and Hunter.io credentials saved in Settings are stored with AES-256-GCM encryption and are never shown back in full.',
   },
   {
     title: 'Every call is logged',
     body: 'Each call keeps its outcome, duration and transcript. Calls placed through Twilio are recorded, and the recording is available from the call log.',
+  },
+  {
+    title: 'Unsubscribes are handled for you',
+    body: 'Campaign emails include an unsubscribe link and one-click List-Unsubscribe headers unless you turn them off for a campaign. Anyone who unsubscribes is skipped by later campaigns from your account, and with SES event tracking set up, so are bounced and complaining addresses.',
   },
   {
     title: 'You can remove a person at any time',
@@ -37,8 +41,6 @@ const PROVIDED = [
 ];
 
 const NOT_PROVIDED = [
-  'No automatic unsubscribe link or List-Unsubscribe header on emails.',
-  'No suppression list: opt-outs are not tracked for you, so an imported contact can be emailed again.',
   'No do-not-call list, and no checking of numbers against national registries such as the US DNC, UK TPS or India NCPR.',
   'Calls do not announce that the caller is an AI or that the call is recorded unless you write it into the agent’s greeting.',
   'No limit on calling hours in the recipient’s time zone.',
@@ -47,8 +49,8 @@ const NOT_PROVIDED = [
 
 const EMAIL_STEPS = [
   'Only email people you have a lawful reason to contact. In the EU and UK that usually means consent or a documented legitimate interest; Canada’s CASL generally requires consent.',
-  'Put a clear way to opt out in every template, such as “Reply STOP and I won’t email you again”, along with your business name and postal address (required in the US by CAN-SPAM).',
-  'When someone opts out, delete or stop using their contact before your next send. CAN-SPAM requires opt-outs to be honoured within 10 business days.',
+  'Keep the unsubscribe link on, and add your business name and postal address to every template (required in the US by CAN-SPAM).',
+  'Unsubscribes through the link are honoured automatically. If someone opts out another way, such as by replying, delete their contact before your next send. CAN-SPAM requires opt-outs to be honoured within 10 business days.',
   'Use accurate sender names and subject lines, and keep your SES bounce and complaint rates low.',
 ];
 

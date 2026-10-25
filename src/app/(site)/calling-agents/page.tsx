@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'AI Calling Agents for Sales and Lead Qualification — ReachConvert',
   description: 'Create configurable AI calling agents with voice, knowledge, scripts, and objection handling for repeatable sales conversations.',
   path: '/calling-agents',
+  ownShareImage: true,
 });
 
 export default function CallingAgentsPage() {

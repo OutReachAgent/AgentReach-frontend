@@ -14,18 +14,29 @@ export function pageMetadata({
   title,
   description,
   path,
+  ownShareImage = false,
 }: {
   title: string;
   description: string;
   /** Path relative to SITE_URL, e.g. '/contact'. */
   path: string;
+  /** The page has its own opengraph-image file, which an explicit image would override. */
+  ownShareImage?: boolean;
 }): Metadata {
   return {
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { type: 'website', siteName: SITE_NAME, url: path, title, description, images: [SHARE_IMAGE] },
-    twitter: { card: 'summary_large_image', title, description, images: [SHARE_IMAGE.url] },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_NAME,
+      url: path,
+      title,
+      description,
+      ...(!ownShareImage && { images: [SHARE_IMAGE] }),
+    },
+    // No twitter image: X falls back to og:image, which product pages override.
+    twitter: { card: 'summary_large_image', title, description },
   };
 }
 

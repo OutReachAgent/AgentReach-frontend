@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'AI Outreach Automation for Email and Phone Campaigns — ReachConvert',
   description: 'Coordinate personalized email, AI calling agents, signals, contact segments, and analytics in one outreach platform.',
   path: '/outreach-automation',
+  ownShareImage: true,
 });
 
 export default function OutreachAutomationPage() {

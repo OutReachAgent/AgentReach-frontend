@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import DocSidebar from './DocSidebar';
 import { pageMetadata } from '@/lib/seo';
-import AdSenseScript from '@/components/AdSenseScript';
 import { BrandMark } from '@/components/fx';
 
 export const metadata: Metadata = pageMetadata({
@@ -20,7 +19,6 @@ export default function DocumentationLayout({
 }) {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <AdSenseScript />
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[88rem] items-center justify-between px-5 sm:px-8">

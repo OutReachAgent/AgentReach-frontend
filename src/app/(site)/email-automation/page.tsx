@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Email Automation for Personalized Sales Outreach — ReachConvert',
   description: 'Create personalized sales email campaigns with AI-assisted templates, contact segments, scheduling, and analytics.',
   path: '/email-automation',
+  ownShareImage: true,
 });
 
 export default function EmailAutomationPage() {

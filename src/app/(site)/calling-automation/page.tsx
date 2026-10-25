@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: 'Calling Automation Software for Outbound Sales — ReachConvert',
   description: 'Automate outbound call scheduling, campaigns, AI agents, call tracking, and follow-up review with ReachConvert.',
   path: '/calling-automation',
+  ownShareImage: true,
 });
 
 export default function CallingAutomationPage() {

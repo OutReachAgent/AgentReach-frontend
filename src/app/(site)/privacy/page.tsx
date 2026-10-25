@@ -8,11 +8,11 @@ import { CONTACT_EMAIL, SITE_NAME, SITE_URL } from '@/lib/site';
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy policy — ReachConvert',
   description:
-    'What personal data ReachConvert collects, how it is used, which providers process it, how cookies and ads work on this site, and how to exercise your privacy rights.',
+    'What personal data ReachConvert collects, how it is used, which providers process it, how cookies work on this site, and how to exercise your privacy rights.',
   path: '/privacy',
 });
 
-const EFFECTIVE_DATE = '15 October 2026';
+const EFFECTIVE_DATE = '25 October 2026';
 
 const linkClass = 'text-indigo-300 underline underline-offset-2 hover:text-indigo-200';
 
@@ -79,7 +79,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
         <Bullets
           items={[
             'Technical data such as IP address, browser type, device, pages visited and the time of each request, kept in server logs and used for security and troubleshooting.',
-            'Usage and analytics data collected through Google Analytics, and advertising data collected by Google AdSense on our public pages (see Cookies and advertising below).',
+            'Usage and analytics data collected through Google Analytics (see Cookies below).',
           ]}
         />
       </>
@@ -118,7 +118,6 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           'To keep the service secure, prevent abuse and fraud, and enforce rate limits.',
           'To send service messages such as email verification, password resets and important account notices.',
           'To understand how the website is used and improve it.',
-          'To show advertising on our public pages, which helps fund the project.',
           'To meet legal obligations and respond to lawful requests.',
         ]}
       />
@@ -131,14 +130,14 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
       <p>
         Where data protection law such as the GDPR applies, we rely on performance of our contract
         with you to run your account, our legitimate interests to secure and improve the service,
-        your consent for non-essential cookies and personalised advertising where consent is
+        your consent for non-essential cookies where consent is
         required, and legal obligation where the law requires us to keep or disclose information.
       </p>
     ),
   },
   {
     id: 'cookies',
-    title: 'Cookies and advertising',
+    title: 'Cookies',
     body: (
       <>
         <p>We use the following cookies and similar technologies:</p>
@@ -146,19 +145,9 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
           items={[
             <><span className="font-semibold text-zinc-200">Essential:</span> secure, HttpOnly session cookies that keep you signed in, and a cookie that protects forms against cross-site request forgery. Your browser also stores your display preferences, and a short-lived value while you sign in with Google. The service does not work without these.</>,
             <><span className="font-semibold text-zinc-200">Analytics:</span> Google Analytics sets cookies to count visits and see which pages are used. Google’s handling of this data is described in <External href="https://policies.google.com/technologies/partner-sites">How Google uses information from sites that use its services</External>. You can opt out with the <External href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out browser add-on</External>.</>,
-            <><span className="font-semibold text-zinc-200">Advertising:</span> our public pages show ads served by Google AdSense. Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this and other websites. Google’s advertising cookies let it and its partners serve ads to you based on those visits.</>,
           ]}
         />
-        <p className="mt-4">
-          You can opt out of personalised advertising in Google’s{' '}
-          <External href="https://adssettings.google.com">Ads Settings</External>, and opt out of
-          some third-party vendors’ use of cookies for personalised advertising at{' '}
-          <External href="https://www.aboutads.info/choices/">aboutads.info</External>. Visitors
-          in the European Economic Area, the UK and Switzerland are asked for consent before
-          personalised ads are shown. You can also block or delete cookies in your browser
-          settings.
-        </p>
-        <p className="mt-3">Ads are not shown inside the signed-in app.</p>
+        <p className="mt-4">You can also block or delete cookies in your browser settings.</p>
       </>
     ),
   },
@@ -176,7 +165,7 @@ const SECTIONS: { id: string; title: string; body: ReactNode }[] = [
             'Amazon Web Services: hosting, file storage, sign-in (Cognito), secrets storage and email delivery (SES).',
             'MongoDB: the database that stores account and workspace data.',
             'Vercel: hosting for this website.',
-            'Google: analytics, advertising, and AI features (Gemini) when you use them.',
+            'Google: analytics and AI features (Gemini) when you use them.',
             'Twilio and Plivo: placing calls, through the accounts you connect.',
           ]}
         />
